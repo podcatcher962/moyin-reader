@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark" data-lay="auto" data-motion="">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>墨吟 · 阅读与朗读</title>
+<style>
+:root{
+  --bg:#1B1C1F; --card:#24262A; --card2:#2C2F34; --line:#3A3D43;
+  --tx:#E6E4E1; --tx2:#A5A29D; --acc:#4A9EFF; --ok:#3FC08A; --warn:#E8A33D; --bad:#E2685F;
+  --paper:#1F2125; --paperTx:#E6E4E1; --paperTx2:#A5A29D;
+  --fs:19px; --lh:1.85; --pagew:720px; --ff:"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif;
+  --tap:34px; --ui:1;
+}
+html[data-theme="light"]{
+  --bg:#F2F3F5; --card:#FFFFFF; --card2:#E9EBEF; --line:#D6D9DF;
+  --tx:#1D1F23; --tx2:#5E646D; --acc:#1668C4;
+  --paper:#FFFFFF; --paperTx:#22252B; --paperTx2:#5E646D;
+}
+html[data-theme="sepia"]{
+  --bg:#EDE3CE; --card:#F7F0E0; --card2:#E8DBC0; --line:#D6C6A6;
+  --tx:#3A3227; --tx2:#6F6150; --acc:#9A5B2C;
+  --paper:#FAF3E3; --paperTx:#3B3226; --paperTx2:#6F6150;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:var(--bg); color:var(--tx);
+  font-family:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  font-size:calc(14px * var(--ui)); line-height:1.5; overflow:hidden;
+  -webkit-text-size-adjust:100%;
+}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:7px 11px;cursor:pointer;min-height:var(--tap);white-space:nowrap}
+button:hover{border-color:var(--acc);color:var(--acc)}
+button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+button.pri:hover{filter:brightness(1.12);color:#fff}
+button.ghost{background:transparent}
+button.danger:hover{border-color:var(--bad);color:var(--bad)}
+input[type=text],input[type=search],input[type=number],input[type=password],select{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 9px;min-height:var(--tap);outline:none}
+input:focus,select:focus{border-color:var(--acc)}
+input[type=range]{accent-color:var(--acc);height:var(--tap);min-width:90px}
+#app{height:100dvh;display:flex;flex-direction:column}
+.view{display:none;flex:1;min-height:0;flex-direction:column}
+.view.on{display:flex}
+.top{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border-bottom:1px solid var(--line);flex:0 0 auto;flex-wrap:wrap}
+.brand{font-size:1.25em;font-weight:700;letter-spacing:.12em;white-space:nowrap}
+.brand small{font-size:.55em;font-weight:400;color:var(--tx2);letter-spacing:.05em;margin-left:8px}
+.acts{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.spacer{flex:1 1 auto}
+.hint{color:var(--tx2);font-size:.86em}
+/* ---------- 书架 ---------- */
+#libBody{flex:1;min-height:0;overflow-y:auto;padding:18px}
+.shelf{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));max-width:1300px;margin:0 auto}
+.bk{position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s}
+.bk:hover{transform:translateY(-3px);border-color:var(--acc)}
+.bk .cv{height:196px;background:var(--card2);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.bk .cv img{width:100%;height:100%;object-fit:cover}
+.bk .cv .ph{font-size:2.2em;opacity:.35;font-family:var(--ff);line-height:1.2;text-align:center;padding:12px;word-break:break-all}
+.bk .meta{padding:9px 10px 11px}
+.bk .nm{font-weight:600;font-size:.95em;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:2.7em}
+.bk .sub{color:var(--tx2);font-size:.78em;margin-top:5px;display:flex;gap:6px;align-items:center}
+.bk .bar{height:4px;background:var(--card2);border-radius:3px;margin-top:8px;overflow:hidden}
+.bk .bar i{display:block;height:100%;background:var(--acc)}
+.bk .del{position:absolute;right:6px;top:6px;width:28px;height:28px;border-radius:8px;padding:0;min-height:28px;background:rgba(0,0,0,.55);border:none;color:#fff;font-size:15px;opacity:0}
+.bk:hover .del{opacity:1}
+.bk .resume{display:block;width:100%;margin-top:8px;padding:5px 8px;min-height:30px;font-size:.8em;border-radius:8px;background:var(--card2);border:1px solid var(--line);color:var(--acc);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk .resume:hover{background:var(--acc);border-color:var(--acc);color:#fff}
+.tag{font-size:.7em;border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--tx2)}
+.empty{max-width:560px;margin:9vh auto;text-align:center;color:var(--tx2);line-height:2}
+.empty .big{font-size:3em;opacity:.4;font-family:var(--ff)}
+.foot{flex:0 0 auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:9px 14px;background:var(--card);border-top:1px solid var(--line);color:var(--tx2);font-size:.84em}
+/* ---------- 阅读器 ---------- */
+#readTop{padding:8px 12px}
+#readTitle{font-weight:600;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#readMain{flex:1;min-height:0;display:flex}
+.side{width:290px;flex:0 0 auto;background:var(--card);border-right:1px solid var(--line);display:none;flex-direction:column;min-height:0}
+.side.on{display:flex}
+.side .tabs{display:flex;gap:4px;padding:9px;border-bottom:1px solid var(--line);flex:0 0 auto}
+.side .tabs button{flex:1;padding:6px 4px;font-size:.86em}
+.side .body{flex:1;min-height:0;overflow-y:auto;padding:8px}
+.side .it{display:block;width:100%;text-align:left;background:transparent;border:none;border-radius:7px;padding:8px 9px;margin-bottom:2px;color:var(--tx);font-size:.9em;white-space:normal;line-height:1.45}
+.side .it:hover{background:var(--card2);color:var(--acc)}
+.side .it.cur{background:var(--card2);color:var(--acc);font-weight:600}
+.side .it.lv1{padding-left:22px;font-size:.86em;color:var(--tx2)}
+.side .it.lv2{padding-left:36px;font-size:.82em;color:var(--tx2)}
+.side .q{width:100%;margin-bottom:9px}
+#pageWrap{flex:1;min-height:0;overflow-y:auto;scroll-behavior:smooth;background:var(--bg)}
+#page{max-width:var(--pagew);margin:0 auto;padding:34px 32px 70px;background:var(--paper);color:var(--paperTx);
+  font-family:var(--ff);font-size:var(--fs);line-height:var(--lh);min-height:100%;letter-spacing:.02em}
+#page h1,#page h2,#page h3,#page h4{line-height:1.4;margin:1.4em 0 .7em;font-weight:700;text-align:left}
+#page h1{font-size:1.5em}#page h2{font-size:1.28em}#page h3{font-size:1.12em}
+#page p,#page .rdp{margin:0 0 .85em;text-align:justify}
+#page .rdh{font-weight:700;font-size:1.16em;margin:1.3em 0 .7em;text-align:left}
+#page img,#page svg{max-width:100%;height:auto;display:block;margin:12px auto}
+#page blockquote{border-left:3px solid var(--acc);padding-left:14px;margin:1em 0;color:var(--paperTx2)}
+#page a{color:var(--acc);cursor:pointer;text-decoration:underline}
+#page .rdp{border-left:3px solid transparent;margin-left:-15px;padding-left:12px;border-radius:3px}
+#page .rdp.speaking{background:rgba(74,158,255,.15);border-left-color:var(--acc)}
+#page .rdp.hit{background:rgba(232,163,61,.28)}
+#chTitle{font-size:1.35em;font-weight:700;margin:0 0 1.1em;padding-bottom:.5em;border-bottom:1px solid var(--line);font-family:var(--ff)}
+#chEnd{text-align:center;padding:26px 0 8px;color:var(--paperTx2);font-size:.85em}
+#readFoot{flex:0 0 auto;display:flex;gap:10px;align-items:center;padding:8px 14px;background:var(--card);border-top:1px solid var(--line)}
+#progRange{flex:1;min-width:80px}
+/* 朗读条 */
+.speakbar{display:none;flex:0 0 auto;flex-wrap:wrap;gap:8px;align-items:center;padding:9px 13px;background:var(--card2);border-top:2px solid var(--acc)}
+.speakbar.on{display:flex}
+.speakbar .grp{display:flex;gap:5px;align-items:center}
+.speakbar select{max-width:190px}
+.speakbar #spVoice{max-width:250px}
+.speakbar #spNow{color:var(--tx2);font-size:.84em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 180px}
+.spdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px;animation:pulse 1.2s infinite}
+.spwho{color:var(--acc);font-weight:600;margin-right:6px}
+.spwho::before{content:"「"}.spwho::after{content:"」"}
+.vq{font-size:.8em;padding:3px 8px;border-radius:10px;white-space:nowrap;cursor:pointer;border:1px solid transparent;flex:0 0 auto}
+.vq.good{color:#7ee0a8;background:rgba(46,190,110,.13);border-color:rgba(46,190,110,.35)}
+.vq.mid{color:#e8c46a;background:rgba(232,163,61,.12);border-color:rgba(232,163,61,.30)}
+.vq.bad{color:#e79a9a;background:rgba(220,90,90,.12);border-color:rgba(220,90,90,.30)}
+@keyframes pulse{50%{opacity:.25}}
+html[data-motion="low"] *{animation:none!important;transition:none!important}
+/* 弹层 */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:60;padding:14px}
+.modal.on{display:flex}
+.mbox{background:var(--card);border:1px solid var(--line);border-radius:14px;width:min(680px,100%);max-height:86dvh;display:flex;flex-direction:column;box-shadow:0 18px 60px rgba(0,0,0,.5)}
+.mbox .mh{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;flex:0 0 auto}
+.mbox .mb{padding:16px;overflow-y:auto;line-height:1.8}
+.mbox .mf{padding:11px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;flex:0 0 auto;flex-wrap:wrap}
+.mbox h3{margin:1.2em 0 .5em;font-size:1.05em}
+.mbox h3:first-child{margin-top:0}
+.mbox p{margin:.5em 0}
+.mbox ul{padding-left:1.4em;margin:.5em 0}
+.mbox .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}
+.mbox .row label{min-width:76px;color:var(--tx2)}
+.mbox .seg{display:flex;gap:5px;flex-wrap:wrap}
+.mbox .kv{color:var(--tx2);font-size:.9em}
+.mbox code{background:var(--card2);padding:1px 5px;border-radius:4px;font-size:.9em}
+#toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);background:#000c;color:#fff;padding:10px 16px;border-radius:10px;z-index:90;display:none;max-width:86vw;text-align:center;font-size:.9em}
+#toast.on{display:block}
+.docnav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.docnav button{padding:5px 10px;min-height:30px}
+/*__NARROW_CSS__*/
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ 书架 ============ -->
+  <section id="viewLib" class="view on">
+    <header class="top" id="libTop">
+      <div class="brand">墨吟<small>MoYin Reader</small></div>
+      <input type="search" id="libSearch" placeholder="搜索书名…" style="width:170px">
+      <div class="spacer"></div>
+      <div class="acts" id="libActs">
+        <button class="pri" id="btnImport">＋ 导入书籍</button>
+        <button id="btnSort">排序</button>
+        <button id="btnLayout">版式</button>
+        <button data-doc="help">使用说明</button>
+        <button data-doc="faq">常见问题</button>
+        <button data-doc="disclaimer">免责声明</button>
+        <button data-doc="about">关于</button>
+      </div>
+      <input type="file" id="fileInput" multiple accept=".txt,.epub,.text,.TXT,.EPUB" hidden>
+    </header>
+    <div id="libBody">
+      <div class="shelf" id="shelf"></div>
+      <div class="empty" id="emptyLib">
+        <div class="big">墨</div>
+        <div>书案还空着。点「＋ 导入书籍」，把 TXT 或 EPUB 放进来。<br>文件只留在这台设备的浏览器里，不上传任何地方。</div>
+      </div>
+    </div>
+    <div class="foot">
+      <span id="libStat">书架 0 本</span>
+      <div class="spacer"></div>
+      <button id="btnExport">导出备份</button>
+      <button id="btnImportBak">导入备份</button>
+      <button id="btnCfg">阅读设置</button>
+      <span class="hint">数据仅存本机 · 清浏览器缓存会丢，记得导出备份</span>
+      <button class="ghost" id="btnSign" title="作者、许可与开源说明">© 永远的兰兰 · MIT</button>
+      <input type="file" id="bakInput" accept=".json,application/json" hidden>
+    </div>
+  </section>
+
+  <!-- ============ 阅读器 ============ -->
+  <section id="viewRead" class="view">
+    <header class="top" id="readTop">
+      <button id="btnBack">← 书架</button>
+      <div id="readTitle">—</div>
+      <div class="spacer"></div>
+      <div class="acts" id="readActs">
+        <button id="btnToc">目录</button>
+        <button id="btnFind">搜索</button>
+        <button id="btnMarks">书签</button>
+        <button id="btnMarkAdd">＋书签</button>
+        <button id="btnFont">字体</button>
+        <button id="btnTheme">主题</button>
+        <button id="btnSpeak" class="pri">朗读</button>
+      </div>
+    </header>
+    <div id="readMain">
+      <aside class="side" id="side">
+        <div class="tabs">
+          <button data-tab="toc" class="on">目录</button>
+          <button data-tab="mark">书签</button>
+          <button data-tab="find">搜索</button>
+        </div>
+        <div class="body" id="sideBody"></div>
+      </aside>
+      <div id="pageWrap">
+        <article id="page"></article>
+      </div>
+    </div>
+    <div class="speakbar" id="speakBar">
+      <div class="grp">
+        <button id="spPrev" title="上一段">⏮</button>
+        <button id="spPlay" class="pri" title="播放 / 暂停">▶</button>
+        <button id="spStop" title="停止">⏹</button>
+        <button id="spNext" title="下一段">⏭</button>
+      </div>
+      <select id="spVoice" title="朗读语音"></select>
+      <span id="spQuality" class="vq" title="点击查看语音说明"></span>
+      <button id="spRole" class="ghost" title="分角色朗读：对话自动换声">单声线</button>
+      <button id="spTry" class="ghost" title="用一句示例试听当前语音，不影响书本">试听</button>
+      <span class="hint spRateLabel">语速</span><input type="range" id="spRate" min="0.5" max="2" step="0.1" value="1" style="width:110px">
+      <span id="spRateTx" class="hint">1.0×</span>
+      <select id="spTimer" title="朗读定时">
+        <option value="0">不定时</option><option value="10">10 分钟</option>
+        <option value="20">20 分钟</option><option value="30">30 分钟</option>
+        <option value="60">60 分钟</option>
+      </select>
+      <span id="spLeft" class="hint"></span>
+      <span id="spNow"></span>
+      <button id="spClose" class="ghost" title="收起">×</button>
+    </div>
+    <footer id="readFoot">
+      <button id="btnPrevCh">← 上一章</button>
+      <input type="range" id="progRange" min="0" max="1000" value="0" title="全书进度">
+      <span id="progTx" class="hint" style="min-width:104px;text-align:center">0.0%</span>
+      <button id="btnNextCh">下一章 →</button>
+    </footer>
+  </section>
+
+  <div class="modal" id="modal"><div class="mbox">
+    <div class="mh"><span id="modalTitle">设置</span><div class="spacer"></div><button class="ghost" id="modalX">×</button></div>
+    <div class="mb" id="modalBody"></div>
+    <div class="mf" id="modalFoot"></div>
+  </div></div>
+  <div id="toast"></div>
+</div>
+<script>/*__APP_JS__*/</script>
+</body>
+</html>

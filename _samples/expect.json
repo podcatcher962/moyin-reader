@@ -1,0 +1,2954 @@
+[
+ {
+  "book": "中国文脉.epub",
+  "path": "D:\\C geng\\书籍下载\\2021年1月余秋雨书籍\\中国文脉.epub",
+  "picks": [
+   {
+    "name": "stylesheet.css",
+    "method": 8,
+    "clen": 337,
+    "ulen": 767,
+    "sha": "363bd8f1b3966d9b4d4e78ded8b0384788290652763c80966f1a8cac533d5477",
+    "head": "body{\n margin:10px;\n font-size: 1.0em;\n}\nul,li{list-style-ty",
+    "deflate": "pZLBToQwEIbvfYomXoXAmjWmXH0L46GlszCxdJpS4iLZd7ct6C4ejIlwgX/++WY6U0V6XhgfpO/Qirpy54bxE9lQjPgBgtdlBUPDLmwy9wYXg2OMhNlAEWYHwpKFZkuuGie1RtvFrwtjbglwDgVaDTaIQ6RwgxaKHrDrg6jLY5LW3CKQE9X3n6IQaNgsEVW2MkhD3XILOOToTatV+ZTtsU1FXoP/4vDanflIBjW/ez6mN7r6ernm1uVjaiYL7ytekdGpdn/gcT7x0Tg6I2fBlaH2rcnablDpiFd1w/DMyfL+cKndBxh2IQOnmFHtNL9i9mIaF6/XxbByUM7JDpQH+fZLsz/r/6N0xS9MbqVaMuQFR9uDx7B68+Y1tORlQLKC53uy2ic/Jr+Gk5xMyFqEvfQeTq97pDIT/JnnCG0Av/FYifHGYMuXmz2layv4Gth8nw=="
+   },
+   {
+    "name": "META-INF/container.xml",
+    "method": 8,
+    "clen": 152,
+    "ulen": 237,
+    "sha": "9a8c64b350fb221a82f004a73111d4b4ce3dc12bb2a62838cec00095cdb8bfd4",
+    "head": "<?xml version=\"1.0\"?>\n<container version=\"1.0\" xmlns=\"urn:oa",
+    "deflate": "VY7BDsIgEETvfgXZq2nRK4H2W1a6VSKwBKjRvxfbpKnHnZ2ZN3p8By9elIvjaODaX2AcTtpyrOgi5f+XaOZYDCw5KsbiiooYqKhqFSeKE9slUKxqtam9BIaTEEJn5jo7T2U9j4qYF++7hPVh4JdqHT2nGUSgyWFXP4kMYEreWaxtjWS6pdIC9ol3OjccyI0hDxAt9wUb8Qs="
+   },
+   {
+    "name": "mimetype",
+    "method": 0,
+    "clen": 20,
+    "ulen": 20,
+    "sha": "e468e350d1143eb648f60c7b0bd6031101ec0544a361ca74ecef256ac901f48b",
+    "head": "application/epub+zip",
+    "deflate": "YXBwbGljYXRpb24vZXB1Yit6aXA="
+   },
+   {
+    "name": "toc.ncx",
+    "method": 8,
+    "clen": 948,
+    "ulen": 4110,
+    "sha": "ceb29f08458a331abb8f520af68a6597385ab29b5a27d70b018a859d4ad07f5c",
+    "head": "<?xml version='1.0' encoding='utf-8'?>\r\n<ncx xmlns=\"http://w",
+    "deflate": "nZdNTxNBHMbvJn6HzV440X1pd1sILTFefTt4M8Ys3ZU2aXeb7RSqJ8EqkgIVLZJaECOKJNBSjQi0Qb/Mzr58C3e2VTraxcycdrL5z+wvz/zneWanpsv5HDOnmcWsoSfHhAg/xmh62lCz+mxyrAQejifGplNXr0zp6TLjl+rFJJsBoDDJcfPz8xFVyRYfRQxzlnscnUjInMjzEueXcuyfNVn0blxg0SIZTVHRM68BhUkbOtB0kGSzZfVxcVIQ4nE+zjK6kteSrApmJktZleX+LReHa1StADKjqpwXX6zTqlM/hq2X1tkec2+IOvhgJG3k7w8vNavpmqkAwxy1HD9cCQyg5O4os9p1o6SD/5bnlTIqvlXKz2iDxbnfSqhG+m4W5DQ0BloZpKzTFmye22+W3MryFBe8QvXDdf74WglkDPNi0nnD+Vz1mvv4jIsqXZm7qRRS6HnHyOqAyapJNp1RCkAzH4jxmC+9OMEyhZzy6LapamaS9TcMVd9QZrRcqv8V5/DQOn3iHLxnRkBOcRfVAxmYopn+9yuRcgbkc74MwYyAZkAYRhYVMDJxNFl3BZE5h3X4YR+uPYe1r2RkUYGCLIaRRUM0Ww7IVrbs46rXq8DTbUKyGAVZHCOLjSSDzSYisys79uKO8+mde0RKFicni/EYmRSym3VEBmvrzlrHbp/ADztkZDGegkzEyOTRmj1rITL3yYJvLPDVCmzV/QEhnEgBJ2Fw8ZBWe4rgvN66u/wVPlu2um1CMomCDG+1RIhsB8Eh2D/xXRm29mD7gJCMotUkvNUmRmt2tt03DmRu7tGm1e2SkUkUrSbhrSbwo0VbXQhOQeBm9tGqvXVIiEbRaFIURxPC0AZZ4C3u+iPY/k6IFqVAw+1WEEPR+mHgtWp2o+r0tuHrVUI6CsuV8BMqRMOF6wdCvQObLet8A36sENJRnFJJxuliYXSDUHCPO/DlOvz4GdYJ3U2SKehwDxGk8J0NgsE6b9obDedtxepWCelofCSB08mh2vXDwep17K2mt/ETtgmvR1KCgu6vi1s8vO+CdPA31Lc5uPTeqZ8QR5dEcX+TcRsWEuHyBSFhnX3xuj1345u7WSOjkymsWMZvl8JEqHz9oPAaK059hzglZIrrpYynhMiH3XwHQWG/abm7i4RcFBEh4xEhCpdwDVICnYzGD3j2zXu64G2eEDJSZIWMZ4UoXsbYj4uAdsn92YS7hJcTmSIuZDwuxOilIgaJgdx4qwM7NfLuC0sM7vefIfprT/0C"
+   }
+  ],
+  "allsha": [
+   {
+    "n": "stylesheet.css",
+    "m": 8,
+    "u": 767,
+    "s": "363bd8f1b3966d9b4d4e78ded8b0384788290652763c80966f1a8cac533d5477"
+   },
+   {
+    "n": "mimetype",
+    "m": 0,
+    "u": 20,
+    "s": "e468e350d1143eb648f60c7b0bd6031101ec0544a361ca74ecef256ac901f48b"
+   },
+   {
+    "n": "META-INF/container.xml",
+    "m": 8,
+    "u": 237,
+    "s": "9a8c64b350fb221a82f004a73111d4b4ce3dc12bb2a62838cec00095cdb8bfd4"
+   },
+   {
+    "n": "page.xhtml",
+    "m": 8,
+    "u": 2375,
+    "s": "b5e33fd8c181cf1d0515247b5ce399a1c663683fcc36256c90b015e8097132fb"
+   },
+   {
+    "n": "chapter_27477029.xhtml",
+    "m": 8,
+    "u": 74443,
+    "s": "f109fc4c3383e0826b1ef7d94d51b6bf3bbdadbba7de7dff71f0739e08e386d9"
+   },
+   {
+    "n": "chapter_27477031.xhtml",
+    "m": 8,
+    "u": 67617,
+    "s": "2b2f1a03432a6ada4ad6b7c90f4ceba0c9c0b4d7209a2eb41ad46b87c79fc2ba"
+   },
+   {
+    "n": "chapter_27477034.xhtml",
+    "m": 8,
+    "u": 25720,
+    "s": "1e1c09b0bdbb45aeef67db83d0cfd84618829b268267eee0c41020c871a5ad0c"
+   },
+   {
+    "n": "chapter_27477037.xhtml",
+    "m": 8,
+    "u": 17956,
+    "s": "d6f027233ff4439427d116c2961cfed3014ca02f758ffa4ef618fccbe61725a5"
+   },
+   {
+    "n": "chapter_27477040.xhtml",
+    "m": 8,
+    "u": 25818,
+    "s": "87cda2a5a6d508444d12da38b0ba64e8773f0b530fa4fb5966bd2b09ca9afbee"
+   },
+   {
+    "n": "chapter_27477042.xhtml",
+    "m": 8,
+    "u": 27834,
+    "s": "7387338dd0b7ac107ce3c39302ba2415a9f842e238afb98f29d5bf0a8d1e6577"
+   },
+   {
+    "n": "chapter_27477045.xhtml",
+    "m": 8,
+    "u": 22332,
+    "s": "d661a41e1eb3be1e1152b1663571ded8c289f80619d05a2aef6b7b2ec2c3addd"
+   },
+   {
+    "n": "chapter_27477047.xhtml",
+    "m": 8,
+    "u": 14375,
+    "s": "a0f99fd628c710369066688359a8af1f8b2cefedd5e42823729363d086553a7d"
+   },
+   {
+    "n": "chapter_27477050.xhtml",
+    "m": 8,
+    "u": 31097,
+    "s": "c1c3786f77fd283251f7e7c1e105e895f202f6827267c552463a1fa5d6ff8293"
+   },
+   {
+    "n": "chapter_27477052.xhtml",
+    "m": 8,
+    "u": 26731,
+    "s": "be00fce64b28f35bae0962d3bb1b9f6b9144c5fc4b5a29ce61e9b6815de8283e"
+   },
+   {
+    "n": "chapter_27477053.xhtml",
+    "m": 8,
+    "u": 21662,
+    "s": "0e4d4873b91f305be6e79cf65f02c6955a8c63d323c94d6c779cabe72aa83bb2"
+   },
+   {
+    "n": "chapter_27477054.xhtml",
+    "m": 8,
+    "u": 42745,
+    "s": "bd110373dcd32fbaeea6aa635929dc716f276d04d0279969667ddc668acb7682"
+   },
+   {
+    "n": "chapter_27477055.xhtml",
+    "m": 8,
+    "u": 19352,
+    "s": "d55fd44830c178d4ccc9c46ad38e1909d0d9a6c35d301c70c3900ae15970246d"
+   },
+   {
+    "n": "chapter_27477056.xhtml",
+    "m": 8,
+    "u": 18037,
+    "s": "17d80ff9c9cfcc587bb02a220492bf858cf817b9a5c3ea46c0a5ecbe9b852e36"
+   },
+   {
+    "n": "chapter_27477057.xhtml",
+    "m": 8,
+    "u": 31577,
+    "s": "17062b40fb069a1ec5541378cec3a97e03442a5d7b0959ad5982c01ad9d07f91"
+   },
+   {
+    "n": "chapter_27477058.xhtml",
+    "m": 8,
+    "u": 18956,
+    "s": "77da84b8105f9bd3520ec150f4d42cffc2053b6653caf0bc6260ed99850ad6c6"
+   },
+   {
+    "n": "chapter_27477059.xhtml",
+    "m": 8,
+    "u": 46676,
+    "s": "c0197e120c644d386c5f82df28f904c945901754c00de34cdb80ebf8b45ab31d"
+   },
+   {
+    "n": "chapter_27477060.xhtml",
+    "m": 8,
+    "u": 36045,
+    "s": "52f9f1e0099a4a089609b753912fc11b9a0e3d29d7af9ab013dda66976a20acf"
+   },
+   {
+    "n": "chapter_27477061.xhtml",
+    "m": 8,
+    "u": 27179,
+    "s": "28df42d5907f86b9d157ef2c0da9f82fb16073f276a105044a5e08ce97998947"
+   },
+   {
+    "n": "chapter_27477062.xhtml",
+    "m": 8,
+    "u": 17345,
+    "s": "fb63a8038e54cab7fe00ade672bf620041e4692af6f726438a6847a20e060f67"
+   },
+   {
+    "n": "chapter_27477063.xhtml",
+    "m": 8,
+    "u": 32258,
+    "s": "bc56dd6bf8feae339027f870e8394da89adf0c960ae09295e6dd81adae55016b"
+   },
+   {
+    "n": "chapter_27477064.xhtml",
+    "m": 8,
+    "u": 69041,
+    "s": "ddad40ba66f24e5eca03cba7d76913bd71665668e2953be7cbbaa88cc8cd0994"
+   },
+   {
+    "n": "chapter_27477065.xhtml",
+    "m": 8,
+    "u": 39007,
+    "s": "f07ec4d2572f10347750e96211a1eedfcd2be915d6fe7e56dd800ea3ab2a246e"
+   },
+   {
+    "n": "catalog.xhtml",
+    "m": 8,
+    "u": 2491,
+    "s": "7512b7901bc7dc4f99df0435f8801510449523b03d5fe3bf2a4d948aec0b8812"
+   },
+   {
+    "n": "content.opf",
+    "m": 8,
+    "u": 3851,
+    "s": "6656da5b03b3c3f5e65d5dc7c5f3c31cc5fb340185a15c4d51d944001c5d8596"
+   },
+   {
+    "n": "toc.ncx",
+    "m": 8,
+    "u": 4110,
+    "s": "ceb29f08458a331abb8f520af68a6597385ab29b5a27d70b018a859d4ad07f5c"
+   }
+  ]
+ },
+ {
+  "book": "吳敬梓 儒林外史.epub",
+  "path": "D:\\C geng\\书籍下载\\好读\\吳敬梓 儒林外史.epub",
+  "picks": [
+   {
+    "name": "META-INF/container.xml",
+    "method": 8,
+    "clen": 162,
+    "ulen": 239,
+    "sha": "331f999168ece8d62b0664a48ec5a600b4e51b6d84731b827b724e152e9d03b3",
+    "head": "<?xml version=\"1.0\"?>\r\n<container version=\"1.0\" xmlns=\"urn:o",
+    "deflate": "VY7BCsIwEETvgv8QcpUavYakBcGzgl8Q060Gk92QpKJ/b6xQ6nFnZ96M6l7Bsyek7Ag13293vGvXK2UJi3EI6f/Hqhuz5mNCSSa7LNEEyLJYSRGwJzsGwCInm5whvCIZU4moDM5Dns6FwIbR+yaactf8dDycL+IbraAtxYGzAL0zTXlH0NzE6J01pU4SBNeYa8w+zA02tZOLX5FYNikx72g/"
+   },
+   {
+    "name": "OEBPS/content.opf",
+    "method": 8,
+    "clen": 880,
+    "ulen": 6249,
+    "sha": "8449fbf7b633cbc5ab85a25d5c755aa5e3598a4631816bd16f5219cc5ffa5f1e",
+    "head": "﻿<?xml version=\"1.0\"?>\r\n<package version=\"2.0\" xmlns=\"http",
+    "deflate": "pZkxb9NAFMd3JL6D5RXFl3t317SRk0psbAxIzK59Saw6trEvbcrMDgIBGwPqyAQjA58mXfkK2E79TKu+IPS2+N7z/3y//HKynd8/f4Wn23XmXdiqTot85stg7J/OHz8Kyyg+j5Z2qEBT8ZrevJ75K+fKqRCXl5dBmpSLoKiWAsbjiSjKhe9t8vTVxo7SxOYuXaS2mvlPi+L8WeI3wV64ti5KIhftw6ZJjHnlpsq6rCQWNrPr5vxayECK24mnTfw/Jm9n8LwwiadxZSNXVF4zOq2KzM78aOP8+e7dj5uP326+fgjF0DSc5VKX2fnuzfubL5931592b793ffth7MqifLlp6Mxfr0YvXnYdOIRNw/q9NBkQtNe9ioqkKILcuu7cobMDJHpCe1xRni5s7brgMHV23cXl8db3VpVtgLgiDrrDtU3SaOSuynaxZZmlceSa705sR4k7azqeNBR9T9xLqt1VZvus7qBeWeuCuK7vRjq7daIbvR9RNgtvPpdZ5DCpHRv1g8G2XDr6Ai/yJIiS4syO7pz18PU+H/dTjIPtyrUt5MLbMpEi+xTJSYE+BTgpqk9RnBTdp2hOiulTDCflqE854qRM+pQJJ+W4TznmpJz0KScs61BeybN30Jflr0SBJctgiQpLlsMSJZYsiyVqLFkeSxRZskyWqLJkuSxRZsmyWaLOkuUzoM/A8hnQZ+Dtx8OGzPIZ0Gdg+QzoM7B8BvQZWD4D+gwsnwF9BpbPgD4Dy2dAn4Hls0KfFctnhT4rls8KfVa8O4zhFoPls0KfFctnhT4rls8KfVYsnxX6rFg+K/RZsXxW6LNi+azRZ83yWaPPmuWzRp81y2eNPmvePfNw08zyWaPPmuWzRp81y2eNPmuWzxp91iyfNfqsWT4b9NmwfDbos2H5bNBnw/LZoM+G5bNBnw3vKXB4DPxvn0Px1zuLsC7T3HquiPfvLIaJmvRmrm6O9pFePFyRZAXIiiIrmqwYsnJEViZk5ZisnNArPQCBpiBpDJLmIGkQkiYhaRSSZiFpGJKmATQNOOAETQNoGkDTAJoG0DSApgE0DaBpKJqGommoAz8RmoaiaSiahqJpKJqGomkomoamaWiahqZp6AM7Bk1D0zQ0TUPTNDRNQ9M0DE3D0DQMTcPQNMyBDbSnEYpuy2/3fnH7L8L8Dw=="
+   },
+   {
+    "name": "mimetype",
+    "method": 0,
+    "clen": 20,
+    "ulen": 20,
+    "sha": "e468e350d1143eb648f60c7b0bd6031101ec0544a361ca74ecef256ac901f48b",
+    "head": "application/epub+zip",
+    "deflate": "YXBwbGljYXRpb24vZXB1Yit6aXA="
+   },
+   {
+    "name": "OEBPS/toc.ncx",
+    "method": 8,
+    "clen": 3082,
+    "ulen": 12256,
+    "sha": "bdfb6df0d94c4c4506ac17ff910c6ab3e2ac6d47d1668f8ad7878e0e8c4d6b19",
+    "head": "﻿<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<ncx xmlns=\"http:",
+    "deflate": "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"
+   }
+  ],
+  "allsha": [
+   {
+    "n": "mimetype",
+    "m": 0,
+    "u": 20,
+    "s": "e468e350d1143eb648f60c7b0bd6031101ec0544a361ca74ecef256ac901f48b"
+   },
+   {
+    "n": "META-INF/container.xml",
+    "m": 8,
+    "u": 239,
+    "s": "331f999168ece8d62b0664a48ec5a600b4e51b6d84731b827b724e152e9d03b3"
+   },
+   {
+    "n": "OEBPS/content.opf",
+    "m": 8,
+    "u": 6249,
+    "s": "8449fbf7b633cbc5ab85a25d5c755aa5e3598a4631816bd16f5219cc5ffa5f1e"
+   },
+   {
+    "n": "OEBPS/0.xhtml",
+    "m": 8,
+    "u": 4250,
+    "s": "60bff569ab5c175a977df8c8a6012364c2dd7c4740f01aa663f15ac3fa941477"
+   },
+   {
+    "n": "OEBPS/1.xhtml",
+    "m": 8,
+    "u": 22115,
+    "s": "32c15e97361eca36ef7e1f434e3a0a6243d9e71784ee735c5dfe199898670bfa"
+   },
+   {
+    "n": "OEBPS/2.xhtml",
+    "m": 8,
+    "u": 19121,
+    "s": "c59dbe8373037f6bb6d6af3c07d9821d254d91c2e46d59626a37aa54bb9c5bc8"
+   },
+   {
+    "n": "OEBPS/3.xhtml",
+    "m": 8,
+    "u": 24590,
+    "s": "1230b13bddc3d497ea4934bb16d130d26a6c43e5b993def0121dd649b4b903c0"
+   },
+   {
+    "n": "OEBPS/4.xhtml",
+    "m": 8,
+    "u": 18383,
+    "s": "a0b2a909830c0e4666380be4e6c0ec5bf8bacc3d625f2bd0ab658d50429c191c"
+   },
+   {
+    "n": "OEBPS/5.xhtml",
+    "m": 8,
+    "u": 20540,
+    "s": "c13cf3880160f8e4ceef48c474534a8cfc2e8c8cdb916d4c0e21f561773b790c"
+   },
+   {
+    "n": "OEBPS/6.xhtml",
+    "m": 8,
+    "u": 20075,
+    "s": "6e1220a0a76229cdd378004537cf596fce42e5f9a067469f6f60c887a7b82f26"
+   },
+   {
+    "n": "OEBPS/7.xhtml",
+    "m": 8,
+    "u": 19160,
+    "s": "62db114e10f60b1e6e9463eadd2f2d75bc81d1ca240ecba5ac211cd751e53b03"
+   },
+   {
+    "n": "OEBPS/8.xhtml",
+    "m": 8,
+    "u": 19100,
+    "s": "08137aac0d89fc33341e82b2c7f4310efc4657f6ca4fa30174729982dbe59d6f"
+   },
+   {
+    "n": "OEBPS/9.xhtml",
+    "m": 8,
+    "u": 19478,
+    "s": "14f1f715814e2ee76570d1672ddc15f9957c4667a4cab9ff2e3a9fea8c5f0c4a"
+   },
+   {
+    "n": "OEBPS/10.xhtml",
+    "m": 8,
+    "u": 18401,
+    "s": "4920f8243002893e14b0ae91dd5b62fb5bcf45d2232b58a04d414d90aa0f386a"
+   },
+   {
+    "n": "OEBPS/11.xhtml",
+    "m": 8,
+    "u": 18566,
+    "s": "152ea7a7407e972e97abe812394377519b76779adac19cf3df36b30096d7444a"
+   },
+   {
+    "n": "OEBPS/12.xhtml",
+    "m": 8,
+    "u": 19022,
+    "s": "94dfe35ea636cb9bb0aa3d11929f603980cd64fa2d02025f77b35a29a745b1ac"
+   },
+   {
+    "n": "OEBPS/13.xhtml",
+    "m": 8,
+    "u": 19364,
+    "s": "2b14e44b6d4ddac3ce217b790bce335034c77607c41f2bacec3e06fa74f21f0c"
+   },
+   {
+    "n": "OEBPS/14.xhtml",
+    "m": 8,
+    "u": 17876,
+    "s": "789c9ad643f301b619ebb92a0f37e97537335e62f1f322c194157cdfc1bf8f8a"
+   },
+   {
+    "n": "OEBPS/15.xhtml",
+    "m": 8,
+    "u": 18317,
+    "s": "5fc4507f3bcd76356a7387744de97a7ed80c80af9af351e5e0649b64b2ec735b"
+   },
+   {
+    "n": "OEBPS/16.xhtml",
+    "m": 8,
+    "u": 18413,
+    "s": "e669f60ae32d817bb004e9a6ed37a29eb1b45a9bd1e0dda1c9e8e38f367fecad"
+   },
+   {
+    "n": "OEBPS/17.xhtml",
+    "m": 8,
+    "u": 18593,
+    "s": "f9795531a43f946b0c9b598faf5db0e3d4db26e0425e96344532c5b381721804"
+   },
+   {
+    "n": "OEBPS/18.xhtml",
+    "m": 8,
+    "u": 17210,
+    "s": "10265591b63951d0bb67b81b8d7f0f3fb8450b8cecf4a8ed3f296d01854f0afd"
+   },
+   {
+    "n": "OEBPS/19.xhtml",
+    "m": 8,
+    "u": 18995,
+    "s": "b9d3d7e0b710f93a3fbb46d7c559a8fc2dad8e93c0ddd71b7de1f04b700ab9f7"
+   },
+   {
+    "n": "OEBPS/20.xhtml",
+    "m": 8,
+    "u": 16931,
+    "s": "96d90ebb0ba5e31316f1af4660f8b0d07f76075f24ec1ddf4f2f31aced696533"
+   },
+   {
+    "n": "OEBPS/21.xhtml",
+    "m": 8,
+    "u": 17987,
+    "s": "efc223dcd964dee40a66cf4143e1371099e57eb6dd6e4fc38cc472552cac8ee6"
+   },
+   {
+    "n": "OEBPS/22.xhtml",
+    "m": 8,
+    "u": 19496,
+    "s": "14f4eefe4baedae439f3b685f09c93bf59455b739d60f11fe935aa099c3d6757"
+   },
+   {
+    "n": "OEBPS/23.xhtml",
+    "m": 8,
+    "u": 19262,
+    "s": "412eda82cdf17706933ba14eb74ff7477d2a277345f3d64a944bea68536eba28"
+   },
+   {
+    "n": "OEBPS/24.xhtml",
+    "m": 8,
+    "u": 18536,
+    "s": "25dda4f6105e0ae379516e99add34dfae1e105dca52885991b9204f7742e7495"
+   },
+   {
+    "n": "OEBPS/25.xhtml",
+    "m": 8,
+    "u": 18461,
+    "s": "8b7b7abfb561e076e0fadca8fc8a55c2a9b18c9e6ed6e8e58030c097c451fac9"
+   },
+   {
+    "n": "OEBPS/26.xhtml",
+    "m": 8,
+    "u": 18101,
+    "s": "22e0f3774a310bd1c21cb20d3fba69c2dc0e41b120dc81bcccc6c2f279524fe5"
+   },
+   {
+    "n": "OEBPS/27.xhtml",
+    "m": 8,
+    "u": 16916,
+    "s": "f22537fa672d5a98f6ac71ab62b5fa0f85d6e9c6c5b87c69f866d87449cf0f03"
+   },
+   {
+    "n": "OEBPS/28.xhtml",
+    "m": 8,
+    "u": 18785,
+    "s": "dd173803cd27680a8f1b2d1d7abbc61d0ca07cf102c9290c44947d29566f6467"
+   },
+   {
+    "n": "OEBPS/29.xhtml",
+    "m": 8,
+    "u": 18210,
+    "s": "6b9622536dd1092466367de2165eec34f34cf02f4c1c263d4434212622a6a24e"
+   },
+   {
+    "n": "OEBPS/30.xhtml",
+    "m": 8,
+    "u": 18401,
+    "s": "7b64b1d6baa82fcd59ec6522d02a66f919bbff0f3f5ed1990b061ca8be149f76"
+   },
+   {
+    "n": "OEBPS/31.xhtml",
+    "m": 8,
+    "u": 21614,
+    "s": "2140a8551c38cb4830cdb9bfa355c12cc26b4f9dfced36e4a4588b1505f915c3"
+   },
+   {
+    "n": "OEBPS/32.xhtml",
+    "m": 8,
+    "u": 17822,
+    "s": "73f5539fe6465513c4fa6dd436633c6a7a557f99f0adf98455b7edd6238cd29a"
+   },
+   {
+    "n": "OEBPS/33.xhtml",
+    "m": 8,
+    "u": 18104,
+    "s": "05a77979c3a57b7847be2ee7935a7331e3e2aa9d75e8181231a90e9ff3b1272f"
+   },
+   {
+    "n": "OEBPS/34.xhtml",
+    "m": 8,
+    "u": 19988,
+    "s": "f0ab09c958397578e0f7346230b2b2e1b7bc07e65e7b1e802f6bf53916b59eb4"
+   },
+   {
+    "n": "OEBPS/35.xhtml",
+    "m": 8,
+    "u": 16211,
+    "s": "e3d986c5da846399648479ac29ef2fdfa838de36ef481b835405edb7448098f2"
+   },
+   {
+    "n": "OEBPS/36.xhtml",
+    "m": 8,
+    "u": 18209,
+    "s": "fd94c75bbaf3171e2ecce021c4166f58de6ce5dd037d8bc4edc90e3df8f5ac7c"
+   },
+   {
+    "n": "OEBPS/37.xhtml",
+    "m": 8,
+    "u": 20378,
+    "s": "6177108f935311e4365fffa8099982102e29a037e413e2933b158c4049e739e3"
+   },
+   {
+    "n": "OEBPS/38.xhtml",
+    "m": 8,
+    "u": 18695,
+    "s": "b746bf6b318d62d238c3d7b1c5801fa83daad3760945944e6c4b520c23cc008f"
+   },
+   {
+    "n": "OEBPS/39.xhtml",
+    "m": 8,
+    "u": 16124,
+    "s": "7bd74b3f5b15a066922110fde4365a11845714315ab186dd536f5afa7c5b39e6"
+   },
+   {
+    "n": "OEBPS/40.xhtml",
+    "m": 8,
+    "u": 18695,
+    "s": "142d0d83ad0097c6140b6b9ae0d6bfda0d719e38aa92977c258ee97fd94b4452"
+   },
+   {
+    "n": "OEBPS/41.xhtml",
+    "m": 8,
+    "u": 19202,
+    "s": "833fd742fa27b27253311d719640525b34521889e1ca6382f83331fddc31ef26"
+   },
+   {
+    "n": "OEBPS/42.xhtml",
+    "m": 8,
+    "u": 17816,
+    "s": "b18a77ae3627514269c0405b9383a77eb22ed2d227f0cc48b9a4318e6f06b949"
+   },
+   {
+    "n": "OEBPS/43.xhtml",
+    "m": 8,
+    "u": 17510,
+    "s": "81bf3cd11e45fe4a5b9cb6993d6a605d041d82d5d818bf8ab9e880397a82fa6f"
+   },
+   {
+    "n": "OEBPS/44.xhtml",
+    "m": 8,
+    "u": 15773,
+    "s": "678bb1e9bbb03ce3e6c1aaafc4fd88a69b43f69a8c80201f6ef5a14f694dfc56"
+   },
+   {
+    "n": "OEBPS/45.xhtml",
+    "m": 8,
+    "u": 18518,
+    "s": "2a629d9e2ca40ff835d4ba7afc4093e2608882a1056680118e8d0c1034b83b28"
+   },
+   {
+    "n": "OEBPS/46.xhtml",
+    "m": 8,
+    "u": 18146,
+    "s": "06c22cce8697f5942ae9c6340f90bfe0e671469366810643538f28905caec7ca"
+   },
+   {
+    "n": "OEBPS/47.xhtml",
+    "m": 8,
+    "u": 18443,
+    "s": "f81abe45cb4f8dd265cc023ce3c3fded8fe3b955a3cd15af7ce941368a2d90a4"
+   },
+   {
+    "n": "OEBPS/48.xhtml",
+    "m": 8,
+    "u": 17450,
+    "s": "0158525e2bdea09e0d9c9fbe9abdf574bed9583863b7469e05d2c305c4227eb2"
+   },
+   {
+    "n": "OEBPS/49.xhtml",
+    "m": 8,
+    "u": 16346,
+    "s": "8d5ed0ab161bce5e67ca705cabb9c4d3331d5a951929edbd471cf6fd6e06e6c8"
+   },
+   {
+    "n": "OEBPS/50.xhtml",
+    "m": 8,
+    "u": 14843,
+    "s": "6902328ba6ac61e7e92af6384098cbd67f38fa0c50f5e558f54277c3193d510a"
+   },
+   {
+    "n": "OEBPS/51.xhtml",
+    "m": 8,
+    "u": 13580,
+    "s": "ca55755c352b450bb33230b85bd5fbf224ae936263b764cae51829bcc48f25e0"
+   },
+   {
+    "n": "OEBPS/52.xhtml",
+    "m": 8,
+    "u": 18434,
+    "s": "fde5d9132a2d954708b9d4068bd16a71ecd28849a0a976469b8de872acb9b91c"
+   },
+   {
+    "n": "OEBPS/53.xhtml",
+    "m": 8,
+    "u": 16325,
+    "s": "9f2e56322d545834d77e61ad8e68424964759c541269f9af40e268bf4b886957"
+   },
+   {
+    "n": "OEBPS/54.xhtml",
+    "m": 8,
+    "u": 21891,
+    "s": "ddb174f0be318dea4f146e44a782eac2e97bc336d36d9f2e4aedb4d84b94fa3d"
+   },
+   {
+    "n": "OEBPS/55.xhtml",
+    "m": 8,
+    "u": 16928,
+    "s": "aec377475d6760b3d1fd9b75e606b6ba2d39d990616d1c3732fdf5b2b906c631"
+   },
+   {
+    "n": "OEBPS/page-template.xpgt",
+    "m": 8,
+    "u": 2634,
+    "s": "cd99cdc4cf00453c3bcac7f6968cb23f2e9bbf6e274a29d05dd813b0e49b1e77"
+   },
+   {
+    "n": "OEBPS/stylesheet.css",
+    "m": 8,
+    "u": 721,
+    "s": "f65d586fb7f776706138cb1007b32aecb68467adc3b0d054ef426ef534a436bd"
+   },
+   {
+    "n": "OEBPS/toc.ncx",
+    "m": 8,
+    "u": 12256,
+    "s": "bdfb6df0d94c4c4506ac17ff910c6ab3e2ac6d47d1668f8ad7878e0e8c4d6b19"
+   }
+  ]
+ },
+ {
+  "book": "侯卫东官场笔记（1-8册 巴国侯氏）.epub",
+  "path": "D:\\C geng\\书籍下载\\侯卫东官场笔记（1-8册 巴国侯氏）.epub",
+  "picks": [
+   {
+    "name": "META-INF/container.xml",
+    "method": 8,
+    "clen": 180,
+    "ulen": 265,
+    "sha": "83e412f1ac7d052a9f73d82d026c9ce241591c60b80e9c384956e9e588e1d5fc",
+    "head": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<container version=\"",
+    "deflate": "XY5Ba0IxEITvBf9D2Ks8ozcJSQVBrwraH5Dm7dNgshuSPNF/b2yLtN3bDjPfjF7dYhBXzMUzGVjM5iCQHPeeTgY+jttuCav3yZt2TNV6wvzP3OJUDIyZFNviiyIbsajqFCeknt0Ykar6sqkXBBpStNOZuQ4+YPkR/ohiGEPokq1nA7vNen+QT0DDzTgNICL23nb1ntCATSl4Z2sbJhk/U2kxd7EnnLZmkN90LX/Xafma074H"
+   },
+   {
+    "name": "OEBPS/content.opf",
+    "method": 8,
+    "clen": 4108,
+    "ulen": 55193,
+    "sha": "cbdf849c867abe0edb23df63284f167bd577d00acdfa4d9917c178ddff2ef2d2",
+    "head": "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\r\n<package unique-ide",
+    "deflate": "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"
+   },
+   {
+    "name": "mimetype",
+    "method": 0,
+    "clen": 20,
+    "ulen": 20,
+    "sha": "e468e350d1143eb648f60c7b0bd6031101ec0544a361ca74ecef256ac901f48b",
+    "head": "application/epub+zip",
+    "deflate": "YXBwbGljYXRpb24vZXB1Yit6aXA="
+   },
+   {
+    "name": "OEBPS/toc.ncx",
+    "method": 8,
+    "clen": 9800,
+    "ulen": 75632,
+    "sha": "d63482adbb8d9964174f96d91d60d2ed7e54564c66fabb7c5cfbb9bc07838b66",
+    "head": "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\r\n<!DOCTYPE ncx PUBLI",
+    "deflate": "zZ1bbyNHku/fF9jv0KdfF3azsnhd2LPAmdmHBXZnBjhzHs7TosfdZ8aA3TY8PTvefSpK4v0uUVeSoiiRuvMiiZIoUiS/i7cyK+vJX2EzWWpZlVbPUbBCiwM0BEmk1BXKyMh/REb+8rN/+P7rr17829vv/vTlN+8+f6l96nv54u27L7558+W7P3z+8s/v/+8n4Zcv/uEXf/s3n/2PX/3ml7/7P7/9xxfvvvj+xW//9//853/65YuXn7x69et/+l+/efXqV7/71ewF4vMFPtFevfrHX7/827958fKP799/+/evXv3lL3/59M3rL//0759+890fXv2HHgkHX8l3vhI/8onzI5++ef/m5S8+k7/j/mmcV16+EI/47k+fP+WXvXopHvXFi8/++Pb1m9ln4vOv375//eKLb969f/vuvbAwGBL/giREXr549/rrt5+/fPP+93//5y/fvHz1+A/oD9/35u237//4sXf6Hr7z/TfvX3/129d/ePvLb/787v2TfuTr19/LH/j1n7/+/dvv7n7is1f3pnz25psvfvfl+6/efvhV799+//4X5qRLcyfmoEo7G7Q6tE7LvNP78TapfRKm8ezf0es+rYzFm1iv8ONt6rNXsx9yfrPr93327vW//cvrbz/8bvHVb7/58t37F1+++fzlhy/kWHz71et//813b95+J/6UL+/e7bz/n1///u1X99/58Hy0F7Vruw/+39lLr372/s/u/iYv/vTdF5+//J1496svvhGe8K/fij/Jp9//8f3XX/30R3z14Yn++uMS1+OSpzyulUqy2qI5bbBod66H/vb1d+99Pp8+5yPrrkfWn/LIj3qAl2fXlGf/6MP6XQ/rf/nw0R553J9cosAaLW5E2U7J2loyB4a1cGOvn/NuTXnsRx/8rz164OePrv7hP2pNwGVN4KnWWKen0oKTnRc0dkrTDVra4MYi767S2CEdLMiXh1lazHk1LfQz0z5qSdBlSfCl+6kfteXemrWulVkwbzK0Wf3ZE3/kmf/qU//row716Lh81J6Qy54QxB7a69Pe6czL0vb6IW1d0KMpmmHEo2Fhl2FhkGH5OquessULatRpB88k3aNJEZdJEZBJyRrvxll1SGMX5rhq7+XRrPJ7tErzuVc+H8iu6JUdTZiDpjk4Fg5oDododgWeZtfTg6CmLPEaJAwOs7MwWCjZsZxdW2bb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"
+   }
+  ],
+  "allsha": [
+   {
+    "n": "mimetype",
+    "m": 0,
+    "u": 20,
+    "s": "e468e350d1143eb648f60c7b0bd6031101ec0544a361ca74ecef256ac901f48b"
+   },
+   {
+    "n": "META-INF/container.xml",
+    "m": 8,
+    "u": 265,
+    "s": "83e412f1ac7d052a9f73d82d026c9ce241591c60b80e9c384956e9e588e1d5fc"
+   },
+   {
+    "n": "OEBPS/content.opf",
+    "m": 8,
+    "u": 55193,
+    "s": "cbdf849c867abe0edb23df63284f167bd577d00acdfa4d9917c178ddff2ef2d2"
+   },
+   {
+    "n": "OEBPS/Images/back1.jpg",
+    "m": 8,
+    "u": 50719,
+    "s": "19b2b102e0a67c21eab20e7b23d1b2df20476b3061355e2384bf2c22c7ca086f"
+   },
+   {
+    "n": "OEBPS/Images/bq.jpg",
+    "m": 8,
+    "u": 284555,
+    "s": "e19c7068455d5eda6ab9be5fccb3d2365e959d4ee0c985a3a63794d9bba4b4b9"
+   },
+   {
+    "n": "OEBPS/Images/cover.jpg",
+    "m": 8,
+    "u": 112252,
+    "s": "33697fe2c8338a8df186938a1a73b8ac2225ad89ee0f90f2292702c25af2f1f2"
+   },
+   {
+    "n": "OEBPS/Images/cover1.jpg",
+    "m": 8,
+    "u": 469787,
+    "s": "191be30ce6aca39f211d29c72b11e6299be76ea00d1f1592d91673846a897765"
+   },
+   {
+    "n": "OEBPS/Images/cover2.jpg",
+    "m": 8,
+    "u": 491367,
+    "s": "af3e724e9c3ecc7bac98a6ad1aec4bdc8dcfea7eff5534c134781dc0d2d941a7"
+   },
+   {
+    "n": "OEBPS/Images/cover3.jpg",
+    "m": 8,
+    "u": 505357,
+    "s": "3aa58b04e678debd8d10c528ff203f5fe1b3c564ebcfa5adefe79a38a2534f98"
+   },
+   {
+    "n": "OEBPS/Images/cover4.jpg",
+    "m": 8,
+    "u": 495465,
+    "s": "c303b03bc4bc2e45c804a09a27b4bb2e63bf2865b129be903ea8a8113a43baec"
+   },
+   {
+    "n": "OEBPS/Images/cover5.jpg",
+    "m": 8,
+    "u": 506513,
+    "s": "c213873ced57437755850e0920eaabdc5e1886b77c48ee34cbafc2492f5d0926"
+   },
+   {
+    "n": "OEBPS/Images/cover6.jpg",
+    "m": 8,
+    "u": 501156,
+    "s": "28f8153e5aa24055a92fa8115968d98590c7ea9b1d87d14f63e9387a9c60beec"
+   },
+   {
+    "n": "OEBPS/Images/cover7.jpg",
+    "m": 8,
+    "u": 521305,
+    "s": "fc45bb4ecc4a7ad19544b96358298fb818ce0d1b23607e088bdc9dd888906ffe"
+   },
+   {
+    "n": "OEBPS/Images/cover8.jpg",
+    "m": 8,
+    "u": 501350,
+    "s": "1f0d96160d36465d1aa63025ec2b5f872ad6b2ea3ee1e966a3234e3f8ee3850b"
+   },
+   {
+    "n": "OEBPS/Images/cover9.jpg",
+    "m": 8,
+    "u": 429041,
+    "s": "68894a99b4d4f18dba35acdb359de18e9f8690470afa35038a8639739853b8d6"
+   },
+   {
+    "n": "OEBPS/Images/cover~slim.jpg",
+    "m": 8,
+    "u": 500877,
+    "s": "dfbb9c18322a57d8e9a13d5a33a16738d9737769499b4bc2b70c035ca32a388f"
+   },
+   {
+    "n": "OEBPS/Images/image01747.jpeg",
+    "m": 8,
+    "u": 72424,
+    "s": "659d5bafd6f290bcf13a8967aadc89ac913383c0db42f5817be494b22618e0cf"
+   },
+   {
+    "n": "OEBPS/Images/image01750.jpeg",
+    "m": 8,
+    "u": 80096,
+    "s": "08d07e468ada35dde2ed1fd0ce0da41ddd33cde7a368fc6b84de4869f3d5630f"
+   },
+   {
+    "n": "OEBPS/Images/image01753.jpeg",
+    "m": 8,
+    "u": 79648,
+    "s": "a183d797413169cecff9f261c1676f8da250affe4bda32a0f3d056627190c90a"
+   },
+   {
+    "n": "OEBPS/Images/image01756.jpeg",
+    "m": 8,
+    "u": 80504,
+    "s": "0826e71318ac54d661cad6e58f4d73492381534278eeee5bae41cd83ed5723ce"
+   },
+   {
+    "n": "OEBPS/Images/image01759.jpeg",
+    "m": 8,
+    "u": 82032,
+    "s": "1c323642014fd7960b135cb14e7a134a8004f953db1d7f4fd9a256f29cf220ce"
+   },
+   {
+    "n": "OEBPS/Images/image01762.jpeg",
+    "m": 8,
+    "u": 80224,
+    "s": "fb6e7eec609b7b0c791782c403c0350227c839f6e0e78ff62657502f469f19c7"
+   },
+   {
+    "n": "OEBPS/Images/image01765.jpeg",
+    "m": 8,
+    "u": 82596,
+    "s": "0cdecc1a0d086c4decff4e7a0b59967cdee60e5a137475f6dde0bca6763ca283"
+   },
+   {
+    "n": "OEBPS/Images/image01768.jpeg",
+    "m": 8,
+    "u": 81924,
+    "s": "f61f955e29e931f09904b0f8c41f1bd7af19e138be95fe443d584fbab701edca"
+   },
+   {
+    "n": "OEBPS/Images/note.png",
+    "m": 8,
+    "u": 5415,
+    "s": "ed99820349ae4efb6f63686c616f831afb2071abdf816b40c18fc594fd6cdde9"
+   },
+   {
+    "n": "OEBPS/Styles/style0001.css",
+    "m": 8,
+    "u": 425,
+    "s": "adf833306b8e1bc125e27abb69073b22bc60c9fa55db29fa87fc7bc06e97abe3"
+   },
+   {
+    "n": "OEBPS/Styles/style0002.css",
+    "m": 8,
+    "u": 819,
+    "s": "d4b2097a19680d635ec7bcb9eddb5ca6cbb27c9845c11c1cd519ad265601af1e"
+   },
+   {
+    "n": "OEBPS/Text/cover_page.xhtml",
+    "m": 8,
+    "u": 711,
+    "s": "ea0b590784ef751e0737c6361b13b2061d311addf24611eb5106514d06b1c1f7"
+   },
+   {
+    "n": "OEBPS/Text/part0001.xhtml",
+    "m": 8,
+    "u": 366,
+    "s": "71b58da088bc8085b75265b20df31be93e427487c66e4d6d9f250585d9b54055"
+   },
+   {
+    "n": "OEBPS/Text/part0003.xhtml",
+    "m": 8,
+    "u": 353,
+    "s": "20207cbe73f5d13cc651314b2050868d5583f10409b0a917cae6c703456f3146"
+   },
+   {
+    "n": "OEBPS/Text/part0005.xhtml",
+    "m": 8,
+    "u": 2899,
+    "s": "8fd93e8b1b98bbc7d3e24c294ae8076d4efa410aa40adda9481695ccdda732f4"
+   },
+   {
+    "n": "OEBPS/Text/part0006.xhtml",
+    "m": 8,
+    "u": 347,
+    "s": "8a34eb33ee1c2dcb3d9ca580c22be0b49d6f567c2ca17dd8163b71c3ed396819"
+   },
+   {
+    "n": "OEBPS/Text/part0007.xhtml",
+    "m": 8,
+    "u": 427,
+    "s": "d9cb1717385e63358b14ee5fff53e540bf6fa0ff7373a11c443ed462f58b6c3e"
+   },
+   {
+    "n": "OEBPS/Text/part0007_0001.xhtml",
+    "m": 8,
+    "u": 11658,
+    "s": "4f918e80f8f13ba66eed79f75257ef07d7e067f02732d79d4fadbf1d200f8792"
+   },
+   {
+    "n": "OEBPS/Text/part0007_0002.xhtml",
+    "m": 8,
+    "u": 21413,
+    "s": "dc09fe21550cf6fe37d75562fc719c75a89ca1a8bc9a84bf7ce238806497f647"
+   },
+   {
+    "n": "OEBPS/Text/part0007_0003.xhtml",
+    "m": 8,
+    "u": 13804,
+    "s": "59199042576eae21050b84540b84e51a8707db7827e85ab2e56eb1f6b65df4f4"
+   },
+   {
+    "n": "OEBPS/Text/part0007_0004.xhtml",
+    "m": 8,
+    "u": 8969,
+    "s": "c57a4d6c57060dd80608223ca2bf61dbd9b8696b59cd7d5b44a8b4ffb1a97f10"
+   },
+   {
+    "n": "OEBPS/Text/part0007_0005.xhtml",
+    "m": 8,
+    "u": 17493,
+    "s": "31cf1479b21206caa8711692ed4f26699e4974f51fdf132ecf0d126f19ca6a2f"
+   },
+   {
+    "n": "OEBPS/Text/part0008.xhtml",
+    "m": 8,
+    "u": 433,
+    "s": "d131469197e0022b9be7e26025e9470e30ca453871e96f17e4045ad304a4e510"
+   },
+   {
+    "n": "OEBPS/Text/part0008_0001.xhtml",
+    "m": 8,
+    "u": 22945,
+    "s": "e112181b0848c6e81df043d0fedb66c74dd54ad46c5e9bfc046b831758621f84"
+   },
+   {
+    "n": "OEBPS/Text/part0008_0002.xhtml",
+    "m": 8,
+    "u": 15166,
+    "s": "f8c5a2ca5f34226e74d520924ba7b3618258e2a52fcf73bb2eba80a76b85b72b"
+   },
+   {
+    "n": "OEBPS/Text/part0008_0003.xhtml",
+    "m": 8,
+    "u": 38503,
+    "s": "c1e08ed2d0507a6d0bce614bd6a7a478c7580f67b1c476766ec9023a9ea51dda"
+   },
+   {
+    "n": "OEBPS/Text/part0008_0004.xhtml",
+    "m": 8,
+    "u": 17783,
+    "s": "7ed6db1bb181069b4ec2871c5a997767ede693b7467dd031caedb8b43ec13c17"
+   },
+   {
+    "n": "OEBPS/Text/part0008_0005.xhtml",
+    "m": 8,
+    "u": 15218,
+    "s": "cf2c3df9be580d268f6214279cf0961108a7a3b5eec72194e4cbbead54c687dc"
+   },
+   {
+    "n": "OEBPS/Text/part0008_0006.xhtml",
+    "m": 8,
+    "u": 19865,
+    "s": "2d7f4837370a0518dc4c2a35b11eba37a4cf2ad08e31daf1310376aa516c2f12"
+   },
+   {
+    "n": "OEBPS/Text/part0009.xhtml",
+    "m": 8,
+    "u": 424,
+    "s": "a7f693357efa18256dad1c82e30b40ef83adbf1dedbcd9948068c8476d64c15e"
+   },
+   {
+    "n": "OEBPS/Text/part0009_0001.xhtml",
+    "m": 8,
+    "u": 6983,
+    "s": "8119b3ea765027361023af0b9a9518347adadaa014f03e6c5ac55d6da53ea0e2"
+   },
+   {
+    "n": "OEBPS/Text/part0009_0002.xhtml",
+    "m": 8,
+    "u": 17931,
+    "s": "b41e6eaf9feb0ef263f48845a8db2448c7686b7b9f460bbe7e0856f223c96cb7"
+   },
+   {
+    "n": "OEBPS/Text/part0009_0003.xhtml",
+    "m": 8,
+    "u": 14565,
+    "s": "19e53657db43c0e9627cb26077f3526f435b64ef8014fc14bff38c0921e91320"
+   },
+   {
+    "n": "OEBPS/Text/part0010.xhtml",
+    "m": 8,
+    "u": 421,
+    "s": "8759d892c40dd2cc0eeb1e2a9d15bfbd3b98bb0a63edc6a5c65eb3919acc32fe"
+   },
+   {
+    "n": "OEBPS/Text/part0010_0001.xhtml",
+    "m": 8,
+    "u": 20881,
+    "s": "959c39f2d089a94c155100a9ad0696799dabd262108a57b947f53b87386207db"
+   },
+   {
+    "n": "OEBPS/Text/part0010_0002.xhtml",
+    "m": 8,
+    "u": 15623,
+    "s": "80a24573955ff7205c40681ce69179db237b8e3f1b4c9e85a381b735252e7952"
+   },
+   {
+    "n": "OEBPS/Text/part0010_0003.xhtml",
+    "m": 8,
+    "u": 8160,
+    "s": "63dd631f0fafcc07af3b02ea11bb51c2457a6061ad80a77166586fb118d63038"
+   },
+   {
+    "n": "OEBPS/Text/part0010_0004.xhtml",
+    "m": 8,
+    "u": 19841,
+    "s": "61c4ce3328e7b0ac86cb9de9cc8fa50f5ac3193bc6b3769f620eee76c0334507"
+   },
+   {
+    "n": "OEBPS/Text/part0010_0005.xhtml",
+    "m": 8,
+    "u": 16479,
+    "s": "8a8b2ddf14bef10770c4a04f2acf7d80c9ccc7794885ffd8690f2af4538a3251"
+   },
+   {
+    "n": "OEBPS/Text/part0010_0006.xhtml",
+    "m": 8,
+    "u": 27461,
+    "s": "bd7c90730d62087975563298f4f994f8b1e0f945da427380605cf61e929c890a"
+   },
+   {
+    "n": "OEBPS/Text/part0011.xhtml",
+    "m": 8,
+    "u": 424,
+    "s": "f3a004da283b22396b6fe0bd0028397f0910440af8e8bff4bbc6d28255de3dd5"
+   },
+   {
+    "n": "OEBPS/Text/part0011_0001.xhtml",
+    "m": 8,
+    "u": 6415,
+    "s": "e287e6fc9d207509bf988800c1961ada5dfa7edb03994c2fcf666dbc5fc51011"
+   },
+   {
+    "n": "OEBPS/Text/part0011_0002.xhtml",
+    "m": 8,
+    "u": 9728,
+    "s": "c844a18ecb847602ab32de903667bf15ba6f299ed0bc8fcb9e144258acca333e"
+   },
+   {
+    "n": "OEBPS/Text/part0011_0003.xhtml",
+    "m": 8,
+    "u": 25700,
+    "s": "2e40f9c0ec529447c29122d2de3872221dc004ce6ab6873bc510a646845b1e9a"
+   },
+   {
+    "n": "OEBPS/Text/part0011_0004.xhtml",
+    "m": 8,
+    "u": 13473,
+    "s": "94b087c1bfd83e8f0301dd0928a06d5b320d658889b376f5842e1ca0614cf6c6"
+   },
+   {
+    "n": "OEBPS/Text/part0011_0005.xhtml",
+    "m": 8,
+    "u": 19125,
+    "s": "544b428ef10f9fe977a9f743fede83eba32aeaf14220ece37dfccc673787be05"
+   },
+   {
+    "n": "OEBPS/Text/part0012.xhtml",
+    "m": 8,
+    "u": 424,
+    "s": "d9b694333f89014c20d541b5a2b44d785746bef251a2eefce0b9377503560d5e"
+   },
+   {
+    "n": "OEBPS/Text/part0012_0001.xhtml",
+    "m": 8,
+    "u": 15955,
+    "s": "fe11573c06ddc02b369fc20cd1a923a60ff0ad3593640cb6c2361975ee9e2c4c"
+   },
+   {
+    "n": "OEBPS/Text/part0012_0002.xhtml",
+    "m": 8,
+    "u": 32339,
+    "s": "d6441b2f9fa11830ae1236ee257b8892dd96b6d23a45b563d3965a569fc61403"
+   },
+   {
+    "n": "OEBPS/Text/part0012_0003.xhtml",
+    "m": 8,
+    "u": 10468,
+    "s": "32eead04ab9a71c283920835ed8131bff51df0937f95c06f6bc32797e1d84a39"
+   },
+   {
+    "n": "OEBPS/Text/part0012_0004.xhtml",
+    "m": 8,
+    "u": 13066,
+    "s": "70a20226a9ebb364c9141f33a1106a01572aeece13b1a1d9c026b2788838da57"
+   },
+   {
+    "n": "OEBPS/Text/part0012_0005.xhtml",
+    "m": 8,
+    "u": 24460,
+    "s": "d1a29a70e49044112fe0289c198cac91627dcf9a3ace7dbec75513c5dcbb84ea"
+   },
+   {
+    "n": "OEBPS/Text/part0013.xhtml",
+    "m": 8,
+    "u": 418,
+    "s": "099474475a4106b29f488e2343087106a097307ba64fe102aee88dc64f4b38be"
+   },
+   {
+    "n": "OEBPS/Text/part0013_0001.xhtml",
+    "m": 8,
+    "u": 21876,
+    "s": "4cffc0c0dc7bd8e28d31a02d01b76ec8c6cacb862c25da1efde5323c43800877"
+   },
+   {
+    "n": "OEBPS/Text/part0013_0002.xhtml",
+    "m": 8,
+    "u": 11917,
+    "s": "3d2015c89b90013db5184e91cda8965ce9077e57e79233fa40c3a6077f1d2a71"
+   },
+   {
+    "n": "OEBPS/Text/part0013_0003.xhtml",
+    "m": 8,
+    "u": 24559,
+    "s": "5708908eaa786149d8f5e3523405ea750c40f62ea04ede380483a0d4a01bc72e"
+   },
+   {
+    "n": "OEBPS/Text/part0013_0004.xhtml",
+    "m": 8,
+    "u": 16425,
+    "s": "4a7d392b1d40cbc7d5235feab02c0c5da307766d5b4f9b1418e87ab7f3b3136f"
+   },
+   {
+    "n": "OEBPS/Text/part0014.xhtml",
+    "m": 8,
+    "u": 427,
+    "s": "08da53afabb44ad2717935c66edab9e86fc21044c4195a66af510582ffd90ab2"
+   },
+   {
+    "n": "OEBPS/Text/part0014_0001.xhtml",
+    "m": 8,
+    "u": 7485,
+    "s": "883f21e616d8cff195240de32d3864198c72c382114365de62fb2404cdc6dd24"
+   },
+   {
+    "n": "OEBPS/Text/part0014_0002.xhtml",
+    "m": 8,
+    "u": 9794,
+    "s": "1de02b36755bad987ebc7f0de7d5feedc24d6c9af7ff1bac0ce9a361757af0d4"
+   },
+   {
+    "n": "OEBPS/Text/part0014_0003.xhtml",
+    "m": 8,
+    "u": 8849,
+    "s": "fcef7fca269af62aa6829aafbd6deb261a8fbe2cccccde1a82f524c3bdbdb9c9"
+   },
+   {
+    "n": "OEBPS/Text/part0014_0004.xhtml",
+    "m": 8,
+    "u": 11523,
+    "s": "5097dcca55701437e868a6c6042bfc790029af1b7a127b97ca2f5dd7f1bd0a04"
+   },
+   {
+    "n": "OEBPS/Text/part0014_0005.xhtml",
+    "m": 8,
+    "u": 9478,
+    "s": "a93e46f90bb3dad5a3da24561ce85ecd000bbee3741241e869bc8a06bed1c10a"
+   },
+   {
+    "n": "OEBPS/Text/part0014_0006.xhtml",
+    "m": 8,
+    "u": 19686,
+    "s": "9ec747f2c90bbe13044724f4ba5aec0ba332fff3d8b4ac2937c60628e059b766"
+   },
+   {
+    "n": "OEBPS/Text/part0014_0007.xhtml",
+    "m": 8,
+    "u": 23005,
+    "s": "e9a827f39b147924c0844b213b3ef9c4e6b8208c0e822fea4894186c4ff56252"
+   },
+   {
+    "n": "OEBPS/Text/part0015.xhtml",
+    "m": 8,
+    "u": 421,
+    "s": "ec37c16e95bdf1a0e64873892a59e0fe1950cac9251d8214906604e964474645"
+   },
+   {
+    "n": "OEBPS/Text/part0015_0001.xhtml",
+    "m": 8,
+    "u": 17616,
+    "s": "17e4e09fdb8a58cab3c331dbf755d31d871ee59cf87271ca0debe23c291f5500"
+   },
+   {
+    "n": "OEBPS/Text/part0015_0002.xhtml",
+    "m": 8,
+    "u": 17379,
+    "s": "549bc2f670ead6546ecb0e1e1e7160c8eefedb31013513192c275abfa95778c9"
+   },
+   {
+    "n": "OEBPS/Text/part0015_0003.xhtml",
+    "m": 8,
+    "u": 20977,
+    "s": "47ea2c38e9128edb267b783ac5ae520612680bfea5cbbabceec5c433229acac2"
+   },
+   {
+    "n": "OEBPS/Text/part0015_0004.xhtml",
+    "m": 8,
+    "u": 8460,
+    "s": "365604d19fbf47647903bce48902ca9b2d3459a340bc97c12d9be286fc4eaaa8"
+   },
+   {
+    "n": "OEBPS/Text/part0016.xhtml",
+    "m": 8,
+    "u": 433,
+    "s": "82c0eb82f569e7f96761eb7ccb57767afca14e44b7e97e632fb6e62733d8c0ac"
+   },
+   {
+    "n": "OEBPS/Text/part0016_0001.xhtml",
+    "m": 8,
+    "u": 16330,
+    "s": "e8123be83a82cd26c34614b97ba54381db9a37d72e590db21907d97c9e3dcf7e"
+   },
+   {
+    "n": "OEBPS/Text/part0016_0002.xhtml",
+    "m": 8,
+    "u": 25341,
+    "s": "cdf15cbf37929ac471a9b2d60d01ab524477f9592ba75cb5b9970b6b4481f29e"
+   },
+   {
+    "n": "OEBPS/Text/part0017.xhtml",
+    "m": 8,
+    "u": 367,
+    "s": "6813622fbf61234aa454997f5e3e45824aff982f84ff59639c1754df03183aed"
+   },
+   {
+    "n": "OEBPS/Text/part0021.xhtml",
+    "m": 8,
+    "u": 347,
+    "s": "c4d2eb85ea2091c429c41f27720f45a506adad0de80f43fbe4118dcf062e4f21"
+   },
+   {
+    "n": "OEBPS/Text/part0022.xhtml",
+    "m": 8,
+    "u": 427,
+    "s": "3bdd94bf00a3283979a66fe50ab5f056fa8ce32175e78e38d3b874831e7ca9df"
+   },
+   {
+    "n": "OEBPS/Text/part0022_0001.xhtml",
+    "m": 8,
+    "u": 16206,
+    "s": "61f9dd59d5b5cd18bc804fa447f8f14bc255a5c443d630bfe62dce99d3dd6da3"
+   },
+   {
+    "n": "OEBPS/Text/part0022_0002.xhtml",
+    "m": 8,
+    "u": 16707,
+    "s": "f22fecab329ba4f00584294776221ead445690b5df7b20fdeca507f731cc8db6"
+   },
+   {
+    "n": "OEBPS/Text/part0022_0003.xhtml",
+    "m": 8,
+    "u": 12676,
+    "s": "c5a5fdf0d607bb6024438139eed9fbc8a273972d5c509b6a09525c1288b51399"
+   },
+   {
+    "n": "OEBPS/Text/part0022_0004.xhtml",
+    "m": 8,
+    "u": 15993,
+    "s": "854bb43995cea3d72a8ca2b9366a0127b394658e0631aafcddea893fde42552f"
+   },
+   {
+    "n": "OEBPS/Text/part0022_0005.xhtml",
+    "m": 8,
+    "u": 16919,
+    "s": "0de3c38dfc6b42934ab895d53c422558f4557febaff8acb75747168a9cbec3d5"
+   },
+   {
+    "n": "OEBPS/Text/part0022_0006.xhtml",
+    "m": 8,
+    "u": 22140,
+    "s": "6d8430ff97b4673b34d9f87b4872b5be2cc8f82cfc46cbb416682c32455a192d"
+   },
+   {
+    "n": "OEBPS/Text/part0022_0007.xhtml",
+    "m": 8,
+    "u": 10660,
+    "s": "36a96f2a707ec4493c9efb4a9dfaf3ef3fc6d39c3cb29c5b5da9e190c9f7440c"
+   },
+   {
+    "n": "OEBPS/Text/part0023.xhtml",
+    "m": 8,
+    "u": 430,
+    "s": "b443ab761ed4c504c880c6176158e7d9ddf5a9cd5b2c66ad43a4ee9d32dae079"
+   },
+   {
+    "n": "OEBPS/Text/part0023_0001.xhtml",
+    "m": 8,
+    "u": 18874,
+    "s": "e625bc31c9c28ba5808ee91a6b5c20d6500e0a42a99b89763cb00f8341dcc561"
+   },
+   {
+    "n": "OEBPS/Text/part0023_0002.xhtml",
+    "m": 8,
+    "u": 27361,
+    "s": "4f1e55f0251aff3f9d49c19998b5081ae220ad24e1ffb6ebf8233ea113e428e2"
+   },
+   {
+    "n": "OEBPS/Text/part0023_0003.xhtml",
+    "m": 8,
+    "u": 20648,
+    "s": "568f6a547da5b49639b0a253a0630362504b260ffe763d52477276b23ff7a6d4"
+   },
+   {
+    "n": "OEBPS/Text/part0024.xhtml",
+    "m": 8,
+    "u": 428,
+    "s": "bea1c2022471bec89e538acd76c6610578ba83ba7aa127876fd854a6afcfb216"
+   },
+   {
+    "n": "OEBPS/Text/part0024_0001.xhtml",
+    "m": 8,
+    "u": 22379,
+    "s": "3985f975268382b692c5918ccb1b305160b0a12c7c9c4be564fba0d9cd186f6b"
+   },
+   {
+    "n": "OEBPS/Text/part0024_0002.xhtml",
+    "m": 8,
+    "u": 25956,
+    "s": "3d445ae86f3efcf4ab0dd60b13e776cb281183c2004126f87fd184b532a73199"
+   },
+   {
+    "n": "OEBPS/Text/part0024_0003.xhtml",
+    "m": 8,
+    "u": 13694,
+    "s": "f8bafe14000a09217bc6250512e7bc9ba07a08aa52c76d7caf4447753ffb3387"
+   },
+   {
+    "n": "OEBPS/Text/part0024_0004.xhtml",
+    "m": 8,
+    "u": 13016,
+    "s": "260fd40e0f5d965d60d6bd8daa0b2758b44130906d6247fd627a2d313d36fd79"
+   },
+   {
+    "n": "OEBPS/Text/part0024_0005.xhtml",
+    "m": 8,
+    "u": 29754,
+    "s": "3cc832f5d872dceec7471afc4fc0e4371be01175e558b5264fce50d4c06ddd39"
+   },
+   {
+    "n": "OEBPS/Text/part0025.xhtml",
+    "m": 8,
+    "u": 439,
+    "s": "b3a632ba0d7149a264450162ccc4a2eb3a337c72983f0b1a01cf235ecc1c4553"
+   },
+   {
+    "n": "OEBPS/Text/part0025_0001.xhtml",
+    "m": 8,
+    "u": 25281,
+    "s": "25ed71d67900d458400ca7f289e42a2980c334543412e63529cf6230f3928b80"
+   },
+   {
+    "n": "OEBPS/Text/part0025_0002.xhtml",
+    "m": 8,
+    "u": 11033,
+    "s": "021d149dac0999a25c60fdb6db5224660556c8b17f3ba16b3087bab500fae7cd"
+   },
+   {
+    "n": "OEBPS/Text/part0026.xhtml",
+    "m": 8,
+    "u": 436,
+    "s": "9ea9f4ea7afe5270cd34e8c5ef57c421d494b14018babfd882fea161eaf10d2a"
+   },
+   {
+    "n": "OEBPS/Text/part0026_0001.xhtml",
+    "m": 8,
+    "u": 58366,
+    "s": "9c388667b5016541bc71d2cf3ba7c17568283e39d6f2dceb6bd74ffe8f4976eb"
+   },
+   {
+    "n": "OEBPS/Text/part0027.xhtml",
+    "m": 8,
+    "u": 439,
+    "s": "effb8927e839dca704b723eee14555d2fcdfd19f72c7f92dee0224a574d0292c"
+   },
+   {
+    "n": "OEBPS/Text/part0027_0001.xhtml",
+    "m": 8,
+    "u": 23617,
+    "s": "1aefece3707ea36440ddee0f27b5fb509c424079f329738623f3675ee4fcf815"
+   },
+   {
+    "n": "OEBPS/Text/part0027_0002.xhtml",
+    "m": 8,
+    "u": 6516,
+    "s": "6cfc8400edcd90c89b0b3fcfd50e0f3fe50111fa0f27d64b4b4c5b6264b16c5d"
+   },
+   {
+    "n": "OEBPS/Text/part0027_0003.xhtml",
+    "m": 8,
+    "u": 17332,
+    "s": "c36d556ca76ab0202736fc038db6f9e10936c3d82172d657f6bb3f8df09ca1ac"
+   },
+   {
+    "n": "OEBPS/Text/part0027_0004.xhtml",
+    "m": 8,
+    "u": 36834,
+    "s": "8ebeb7f6f13346d0ff5f5e43739cf11de350c80c043f551cf86a4b2190797730"
+   },
+   {
+    "n": "OEBPS/Text/part0028.xhtml",
+    "m": 8,
+    "u": 430,
+    "s": "1a717dd592da3bba1d992d354e439688a1bb3c1a741b2c28b61249290c71d460"
+   },
+   {
+    "n": "OEBPS/Text/part0028_0001.xhtml",
+    "m": 8,
+    "u": 25566,
+    "s": "37f8198ebfba3885683a54d73d7bae35b2347915bd385406f971b28e589e4547"
+   },
+   {
+    "n": "OEBPS/Text/part0028_0002.xhtml",
+    "m": 8,
+    "u": 9986,
+    "s": "87339db51517c1a15170d37398c119edd1a0160b1d5848ec55a8830ecaa444cc"
+   },
+   {
+    "n": "OEBPS/Text/part0028_0003.xhtml",
+    "m": 8,
+    "u": 24361,
+    "s": "7ac21097d0ab9e7fd14852160b746b51ce969586e40ad0ad99c1618b428145e5"
+   },
+   {
+    "n": "OEBPS/Text/part0028_0004.xhtml",
+    "m": 8,
+    "u": 32042,
+    "s": "03063482eceb1caeeee343e5aba4fc7414d44f43cf263fce4043c7af2ac9c560"
+   },
+   {
+    "n": "OEBPS/Text/part0028_0005.xhtml",
+    "m": 8,
+    "u": 26855,
+    "s": "98c4f78854ef201fe6664a56a65e96779e0665cb894b0b5e4af10580c5abdc8c"
+   },
+   {
+    "n": "OEBPS/Text/part0028_0006.xhtml",
+    "m": 8,
+    "u": 28330,
+    "s": "fbad0cb5e26eb25cb5a02acc563707def46e77f55cb811f99c17e44e1c80c004"
+   },
+   {
+    "n": "OEBPS/Text/part0029.xhtml",
+    "m": 8,
+    "u": 442,
+    "s": "6bb75367d367ec896ad371530df78de224695cda9c61c40667afa30b6d18cc77"
+   },
+   {
+    "n": "OEBPS/Text/part0029_0001.xhtml",
+    "m": 8,
+    "u": 30001,
+    "s": "e7a59072140ddebcab260269e779b3081f070c6e4fdcbbf761978870ac60310e"
+   },
+   {
+    "n": "OEBPS/Text/part0029_0002.xhtml",
+    "m": 8,
+    "u": 25179,
+    "s": "771d6f63d86a5c3d07faa1e5f67e6e2ea31d540deea056499c2715ef184cff81"
+   },
+   {
+    "n": "OEBPS/Text/part0029_0003.xhtml",
+    "m": 8,
+    "u": 26400,
+    "s": "1485305270d2f4210743c90a8b601629340a4013ece43c5e5500618ad7b89163"
+   },
+   {
+    "n": "OEBPS/Text/part0030.xhtml",
+    "m": 8,
+    "u": 424,
+    "s": "7de83ea63026139578dd2a05bbb5e6e4674ce55ca472ef42be4620a4b3608307"
+   },
+   {
+    "n": "OEBPS/Text/part0030_0001.xhtml",
+    "m": 8,
+    "u": 12823,
+    "s": "0996f8d2082bf8fccc295b7be248ae7445fc86c5d17980dcf2f1cc2bddccf0d3"
+   },
+   {
+    "n": "OEBPS/Text/part0030_0002.xhtml",
+    "m": 8,
+    "u": 21392,
+    "s": "7ba62525a7b15a6ac961e5c704ea118b7a0504084e38ac2c245865eb4a2086a2"
+   },
+   {
+    "n": "OEBPS/Text/part0031.xhtml",
+    "m": 8,
+    "u": 433,
+    "s": "13acf9093d7ae13cf5dc140d0c3c49e16ca97548e9c2db2d23a3898d3023b1f1"
+   },
+   {
+    "n": "OEBPS/Text/part0031_0001.xhtml",
+    "m": 8,
+    "u": 10822,
+    "s": "eb2a97ddaa8f8e941c43164c14bf3c8561daad0fda808b3f8fcb7aa6fa029aa3"
+   },
+   {
+    "n": "OEBPS/Text/part0032.xhtml",
+    "m": 8,
+    "u": 367,
+    "s": "efeb024e86091acdfa7db3d33d06575ff7c129066428a436bccc932d42947cd6"
+   },
+   {
+    "n": "OEBPS/Text/part0036.xhtml",
+    "m": 8,
+    "u": 347,
+    "s": "324045dd63c7567837f104829f30dbf86e2bb3fe2d370faceedc56c397d55835"
+   },
+   {
+    "n": "OEBPS/Text/part0037.xhtml",
+    "m": 8,
+    "u": 445,
+    "s": "2ee86c285d77ae7eb21ef14a77ca9a5032d599870b98df7e6556c186479cf4c0"
+   },
+   {
+    "n": "OEBPS/Text/part0037_0001.xhtml",
+    "m": 8,
+    "u": 13872,
+    "s": "fcf475c6b178fa842a539955c40fc1021278892edb272f1cffe4ad6c370a1d60"
+   },
+   {
+    "n": "OEBPS/Text/part0037_0002.xhtml",
+    "m": 8,
+    "u": 25443,
+    "s": "1f8bb888706fe975eae54c752ed45d4e148509ebfab82ab35a0ab8358405e132"
+   },
+   {
+    "n": "OEBPS/Text/part0037_0003.xhtml",
+    "m": 8,
+    "u": 10135,
+    "s": "5f7fd81bd93435b41580a5df8fdeccd11944e47b325ac03e5461a99c4d9bf03f"
+   },
+   {
+    "n": "OEBPS/Text/part0037_0004.xhtml",
+    "m": 8,
+    "u": 10525,
+    "s": "3b6eb300cab151f843a6004399f5988b6da980e3341169d519cc28deeff58b03"
+   },
+   {
+    "n": "OEBPS/Text/part0038.xhtml",
+    "m": 8,
+    "u": 436,
+    "s": "7ae5e6644c1b5e75de93d3d5492d1f9f3bc3b849dc1a544e03a087d28eff24ed"
+   },
+   {
+    "n": "OEBPS/Text/part0038_0001.xhtml",
+    "m": 8,
+    "u": 19330,
+    "s": "6472a64d38c5411e6723380ebe4ee6818d4fb6fee12e77bf382c060019d282a9"
+   },
+   {
+    "n": "OEBPS/Text/part0038_0002.xhtml",
+    "m": 8,
+    "u": 7576,
+    "s": "30a8098f7b01a710743f777aaf813ab807c4a6ca72774e1b5914f9af3365839e"
+   },
+   {
+    "n": "OEBPS/Text/part0038_0003.xhtml",
+    "m": 8,
+    "u": 17017,
+    "s": "5d0a2064b02cb1accb4237aa18856bc76445fdccea367e9cb5a4c98d38267dbd"
+   },
+   {
+    "n": "OEBPS/Text/part0038_0004.xhtml",
+    "m": 8,
+    "u": 16753,
+    "s": "8fe0da313b592797b3f0ce9cf8e00bce66afc38bbe3162d227ae7304c64ce69b"
+   },
+   {
+    "n": "OEBPS/Text/part0038_0005.xhtml",
+    "m": 8,
+    "u": 40442,
+    "s": "35e8def777e694c2eb5b0605abbb034e6d48cb7dd4ef778cbc2cabb48f8fd4e7"
+   },
+   {
+    "n": "OEBPS/Text/part0039.xhtml",
+    "m": 8,
+    "u": 451,
+    "s": "a2ee3f6f99e60f844fcdd20a3a8a9b9f726c4ef4f2a7b5798a78c1f5b0f190c0"
+   },
+   {
+    "n": "OEBPS/Text/part0039_0001.xhtml",
+    "m": 8,
+    "u": 30713,
+    "s": "dcb71d0be1faf0ba98bbece80f5c5ab2e63fb6c16d75d857e2185bd3885934d9"
+   },
+   {
+    "n": "OEBPS/Text/part0039_0002.xhtml",
+    "m": 8,
+    "u": 18968,
+    "s": "9340e0bc0fae3e0fe1061059e26dd7717a09441de24f3dee1b6cd6d2fa522827"
+   },
+   {
+    "n": "OEBPS/Text/part0039_0003.xhtml",
+    "m": 8,
+    "u": 30494,
+    "s": "12cd86ad8f815319b5d9c8532f7f7c7aed5cf715a61eb8481f2f1a14c2021905"
+   },
+   {
+    "n": "OEBPS/Text/part0040.xhtml",
+    "m": 8,
+    "u": 430,
+    "s": "0d36d62392473a94a844b88aa563a6860a33020e0a74fe5771ff500845337f99"
+   },
+   {
+    "n": "OEBPS/Text/part0040_0001.xhtml",
+    "m": 8,
+    "u": 16938,
+    "s": "eb3545c09dab0061fa350e04891af73f2796a761aa380d87230114a55e9a4c27"
+   },
+   {
+    "n": "OEBPS/Text/part0040_0002.xhtml",
+    "m": 8,
+    "u": 13784,
+    "s": "c18e307dc43fdcd0ad138557d713b6ff1aa7536a4df423148f5a51f0918404b6"
+   },
+   {
+    "n": "OEBPS/Text/part0040_0003.xhtml",
+    "m": 8,
+    "u": 17424,
+    "s": "37d5e87f9c7ed75dfcf822b2f69bad1361fe91a54d1d80da93d04c5e0b1aeb3a"
+   },
+   {
+    "n": "OEBPS/Text/part0040_0004.xhtml",
+    "m": 8,
+    "u": 27645,
+    "s": "72412a7b803fe213eae6f3d72d102437057e964b1124e63b5a0d8785a4be5ea5"
+   },
+   {
+    "n": "OEBPS/Text/part0041.xhtml",
+    "m": 8,
+    "u": 430,
+    "s": "280c475016b929edea5b3d8697a50fc54d1d88aff9a17cfd73b8db60f957ff19"
+   },
+   {
+    "n": "OEBPS/Text/part0041_0001.xhtml",
+    "m": 8,
+    "u": 18642,
+    "s": "f0165c1652cc05dac04d9090d26796829578fa79937025698cbc9190f3c09fd7"
+   },
+   {
+    "n": "OEBPS/Text/part0041_0002.xhtml",
+    "m": 8,
+    "u": 24290,
+    "s": "fb0663f1c86a2ff450f2d00c56c9124bb15c1f3e622def44ba3ed932af83e4c5"
+   },
+   {
+    "n": "OEBPS/Text/part0041_0003.xhtml",
+    "m": 8,
+    "u": 27726,
+    "s": "5a51446c6e330d86fff1d42a592bcec8274b4f777f7cefcf875a674ca07a1162"
+   },
+   {
+    "n": "OEBPS/Text/part0041_0004.xhtml",
+    "m": 8,
+    "u": 20382,
+    "s": "2b663dde798273c2b99b4a495e573417210476c5d4eb756cb792d03c502d7eb2"
+   },
+   {
+    "n": "OEBPS/Text/part0041_0005.xhtml",
+    "m": 8,
+    "u": 33042,
+    "s": "1a39392acfb5ada3d9d8554cb2abe35d8ff8295457a9e32ffcd33cade7b714d5"
+   },
+   {
+    "n": "OEBPS/Text/part0042.xhtml",
+    "m": 8,
+    "u": 433,
+    "s": "d701562b8f5270c1eb6f4518f6303a88e02369ef9fcb91102f235e408a932c64"
+   },
+   {
+    "n": "OEBPS/Text/part0042_0001.xhtml",
+    "m": 8,
+    "u": 21308,
+    "s": "d87471d3eed17abefb0fff6675ddb7fe2404d34bba42765fda17584f8c069630"
+   },
+   {
+    "n": "OEBPS/Text/part0042_0002.xhtml",
+    "m": 8,
+    "u": 33280,
+    "s": "f44e644adf2646c82e42bbc27e2f81fe7854f1d188105fc087f8456fd5cda6a5"
+   },
+   {
+    "n": "OEBPS/Text/part0042_0003.xhtml",
+    "m": 8,
+    "u": 16420,
+    "s": "c82bfed1591a1002d40892954c805e9a4875390ff9551ba88216919a12bb9809"
+   },
+   {
+    "n": "OEBPS/Text/part0043.xhtml",
+    "m": 8,
+    "u": 436,
+    "s": "c57d0a67ef45b40afdbdc2a37ca879144939cb96d8e848de5644ece5b2f8fe40"
+   },
+   {
+    "n": "OEBPS/Text/part0043_0001.xhtml",
+    "m": 8,
+    "u": 26899,
+    "s": "89f2051a739093018beedc53819022bf60bca5259ba38b391052914a66037623"
+   },
+   {
+    "n": "OEBPS/Text/part0043_0002.xhtml",
+    "m": 8,
+    "u": 26141,
+    "s": "134121cb8fc40c2d3527010d8731171bafb0c3623226ac7c4b443f33ceaa96a3"
+   },
+   {
+    "n": "OEBPS/Text/part0043_0003.xhtml",
+    "m": 8,
+    "u": 8824,
+    "s": "8aa1936da5790deedfa4b2977188c90a113d770db8b72b816e30a6e3400758bf"
+   },
+   {
+    "n": "OEBPS/Text/part0043_0004.xhtml",
+    "m": 8,
+    "u": 17010,
+    "s": "e7d46153e4c7c5072cd49dd78b985d16f93c1c3b96c86e99a70e94e1a2b639dd"
+   },
+   {
+    "n": "OEBPS/Text/part0044.xhtml",
+    "m": 8,
+    "u": 433,
+    "s": "704b334023c798e52ad8b828a2c66b45e761dc73cbadcdc7286dee4ceabbd6a4"
+   },
+   {
+    "n": "OEBPS/Text/part0044_0001.xhtml",
+    "m": 8,
+    "u": 37312,
+    "s": "3fa7af9fc38b045458eb5ebda3e12588455e37f0ee70c94fa4257460db25e599"
+   },
+   {
+    "n": "OEBPS/Text/part0044_0002.xhtml",
+    "m": 8,
+    "u": 26796,
+    "s": "7733e81942a236f99f3426040babcfa956ccaaf927c004e885e7ac26862d3230"
+   },
+   {
+    "n": "OEBPS/Text/part0044_0003.xhtml",
+    "m": 8,
+    "u": 27749,
+    "s": "51f01a68769bf3ee51a0e0562f864d559c82a64e564b2408f0ca85fd11eba77e"
+   },
+   {
+    "n": "OEBPS/Text/part0045.xhtml",
+    "m": 8,
+    "u": 427,
+    "s": "1d71d63c762b1bd27d85af785221569bacf587ddfc0a54b436bd0d66c97ab3f7"
+   },
+   {
+    "n": "OEBPS/Text/part0045_0001.xhtml",
+    "m": 8,
+    "u": 28073,
+    "s": "47af6dde13f4083b715c5e35eff8c46399e67940f16c979874554cdd35b50b96"
+   },
+   {
+    "n": "OEBPS/Text/part0045_0002.xhtml",
+    "m": 8,
+    "u": 29068,
+    "s": "c59598951ec3c750031467940ee96941112c5a40a21d039255797e0dbd3bf661"
+   },
+   {
+    "n": "OEBPS/Text/part0045_0003.xhtml",
+    "m": 8,
+    "u": 28231,
+    "s": "590293a2830c7bd917c8c761c62fde784443d353700e1d74363b6276d7dfae61"
+   },
+   {
+    "n": "OEBPS/Text/part0046.xhtml",
+    "m": 8,
+    "u": 439,
+    "s": "800a4c0bef73647e34ffed65eeeee8914cd1f58986243c4bbc346784ca6fe438"
+   },
+   {
+    "n": "OEBPS/Text/part0046_0001.xhtml",
+    "m": 8,
+    "u": 17458,
+    "s": "4572defedddd7e20ab1a52e45402fce38787ae8e134f42abf74e3f5ebdd5978e"
+   },
+   {
+    "n": "OEBPS/Text/part0047.xhtml",
+    "m": 8,
+    "u": 367,
+    "s": "515d04c3589a1a0a56d093e12b34957b1dcbfda9c26fea52f1fe6fedb4dedf07"
+   },
+   {
+    "n": "OEBPS/Text/part0051.xhtml",
+    "m": 8,
+    "u": 347,
+    "s": "9f6d3c51fe9fbb290bcc23b4fdf6e520c14de4d28e684da5a8cac5696e4aeef1"
+   },
+   {
+    "n": "OEBPS/Text/part0052.xhtml",
+    "m": 8,
+    "u": 430,
+    "s": "d1cf121a055e5b8497c1bcbdf455f436461695b1dbebd3e943720fdf00ca72da"
+   },
+   {
+    "n": "OEBPS/Text/part0052_0001.xhtml",
+    "m": 8,
+    "u": 28795,
+    "s": "84800a4b66a2bd0f42cc1f2ef787987dc998bedb1180c76434fcfd7cbc459b6e"
+   },
+   {
+    "n": "OEBPS/Text/part0052_0002.xhtml",
+    "m": 8,
+    "u": 14890,
+    "s": "f45614b8dad30e283c63e9455f9e73db915fdf9d61bd692f6c5df5f8d4cd2833"
+   },
+   {
+    "n": "OEBPS/Text/part0053.xhtml",
+    "m": 8,
+    "u": 424,
+    "s": "03a6b9f3f8824b5f465c2c69d94165a3f769cb5732fe42b02b1a231dcdba5383"
+   },
+   {
+    "n": "OEBPS/Text/part0053_0001.xhtml",
+    "m": 8,
+    "u": 28052,
+    "s": "d655edafafa8bb8626038e39c6284be8fb7877684796672c5bb6a12caa6c683a"
+   },
+   {
+    "n": "OEBPS/Text/part0053_0002.xhtml",
+    "m": 8,
+    "u": 37512,
+    "s": "c870b975300d9842b29e20311716f0bfbd11e7bae8300dcd2d30d776a9e97018"
+   },
+   {
+    "n": "OEBPS/Text/part0053_0003.xhtml",
+    "m": 8,
+    "u": 26139,
+    "s": "dc1f81dbfcc6705a5daac198af03b1e4741744d143ad54efecb27442f8e66a53"
+   },
+   {
+    "n": "OEBPS/Text/part0053_0004.xhtml",
+    "m": 8,
+    "u": 27786,
+    "s": "3b3b89ef8a86aacabb46d880b43fe2027a0d02d1f72858dae0bd2b6ea09a7a70"
+   },
+   {
+    "n": "OEBPS/Text/part0053_0005.xhtml",
+    "m": 8,
+    "u": 21961,
+    "s": "eebaef83d402ba1044385f5e3d486901dcc0c7d44273a034b9c3d2f35093327a"
+   },
+   {
+    "n": "OEBPS/Text/part0054.xhtml",
+    "m": 8,
+    "u": 439,
+    "s": "f15661bdd92636f97fcf6dc7f0ef1f49d1e174c20c1e7a3a3e5dda769934d31c"
+   },
+   {
+    "n": "OEBPS/Text/part0054_0001.xhtml",
+    "m": 8,
+    "u": 26157,
+    "s": "90d7fe765d576e0a797a8e00e5db928c0addc453cc12453d6b646eb923f9c498"
+   },
+   {
+    "n": "OEBPS/Text/part0054_0002.xhtml",
+    "m": 8,
+    "u": 41500,
+    "s": "8d6aabc9aef04a79c82c6e886517e6429fe61496cbec7df05d5604219411ac78"
+   },
+   {
+    "n": "OEBPS/Text/part0055.xhtml",
+    "m": 8,
+    "u": 436,
+    "s": "8ea0f8c92f1da629f7d0100c69a1ee198b3bd5863b23a7fc8ba222704a3bcb1d"
+   },
+   {
+    "n": "OEBPS/Text/part0055_0001.xhtml",
+    "m": 8,
+    "u": 48479,
+    "s": "8d794a9fb04235516dfa5ea4e5d9b7680f0845ac4b737233d0a77d696cda6839"
+   },
+   {
+    "n": "OEBPS/Text/part0055_0002.xhtml",
+    "m": 8,
+    "u": 33948,
+    "s": "ca0f37be3f619907f2edec8589f910e6ec003ab76c7848f2db02726b9469bfa7"
+   },
+   {
+    "n": "OEBPS/Text/part0055_0003.xhtml",
+    "m": 8,
+    "u": 24597,
+    "s": "0a8f9ea916b2472f5dc5513ef5caec45240f433cfbe55c77ddf7ee71536ab4dc"
+   },
+   {
+    "n": "OEBPS/Text/part0056.xhtml",
+    "m": 8,
+    "u": 430,
+    "s": "fa1573d1d2f22dff673f47ccb5ee251b36652749f315777f26d7be187bc98e40"
+   },
+   {
+    "n": "OEBPS/Text/part0056_0001.xhtml",
+    "m": 8,
+    "u": 32125,
+    "s": "139d85b3f081092b1e93850bd89166cdafe6df0019ccd4241323f149e5b0dd94"
+   },
+   {
+    "n": "OEBPS/Text/part0056_0002.xhtml",
+    "m": 8,
+    "u": 24011,
+    "s": "3d9cbe4ddf4e776474cf9e0cdfef74b7cb0c0beb83a3ffd69afbf98c18a13985"
+   },
+   {
+    "n": "OEBPS/Text/part0056_0003.xhtml",
+    "m": 8,
+    "u": 30990,
+    "s": "4e8faed773816e4bc4a97caaf406e564036b9067938679f8c1b335698e785be9"
+   },
+   {
+    "n": "OEBPS/Text/part0056_0004.xhtml",
+    "m": 8,
+    "u": 18787,
+    "s": "26cc1b2a9bd0d0fb6f3c8a23b760d3265ad4dfc7f56d492e670a4c49145cfd74"
+   },
+   {
+    "n": "OEBPS/Text/part0056_0005.xhtml",
+    "m": 8,
+    "u": 9239,
+    "s": "748ae9debf81690f29249e05a87c18e397ba5351756d53cc52a34ac396ed7106"
+   },
+   {
+    "n": "OEBPS/Text/part0057.xhtml",
+    "m": 8,
+    "u": 424,
+    "s": "c0597fd0c1a2a52530a343a2a72b4e2d4052eb8701d4b539b6dfca94518459ff"
+   },
+   {
+    "n": "OEBPS/Text/part0057_0001.xhtml",
+    "m": 8,
+    "u": 18437,
+    "s": "0e8340c6043f58f60e65acfdd19b003dcedac83e490f9b47771da42f12d155ec"
+   },
+   {
+    "n": "OEBPS/Text/part0057_0002.xhtml",
+    "m": 8,
+    "u": 46998,
+    "s": "20c8acc0fd9e3358ba401b564978b40fbe6d783eb1f7eee66bb686e254a7d1d4"
+   },
+   {
+    "n": "OEBPS/Text/part0057_0003.xhtml",
+    "m": 8,
+    "u": 30569,
+    "s": "8f1c91e7d4b1de26814f290e1c7d7c43e7ce2f30a0e324a7d9ca576f59c28c35"
+   },
+   {
+    "n": "OEBPS/Text/part0057_0004.xhtml",
+    "m": 8,
+    "u": 20229,
+    "s": "85c221c6f324b976872bc57973796917e4fdbdc8381922d79a358173b2bed0cf"
+   },
+   {
+    "n": "OEBPS/Text/part0058.xhtml",
+    "m": 8,
+    "u": 421,
+    "s": "af992ed3f67913eb677e4dfe5651687e6b0a69cf089183c0621f3d78e0210d18"
+   },
+   {
+    "n": "OEBPS/Text/part0058_0001.xhtml",
+    "m": 8,
+    "u": 34942,
+    "s": "0c5bab05cb62c68e6cff4f59b31e9d8ce81622fef30f7c7b34591303a8b354c5"
+   },
+   {
+    "n": "OEBPS/Text/part0058_0002.xhtml",
+    "m": 8,
+    "u": 24460,
+    "s": "9bfc10ad83aedd17d91f2384189bba73b5fd9421623b29fcea1fdfbf30915827"
+   },
+   {
+    "n": "OEBPS/Text/part0059.xhtml",
+    "m": 8,
+    "u": 436,
+    "s": "9c90911ac4c18ef42c2deaff05fcc3636a2364117a9b4feaef9d9e9a107ef766"
+   },
+   {
+    "n": "OEBPS/Text/part0059_0001.xhtml",
+    "m": 8,
+    "u": 47218,
+    "s": "e21c0de5c4028c3047c56f544e221e5cbaf82b333a438f4e66de886c65d78e74"
+   },
+   {
+    "n": "OEBPS/Text/part0060.xhtml",
+    "m": 8,
+    "u": 433,
+    "s": "539a55742067001082f5e09ca9662a0ecb00e86a4b87b614dd521fa692f3b2af"
+   },
+   {
+    "n": "OEBPS/Text/part0060_0001.xhtml",
+    "m": 8,
+    "u": 47232,
+    "s": "efad1f3413470fdbd59ead93324cfa3a4c865cebe5b67fe5fe90c4e8766f85ab"
+   },
+   {
+    "n": "OEBPS/Text/part0061.xhtml",
+    "m": 8,
+    "u": 436,
+    "s": "6bda46116f18c4e697a4d312fa40755381eb5e72e0bc58b9ecb761494d8347dd"
+   },
+   {
+    "n": "OEBPS/Text/part0061_0001.xhtml",
+    "m": 8,
+    "u": 28901,
+    "s": "ea0ee89a19847bc90ab64c6882fd42b3f760c24d63e0e1c630bbe3585eac6266"
+   },
+   {
+    "n": "OEBPS/Text/part0062.xhtml",
+    "m": 8,
+    "u": 367,
+    "s": "e3c05139a722814ca36187e8089668c110a335bf7b374b6b878c37227885552c"
+   },
+   {
+    "n": "OEBPS/Text/part0066.xhtml",
+    "m": 8,
+    "u": 347,
+    "s": "eae7031cd1939f458a6939abcec06a00a4ce90aca27c6778124e5a755f5d16ad"
+   },
+   {
+    "n": "OEBPS/Text/part0067.xhtml",
+    "m": 8,
+    "u": 445,
+    "s": "c381716bb863531a857a3a7fa418f8be5e61e0e4731e42aa54eac6ec25db0111"
+   },
+   {
+    "n": "OEBPS/Text/part0067_0001.xhtml",
+    "m": 8,
+    "u": 26929,
+    "s": "ad41baf6cf1df2239230a46a15e5e8dd743a0cd4439e57d4c2a4c92d6befcee3"
+   },
+   {
+    "n": "OEBPS/Text/part0067_0002.xhtml",
+    "m": 8,
+    "u": 40286,
+    "s": "10e242be5d0fab428ba284556cde78cb3f416384b2792f4eaca171cff4a6e640"
+   },
+   {
+    "n": "OEBPS/Text/part0067_0003.xhtml",
+    "m": 8,
+    "u": 27475,
+    "s": "905998a890eb79ac9ac8d07b35215cd6bffa9055fb104716efe811f0a2bf1ec5"
+   },
+   {
+    "n": "OEBPS/Text/part0068.xhtml",
+    "m": 8,
+    "u": 445,
+    "s": "edab4e03939191a3b656cb9a4e48b20d3d736affa6362e2302683bfff58f0e00"
+   },
+   {
+    "n": "OEBPS/Text/part0068_0001.xhtml",
+    "m": 8,
+    "u": 24075,
+    "s": "0b73f445fae52184de311c27fff856d43369b9a3b95e7cddf4576d8a3d66c9c2"
+   },
+   {
+    "n": "OEBPS/Text/part0068_0002.xhtml",
+    "m": 8,
+    "u": 27231,
+    "s": "0ff10c8f190196c1a16b11950557b0d7901bb1f0b82bf1e2645f5832ca492c42"
+   },
+   {
+    "n": "OEBPS/Text/part0068_0003.xhtml",
+    "m": 8,
+    "u": 28795,
+    "s": "12e5481c76fa839485d9a899efb514a906a5d3984bac134c123d0fd50d1236b6"
+   },
+   {
+    "n": "OEBPS/Text/part0068_0004.xhtml",
+    "m": 8,
+    "u": 40914,
+    "s": "b38d264d88ffaa38fe204db8fe3f6a885d56c180a0a35777fa9e7681a8d24d0a"
+   },
+   {
+    "n": "OEBPS/Text/part0069.xhtml",
+    "m": 8,
+    "u": 424,
+    "s": "4e9ad5494a27853445aa93c7d1c1abeb4f43410204eb973f4d14081d4e00d1d3"
+   },
+   {
+    "n": "OEBPS/Text/part0069_0001.xhtml",
+    "m": 8,
+    "u": 37807,
+    "s": "f7ac071ab004944ddb472cb88a6c08c48e98329b835bab25e8fbe9bda1e22f2c"
+   },
+   {
+    "n": "OEBPS/Text/part0069_0002.xhtml",
+    "m": 8,
+    "u": 28407,
+    "s": "3d5feb457e6650534d417632982559982927c838cc721ee2e60612fe2f65b413"
+   },
+   {
+    "n": "OEBPS/Text/part0069_0003.xhtml",
+    "m": 8,
+    "u": 20272,
+    "s": "fe6ae374ce1fa80a1988b4bb0bfb6e7b946ea693615d59cc585a9f7b04c4d73b"
+   },
+   {
+    "n": "OEBPS/Text/part0070.xhtml",
+    "m": 8,
+    "u": 445,
+    "s": "3c2ef0152156a96fe458194ead731811f1c4ef0efa4f618e7cdce8b5b413c817"
+   },
+   {
+    "n": "OEBPS/Text/part0070_0001.xhtml",
+    "m": 8,
+    "u": 28688,
+    "s": "ad8050676e4bbb5c411c32ad5beac2dd9e2644930fe2e9b87c25033b55677fa2"
+   },
+   {
+    "n": "OEBPS/Text/part0070_0002.xhtml",
+    "m": 8,
+    "u": 33688,
+    "s": "421f4cd52092419065a8f1290cf446b2fac577bb345720604ee978439e2fd36f"
+   },
+   {
+    "n": "OEBPS/Text/part0070_0003.xhtml",
+    "m": 8,
+    "u": 30686,
+    "s": "bdc04c312fcf2820b29cdc82363e5bbc50106568592e11692f79cf3dd1bb8179"
+   },
+   {
+    "n": "OEBPS/Text/part0071.xhtml",
+    "m": 8,
+    "u": 430,
+    "s": "d47e5015c0d5cd1de1a225833deae9937742f581b6d4c00704a7e84ce5da588a"
+   },
+   {
+    "n": "OEBPS/Text/part0071_0001.xhtml",
+    "m": 8,
+    "u": 28183,
+    "s": "80ee5fcc3ad6ec63aa3a44a99e3dc1f39b0ebe68805ebcf5c6d4c949003d4a89"
+   },
+   {
+    "n": "OEBPS/Text/part0071_0002.xhtml",
+    "m": 8,
+    "u": 29963,
+    "s": "9478e1d47644dccdc898e20df88847a413b4291f5e7b0b0d6eb85326f54ea6b0"
+   },
+   {
+    "n": "OEBPS/Text/part0071_0003.xhtml",
+    "m": 8,
+    "u": 19942,
+    "s": "3eb374a66a1ccc0e8a028a35d55e3aa149095a299bbd31962135f29816fc4746"
+   },
+   {
+    "n": "OEBPS/Text/part0072.xhtml",
+    "m": 8,
+    "u": 469,
+    "s": "abbe0bfe1d28c7cf21b31ad59a320836773169d1e5133394b96f85ca167aa1aa"
+   },
+   {
+    "n": "OEBPS/Text/part0072_0001.xhtml",
+    "m": 8,
+    "u": 30672,
+    "s": "c296a011e21c510aae09673282057d3001c9e7ceb08e1ff45458bfdd36e53581"
+   },
+   {
+    "n": "OEBPS/Text/part0072_0002.xhtml",
+    "m": 8,
+    "u": 28512,
+    "s": "82c71e406488497bd6d3b00de682b9776edbf56ac572575e8ef21babae37bd49"
+   },
+   {
+    "n": "OEBPS/Text/part0072_0003.xhtml",
+    "m": 8,
+    "u": 28189,
+    "s": "4cfc8a2310e2e6d4b74394add55b3dc159c5cde7399f400bea1e09cb355b002e"
+   },
+   {
+    "n": "OEBPS/Text/part0073.xhtml",
+    "m": 8,
+    "u": 430,
+    "s": "c232281a5619c625b49496bbb37ac202c772baa35ab12fc82e6dc362d7ea0465"
+   },
+   {
+    "n": "OEBPS/Text/part0073_0001.xhtml",
+    "m": 8,
+    "u": 24794,
+    "s": "0e99df49de2beb87dced4fca9be4d1fcd243e873e6c4ed01864ffa37fac8190c"
+   },
+   {
+    "n": "OEBPS/Text/part0073_0002.xhtml",
+    "m": 8,
+    "u": 21239,
+    "s": "2dcbefdbf838e07c38f5541a02474b438e13317dbffcf076360a3476db48005e"
+   },
+   {
+    "n": "OEBPS/Text/part0074.xhtml",
+    "m": 8,
+    "u": 430,
+    "s": "00b618e312460b4ab8f11151d8e57a42d7f0d28a8a853d87d55a6d5bcde25e7a"
+   },
+   {
+    "n": "OEBPS/Text/part0074_0001.xhtml",
+    "m": 8,
+    "u": 29814,
+    "s": "2167c3a04afc5956c141481df02d8e992c3a089331920c7d6aa0c5257f0cc944"
+   },
+   {
+    "n": "OEBPS/Text/part0074_0002.xhtml",
+    "m": 8,
+    "u": 19402,
+    "s": "a6f7fbd4f701a9c29dcb763cf6f83a08e7ac10c93790bdea34e9968a7a282584"
+   },
+   {
+    "n": "OEBPS/Text/part0075.xhtml",
+    "m": 8,
+    "u": 430,
+    "s": "14eb7424dea1d056fb3e653c3f3c6e4f0a669e6d3b1a99009501d04c8672bf94"
+   },
+   {
+    "n": "OEBPS/Text/part0075_0001.xhtml",
+    "m": 8,
+    "u": 23144,
+    "s": "2cba1e9b21981c39109149b350d30d1ff36ff517c80d46a3405aee163663b3f4"
+   },
+   {
+    "n": "OEBPS/Text/part0075_0002.xhtml",
+    "m": 8,
+    "u": 22699,
+    "s": "37345bf532b457cc0eed4966d24e32101623aa0389b947b3e628f1e917454ce4"
+   },
+   {
+    "n": "OEBPS/Text/part0076.xhtml",
+    "m": 8,
+    "u": 433,
+    "s": "2bc31b9d9d8fede1b9c62ec26b245b7ae7592981aaa9b8abd64380cf6eacc07d"
+   },
+   {
+    "n": "OEBPS/Text/part0076_0001.xhtml",
+    "m": 8,
+    "u": 13195,
+    "s": "74c780ab9c7c4f1b4dc9ad98b3b69ae4f7f70b64127114f6ee21705c73692328"
+   },
+   {
+    "n": "OEBPS/Text/part0076_0002.xhtml",
+    "m": 8,
+    "u": 31637,
+    "s": "3210a0db8e22c2f3fb721af1e3ff66bc02e435f359df3858939abc9b47d2f122"
+   },
+   {
+    "n": "OEBPS/Text/part0077.xhtml",
+    "m": 8,
+    "u": 367,
+    "s": "be4960ed04bc55b9c324665e0d064f99a9b11d4f8b8a502df1752b5655d478b1"
+   },
+   {
+    "n": "OEBPS/Text/part0081.xhtml",
+    "m": 8,
+    "u": 429,
+    "s": "8b0cc19ea6d909c3384ae2ffad4fc4fe8a16fb487b77cfe33950c55495b85c3d"
+   },
+   {
+    "n": "OEBPS/Text/part0082.xhtml",
+    "m": 8,
+    "u": 429,
+    "s": "a807d3783e51bbb8dbfa9288fde936937010c3bbca05dabc53ee2fe5828cb492"
+   },
+   {
+    "n": "OEBPS/Text/part0082_0001.xhtml",
+    "m": 8,
+    "u": 36045,
+    "s": "c24a550d9f4e3c7d34f01abb898a618214d477c37106d0fa488ea8a25da34893"
+   },
+   {
+    "n": "OEBPS/Text/part0082_0002.xhtml",
+    "m": 8,
+    "u": 44901,
+    "s": "f948a7c9e209dcde623e11143b7467f7382f5b60d33ae1747c97ae6dae8d6e07"
+   },
+   {
+    "n": "OEBPS/Text/part0083.xhtml",
+    "m": 8,
+    "u": 441,
+    "s": "8a62f3a64d9bbf08cd7f4da89251b18305dec3b48a58892573070174005eb993"
+   },
+   {
+    "n": "OEBPS/Text/part0083_0001.xhtml",
+    "m": 8,
+    "u": 37822,
+    "s": "25708d0cb3a1a90c17f93fcfb15b2515cb862e28d2d8c0a1b2961a93576d2d01"
+   },
+   {
+    "n": "OEBPS/Text/part0083_0002.xhtml",
+    "m": 8,
+    "u": 35917,
+    "s": "dd59f5f797d7eafe5eb7b563ec1c2920209fa826feaa73bb652695a52ab0fbec"
+   },
+   {
+    "n": "OEBPS/Text/part0084.xhtml",
+    "m": 8,
+    "u": 444,
+    "s": "a5085159abbde568698900dcd1a9667329ec09e32a92e0b9e7c052fa343b9172"
+   },
+   {
+    "n": "OEBPS/Text/part0084_0001.xhtml",
+    "m": 8,
+    "u": 39251,
+    "s": "ad16407f718f8e774561b7b0147f75519996de5e68c4839e165187137ff73e6f"
+   },
+   {
+    "n": "OEBPS/Text/part0084_0002.xhtml",
+    "m": 8,
+    "u": 39212,
+    "s": "fc4ff588a8169f7563afe371a666c9189eca4eb1fdfd4dd6fdc03addce767e72"
+   },
+   {
+    "n": "OEBPS/Text/part0085.xhtml",
+    "m": 8,
+    "u": 420,
+    "s": "cc9c721d789bd8f9d4b822fbe69a387028265eb78d94e1ba3927e6965ca04a96"
+   },
+   {
+    "n": "OEBPS/Text/part0085_0001.xhtml",
+    "m": 8,
+    "u": 40628,
+    "s": "f879e10556b27cd6a604b0f3bb2f50030ced8a55e86f6a05522801f0ce8e0c6e"
+   },
+   {
+    "n": "OEBPS/Text/part0085_0002.xhtml",
+    "m": 8,
+    "u": 37339,
+    "s": "25e8b74ccb1ad45a49bae653e6a2263b43331c466fc81c0702e186bc7b668b03"
+   },
+   {
+    "n": "OEBPS/Text/part0086.xhtml",
+    "m": 8,
+    "u": 438,
+    "s": "ea245a0d80f2fac6ead99cb69697fdeeb6ffd68b53a5a2cf16004942a3cb3b18"
+   },
+   {
+    "n": "OEBPS/Text/part0086_0001.xhtml",
+    "m": 8,
+    "u": 41196,
+    "s": "cd20fe6e61fc6e86d591700e929be4697e764f2ca2ab2b14f3b47677d45d443f"
+   },
+   {
+    "n": "OEBPS/Text/part0086_0002.xhtml",
+    "m": 8,
+    "u": 36404,
+    "s": "28122f7d429a4cdf72a16805fe0f34ea540d75d7440592fe1acb901570ff1074"
+   },
+   {
+    "n": "OEBPS/Text/part0087.xhtml",
+    "m": 8,
+    "u": 432,
+    "s": "fcecd2c711fafecc82c41959c698ccb437c8f51dd1ab1eb868bebf9c9a9933ca"
+   },
+   {
+    "n": "OEBPS/Text/part0087_0001.xhtml",
+    "m": 8,
+    "u": 39834,
+    "s": "96a52116e0aa03bfa8cfc61006cd2886146be94055220d32a7f621404bea624f"
+   },
+   {
+    "n": "OEBPS/Text/part0087_0002.xhtml",
+    "m": 8,
+    "u": 44177,
+    "s": "e5a1f5168f518becdc7f1a689ec7c70a88fd2c79b9e1b51529021773ab7a026a"
+   },
+   {
+    "n": "OEBPS/Text/part0088.xhtml",
+    "m": 8,
+    "u": 432,
+    "s": "cf7ce9b48a4348b8d85455dfd4257f6ab1231f4bf1e7a71be0fb58bd06074b28"
+   },
+   {
+    "n": "OEBPS/Text/part0088_0001.xhtml",
+    "m": 8,
+    "u": 41765,
+    "s": "766bc8bbf8682a4e19e98d659a80e5582ef43d45b6932d9bcb25b3866d37c10a"
+   },
+   {
+    "n": "OEBPS/Text/part0088_0002.xhtml",
+    "m": 8,
+    "u": 32162,
+    "s": "3fb2fe4b0a13bbada1c474e454704f01bce32e057477aaea57f5c4fc0ecd531c"
+   },
+   {
+    "n": "OEBPS/Text/part0089.xhtml",
+    "m": 8,
+    "u": 435,
+    "s": "d6e04e294b5755f7b74cd993b8869fe88417476503b4a9d26af5b4eb3ece85ac"
+   },
+   {
+    "n": "OEBPS/Text/part0089_0001.xhtml",
+    "m": 8,
+    "u": 34016,
+    "s": "8a9331717b04667959a609b815b5f807548d74aa5a97eec35c160582f3261711"
+   },
+   {
+    "n": "OEBPS/Text/part0089_0002.xhtml",
+    "m": 8,
+    "u": 37911,
+    "s": "84a668a6efd4b1c44732a4e1e8962d869076ef45e8e9c3dc7fbab53a4ebdaf6f"
+   },
+   {
+    "n": "OEBPS/Text/part0090.xhtml",
+    "m": 8,
+    "u": 435,
+    "s": "21936dbff6a1c85a02fe878d70ea8c583d6fbb512eed9c1edcd07f6f8d3e8f36"
+   },
+   {
+    "n": "OEBPS/Text/part0090_0001.xhtml",
+    "m": 8,
+    "u": 48367,
+    "s": "483d846814cbe8b89f8dd7d93a629aa908cac0643167962b4d0dbb2aa1ff350d"
+   },
+   {
+    "n": "OEBPS/Text/part0090_0002.xhtml",
+    "m": 8,
+    "u": 31234,
+    "s": "d8860d45adb1dad3f4340ad4543a409ea78a8da1da0d53ea2e283f668f2f9412"
+   },
+   {
+    "n": "OEBPS/Text/part0091.xhtml",
+    "m": 8,
+    "u": 417,
+    "s": "f16877e252c713f4a32cd2c8d1be8d7a9fad75d5cdba0ca5d8aa93bb0e3077f9"
+   },
+   {
+    "n": "OEBPS/Text/part0091_0001.xhtml",
+    "m": 8,
+    "u": 40145,
+    "s": "8e3cd03a6dfc68778ddfa0793ab00013cb9079a1ac5796cea5089694f699c62f"
+   },
+   {
+    "n": "OEBPS/Text/part0091_0002.xhtml",
+    "m": 8,
+    "u": 34949,
+    "s": "6a760a7b96561834efedcdf5197523a0704e5989786de0887f95bac4e4dd990e"
+   },
+   {
+    "n": "OEBPS/Text/part0092.xhtml",
+    "m": 8,
+    "u": 367,
+    "s": "5757d6a0874b2cca3673a805073b3bb16e1cb95c8ca3fdd7001ce2c08a57cd0c"
+   },
+   {
+    "n": "OEBPS/Text/part0096.xhtml",
+    "m": 8,
+    "u": 427,
+    "s": "a8de464317c24f2dc91fcffa5bbed0505be0cc16fef73975be4fdc6f4f1964ad"
+   },
+   {
+    "n": "OEBPS/Text/part0097.xhtml",
+    "m": 8,
+    "u": 408,
+    "s": "affe35e0cf8ed54f35b3166c2ea87c4ac3dba508f0141d0b5f810d0037f9ff8f"
+   },
+   {
+    "n": "OEBPS/Text/part0097_0001.xhtml",
+    "m": 8,
+    "u": 33896,
+    "s": "be0b555ee76f07a532c8128e12ddba07e377ee786e1bb7ac5c9ced501ada2646"
+   },
+   {
+    "n": "OEBPS/Text/part0097_0002.xhtml",
+    "m": 8,
+    "u": 37836,
+    "s": "9bfbf448e479b780c4a995e8ebbc47525291e0a1ab360cfb5f098611b5fe0efd"
+   },
+   {
+    "n": "OEBPS/Text/part0098.xhtml",
+    "m": 8,
+    "u": 450,
+    "s": "6c59b49132587c1c56b2002c8587cba22f8e5899c496020a74bde3d7b8056dd6"
+   },
+   {
+    "n": "OEBPS/Text/part0098_0001.xhtml",
+    "m": 8,
+    "u": 33449,
+    "s": "4ecf121cc6fb14ad3363d695c734d4b1af5f3ed2d090851bb3aa27414a1c5641"
+   },
+   {
+    "n": "OEBPS/Text/part0098_0002.xhtml",
+    "m": 8,
+    "u": 34149,
+    "s": "c1440927af86ad9d491d77cb7fd72e6cf6ad1eea678693386768c1fb928702d3"
+   },
+   {
+    "n": "OEBPS/Text/part0099.xhtml",
+    "m": 8,
+    "u": 432,
+    "s": "e654e9edb1286fe76f8f824e5119ebdb8da1a6d7f8a11b20167d8e6685b0b0be"
+   },
+   {
+    "n": "OEBPS/Text/part0099_0001.xhtml",
+    "m": 8,
+    "u": 34927,
+    "s": "2b27f85e10285888d4ee39cf987ee78a526c28064cfa36c28355a3b409ef7055"
+   },
+   {
+    "n": "OEBPS/Text/part0099_0002.xhtml",
+    "m": 8,
+    "u": 33975,
+    "s": "453f28b1c25347f7bc53acf74df5389f188ecf1dc6c15c98e221638859714ce3"
+   },
+   {
+    "n": "OEBPS/Text/part0100.xhtml",
+    "m": 8,
+    "u": 423,
+    "s": "5872c8ff1f6646d89a93a64bc4fc55da1604fa1414c5480cde08c98409587327"
+   },
+   {
+    "n": "OEBPS/Text/part0100_0001.xhtml",
+    "m": 8,
+    "u": 44336,
+    "s": "ac8afe753479530bb73e3c00a1785cee05ea4e65ef5629b8e779167a1fef00e7"
+   },
+   {
+    "n": "OEBPS/Text/part0100_0002.xhtml",
+    "m": 8,
+    "u": 45591,
+    "s": "81b6479b38124b68a1035330ced5dc440fd90489ca5a1088524e37459fb8509e"
+   },
+   {
+    "n": "OEBPS/Text/part0101.xhtml",
+    "m": 8,
+    "u": 429,
+    "s": "6288ffaa1b37c1382174eea92a251319667050a975fd8482812242d528eace07"
+   },
+   {
+    "n": "OEBPS/Text/part0101_0001.xhtml",
+    "m": 8,
+    "u": 34787,
+    "s": "eebe14e965741bfa408baa0cf8140e9adc4fdf5a158d91b17470c08267c99968"
+   },
+   {
+    "n": "OEBPS/Text/part0101_0002.xhtml",
+    "m": 8,
+    "u": 36526,
+    "s": "260128830ff6c699ab9f7f861ad6a6e66c48aa9f163e3c1a0aff6ac3aefb1b28"
+   },
+   {
+    "n": "OEBPS/Text/part0102.xhtml",
+    "m": 8,
+    "u": 423,
+    "s": "62e5441cbebd4ac7cb4490f0cec3c47efe98aec09946ea10b3d74c9a77ee49ec"
+   },
+   {
+    "n": "OEBPS/Text/part0102_0001.xhtml",
+    "m": 8,
+    "u": 24575,
+    "s": "04bb7d59cd5a31f622f0d1cca572fee8aa9b473c05f82fcfb3fad3c90980a0f0"
+   },
+   {
+    "n": "OEBPS/Text/part0102_0002.xhtml",
+    "m": 8,
+    "u": 31823,
+    "s": "7a81be9a4158d343c3c44d096fd4d6293c30a7b94aa2d08fb3fb5275dd47baa5"
+   },
+   {
+    "n": "OEBPS/Text/part0103.xhtml",
+    "m": 8,
+    "u": 441,
+    "s": "f6ef313894efb14965197d0ff979f3a69aecf0a5d5c60a59326511a67d416722"
+   },
+   {
+    "n": "OEBPS/Text/part0103_0001.xhtml",
+    "m": 8,
+    "u": 48343,
+    "s": "a7bb524443b731c8fc525f1a5b986d2b522a42367e82b22835cedd37930cbf47"
+   },
+   {
+    "n": "OEBPS/Text/part0103_0002.xhtml",
+    "m": 8,
+    "u": 44196,
+    "s": "e86b13ee69be09dea2eb0a7eaf5c482362265f72d7a4bc862073ec341ef7412d"
+   },
+   {
+    "n": "OEBPS/Text/part0104.xhtml",
+    "m": 8,
+    "u": 426,
+    "s": "f49c51be4441ed23a71a40545690d71040415d4e31c5ba79be7b4edf75292f2f"
+   },
+   {
+    "n": "OEBPS/Text/part0104_0001.xhtml",
+    "m": 8,
+    "u": 47404,
+    "s": "5ae11cfb115f22a592a033b4f947d2d8bfb4b2cca63f9fcb609be3f3937c20ce"
+   },
+   {
+    "n": "OEBPS/Text/part0104_0002.xhtml",
+    "m": 8,
+    "u": 44298,
+    "s": "e60119dfddd76ac4fc9a4a579721bc1c22eb3b980a41137de51aaf7a7b1ec476"
+   },
+   {
+    "n": "OEBPS/Text/part0105.xhtml",
+    "m": 8,
+    "u": 367,
+    "s": "a6d260a9a9a928c57bb062c0720d2ab6e99c9eaa9819f573fc340f1b3b3e2ae5"
+   },
+   {
+    "n": "OEBPS/Text/part0109.xhtml",
+    "m": 8,
+    "u": 425,
+    "s": "e86af543da83144c7399b32cf76e2557cf7fcaa3a7a57932fd631d780527c8c6"
+   },
+   {
+    "n": "OEBPS/Text/part0110.xhtml",
+    "m": 8,
+    "u": 429,
+    "s": "32804e498e9a2446dca9519605c1dc43cb28e44b2bd0539dc1ac0ebccc772f03"
+   },
+   {
+    "n": "OEBPS/Text/part0110_0001.xhtml",
+    "m": 8,
+    "u": 46655,
+    "s": "3149831840c62b68abb7383be95257e31faa4ef58c17e21658156385925910ec"
+   },
+   {
+    "n": "OEBPS/Text/part0110_0002.xhtml",
+    "m": 8,
+    "u": 44139,
+    "s": "c6b76af9922feba7b332096973f578f285b7522938f6209b38594ac208909690"
+   },
+   {
+    "n": "OEBPS/Text/part0111.xhtml",
+    "m": 8,
+    "u": 423,
+    "s": "5137ce250c14a2c0647c5d1a5b3dcecc34feb412aa7e7d20a67bfedf979b7b03"
+   },
+   {
+    "n": "OEBPS/Text/part0111_0001.xhtml",
+    "m": 8,
+    "u": 48801,
+    "s": "d82ce905910ac4365cf25319aa49edfadea65c6d47e85fe0e0dbca05726c984a"
+   },
+   {
+    "n": "OEBPS/Text/part0111_0002.xhtml",
+    "m": 8,
+    "u": 40221,
+    "s": "892bd6da68ad2970b5a196f51883d56b0d865f71d8910ffed82dd3b41fd5ae40"
+   },
+   {
+    "n": "OEBPS/Text/part0112.xhtml",
+    "m": 8,
+    "u": 441,
+    "s": "78d94fc5ef5abbdc0300fc80a244191d8c510363273f4246c78bb2a63eb3ad46"
+   },
+   {
+    "n": "OEBPS/Text/part0112_0001.xhtml",
+    "m": 8,
+    "u": 11985,
+    "s": "df85cdfbf3e2a36c06813623efc159124ed29c800da194dfe33fbafaa9b914b0"
+   },
+   {
+    "n": "OEBPS/Text/part0112_0002.xhtml",
+    "m": 8,
+    "u": 25922,
+    "s": "3a84a5414155b0573648f5b35153e354fb028bb22270c532f50efaf02c29b0a6"
+   },
+   {
+    "n": "OEBPS/Text/part0112_0003.xhtml",
+    "m": 8,
+    "u": 39453,
+    "s": "11b84866461cb68229d4e8f4c63aaa6a554851e5e41e55e5cfeac5162d45a34c"
+   },
+   {
+    "n": "OEBPS/Text/part0113.xhtml",
+    "m": 8,
+    "u": 432,
+    "s": "a72e37ee79a1ed2130323b2b234c49abcedd2023ee5bcae0fb1f1f5c866f352c"
+   },
+   {
+    "n": "OEBPS/Text/part0113_0001.xhtml",
+    "m": 8,
+    "u": 45995,
+    "s": "9fd9ac1e68f99a41c6907435e2658290477e312f79225a3a69436a7506c55878"
+   },
+   {
+    "n": "OEBPS/Text/part0113_0002.xhtml",
+    "m": 8,
+    "u": 36082,
+    "s": "8191febc764320f0b7262b53b8295491e3c4f3711670eba46219b134c26d80bb"
+   },
+   {
+    "n": "OEBPS/Text/part0114.xhtml",
+    "m": 8,
+    "u": 462,
+    "s": "948e78ce359407b25f0c0ad693ed69aaaaa20f4e0d113786d903301ec9849e02"
+   },
+   {
+    "n": "OEBPS/Text/part0114_0001.xhtml",
+    "m": 8,
+    "u": 33949,
+    "s": "43313b0e79f944102f9aa389ff26726dd6a404d8d1cf7c3c773114bb196c6e0f"
+   },
+   {
+    "n": "OEBPS/Text/part0114_0002.xhtml",
+    "m": 8,
+    "u": 51907,
+    "s": "2752cff67c9192e6c25b3a828a8e930f5134b880bb70d7488a68aca099dbf456"
+   },
+   {
+    "n": "OEBPS/Text/part0115.xhtml",
+    "m": 8,
+    "u": 441,
+    "s": "53826a97597de99d74d0a2f86a32e8026b4f53e4508d4ffcb437f4d7459329a4"
+   },
+   {
+    "n": "OEBPS/Text/part0115_0001.xhtml",
+    "m": 8,
+    "u": 31992,
+    "s": "dc31e0b3041331caa8f55c0804cc6dca7a73eecc8645db568f4b565eabb1bb52"
+   },
+   {
+    "n": "OEBPS/Text/part0115_0002.xhtml",
+    "m": 8,
+    "u": 40153,
+    "s": "21e815be87c85d8dc88184a6a9932523093d9cc8b3afe5c4c15ef9469e80b66e"
+   },
+   {
+    "n": "OEBPS/Text/part0116.xhtml",
+    "m": 8,
+    "u": 432,
+    "s": "17c39a1b3fe78ed10cd5ca8aa4e40eecf66725fed17d90ccf3774686e8ad97e9"
+   },
+   {
+    "n": "OEBPS/Text/part0116_0001.xhtml",
+    "m": 8,
+    "u": 31618,
+    "s": "300479f19ecb87eedb2dcb1a6a37180d05ddc6c31c52e8ca2d494b463accb723"
+   },
+   {
+    "n": "OEBPS/Text/part0116_0002.xhtml",
+    "m": 8,
+    "u": 42163,
+    "s": "1da6ead7b024be1e76f9d4bc73e8c8a2ac459d339932bebd3a5583459b815a99"
+   },
+   {
+    "n": "OEBPS/Text/part0117.xhtml",
+    "m": 8,
+    "u": 450,
+    "s": "a17eede6cc8855297f8fca0ed93bf28b3c4e03f793701ca9507efb151f91c848"
+   },
+   {
+    "n": "OEBPS/Text/part0117_0001.xhtml",
+    "m": 8,
+    "u": 38252,
+    "s": "eb06c0977a3500f0c1878332bee4392d079acd8b77092873f684e960afc5974c"
+   },
+   {
+    "n": "OEBPS/Text/part0117_0002.xhtml",
+    "m": 8,
+    "u": 31154,
+    "s": "b4e6acfc748073db68dacd74c8d0ff2fa59470d0138d288ea88b5d1990024e9e"
+   },
+   {
+    "n": "OEBPS/Text/part0118.xhtml",
+    "m": 8,
+    "u": 4350,
+    "s": "47a80ecf5b3fbba029b966f78e0ea8b8507aaef54a7d7112331153b4f2e0a2d3"
+   },
+   {
+    "n": "OEBPS/Text/part0119.xhtml",
+    "m": 8,
+    "u": 357,
+    "s": "fb9ee52e2b366be3f17b093149f72b5e1db52722a798675334b47cccf7718ca1"
+   },
+   {
+    "n": "OEBPS/Text/part0123.xhtml",
+    "m": 8,
+    "u": 447,
+    "s": "d8b1b5dcdacc832888905488f6c4901840a6f31bd6c36631f85380d5eb094f0a"
+   },
+   {
+    "n": "OEBPS/Text/part0123_0001.xhtml",
+    "m": 8,
+    "u": 32050,
+    "s": "89d4f1cb90510afd78172141d3de99466ea30908b9d838d7a97b94783012bd33"
+   },
+   {
+    "n": "OEBPS/Text/part0123_0002.xhtml",
+    "m": 8,
+    "u": 34872,
+    "s": "07810d4cb5e253e84fd13f2a3265856f260d997e913d2f784f66bffdb3ca67fd"
+   },
+   {
+    "n": "OEBPS/Text/part0124.xhtml",
+    "m": 8,
+    "u": 420,
+    "s": "5b1f0b3d458863c079b711f80b7080708211f26c6ba8fc385ea9eec0d97436f3"
+   },
+   {
+    "n": "OEBPS/Text/part0124_0001.xhtml",
+    "m": 8,
+    "u": 35829,
+    "s": "5c3de2d6b6e25ef6865650a795f1eeeb9bf865d6a7a2aabe7bdff8e3d51730a6"
+   },
+   {
+    "n": "OEBPS/Text/part0124_0002.xhtml",
+    "m": 8,
+    "u": 33624,
+    "s": "33b7f24bd8043bffd118be3b5621ba277783706cc4641736baeef869841fe7c6"
+   },
+   {
+    "n": "OEBPS/Text/part0125.xhtml",
+    "m": 8,
+    "u": 444,
+    "s": "888c1d15f69cda37d480b8a15bcfdcc5c24f784ab9faa87aa06c9a355ad59508"
+   },
+   {
+    "n": "OEBPS/Text/part0125_0001.xhtml",
+    "m": 8,
+    "u": 36045,
+    "s": "eb1475c3df0aba0c1eedcfcaa52cdb51d327cf5b8eff02f1efe21eeed0712198"
+   },
+   {
+    "n": "OEBPS/Text/part0125_0002.xhtml",
+    "m": 8,
+    "u": 33335,
+    "s": "92989129fc7dc851d5572bb512fa3bd0f6d29b57d7f888476e5e7a6ee7871350"
+   },
+   {
+    "n": "OEBPS/Text/part0126.xhtml",
+    "m": 8,
+    "u": 435,
+    "s": "1eea4456951c3fc361bca44a3fc78307b8b8904ae2db5d69c19fd12f4371206c"
+   },
+   {
+    "n": "OEBPS/Text/part0126_0001.xhtml",
+    "m": 8,
+    "u": 33068,
+    "s": "143c4db8253bdcaa613e1fac1a08912e5b223c435b9fb9d64239cf6fb80b7c1d"
+   },
+   {
+    "n": "OEBPS/Text/part0126_0002.xhtml",
+    "m": 8,
+    "u": 33462,
+    "s": "22d1c9e216bf658decf7c036b16bff22f77757a046a6cd61b08846a4bf0ca208"
+   },
+   {
+    "n": "OEBPS/Text/part0127.xhtml",
+    "m": 8,
+    "u": 423,
+    "s": "8e67cb047c133eafff820f4cd470ffa4d1a2bdfefd6f31d5bac14d79d4379b78"
+   },
+   {
+    "n": "OEBPS/Text/part0127_0001.xhtml",
+    "m": 8,
+    "u": 32039,
+    "s": "ba57cd329c4fd7086b19c7f3e5e7c0d9a967b844bd81ca66696ac146565342c0"
+   },
+   {
+    "n": "OEBPS/Text/part0127_0002.xhtml",
+    "m": 8,
+    "u": 32473,
+    "s": "66e0d172ca230640841e2d56ed226f86c72f2ae75b867eda41fbbff204c03c06"
+   },
+   {
+    "n": "OEBPS/Text/part0128.xhtml",
+    "m": 8,
+    "u": 429,
+    "s": "a3614294f47146e5a29ead9e114a61bd051ae98ca3c0dca07fffbc8a49cf82d8"
+   },
+   {
+    "n": "OEBPS/Text/part0128_0001.xhtml",
+    "m": 8,
+    "u": 33021,
+    "s": "6de69137ce0875e8dcad9646ce2647bb4374522ae8e9badc70ee6e1084fab62b"
+   },
+   {
+    "n": "OEBPS/Text/part0128_0002.xhtml",
+    "m": 8,
+    "u": 33834,
+    "s": "ef7a5908c2c9da9976a78b2a008b2bcc2dcfad868868b48878b60efa2f03ec2c"
+   },
+   {
+    "n": "OEBPS/Text/part0129.xhtml",
+    "m": 8,
+    "u": 435,
+    "s": "c1c67474376fc2e5d3b8a782442d341452f456cfb6ab8875a005f5d01bd913d2"
+   },
+   {
+    "n": "OEBPS/Text/part0129_0001.xhtml",
+    "m": 8,
+    "u": 36940,
+    "s": "5ea1c66227dd1f44d8d7f94f46b28fdee8810dca38dd6a647554c89287369c9e"
+   },
+   {
+    "n": "OEBPS/Text/part0129_0002.xhtml",
+    "m": 8,
+    "u": 34875,
+    "s": "f5b20dfe08e7bbbc320217f896b1080ded96644f6adbb23b46f98f79cdde6389"
+   },
+   {
+    "n": "OEBPS/Text/part0130.xhtml",
+    "m": 8,
+    "u": 441,
+    "s": "ea1ebcb96eefd329c20840cc937ca53bc2748771676582763437cf652dd8028c"
+   },
+   {
+    "n": "OEBPS/Text/part0130_0001.xhtml",
+    "m": 8,
+    "u": 36741,
+    "s": "88b8316eac6f86092c924d36af1cddcbd338dc472abe65427663533359ff6f85"
+   },
+   {
+    "n": "OEBPS/Text/part0130_0002.xhtml",
+    "m": 8,
+    "u": 33892,
+    "s": "7ed72cca81fa36f2399a3e9b6bbb995ffd9b63bec955abfa00fb1e923fcab2e5"
+   },
+   {
+    "n": "OEBPS/Text/part0131.xhtml",
+    "m": 8,
+    "u": 414,
+    "s": "27ae0d2e1bccec6cec3fdd3211360905076050c75f7db10b8654cfc9eb994a67"
+   },
+   {
+    "n": "OEBPS/Text/part0131_0001.xhtml",
+    "m": 8,
+    "u": 36205,
+    "s": "ecc2a3668d5221895bbee88828f667ecd4a4be2feb0b26bea7cdf1258e774673"
+   },
+   {
+    "n": "OEBPS/Text/part0131_0002.xhtml",
+    "m": 8,
+    "u": 32654,
+    "s": "5c0e2a0ab063e1ec394c45ef5da5c515b80cd7f6ad5c1f6f7211bf3987ca4634"
+   },
+   {
+    "n": "OEBPS/Text/part0132.xhtml",
+    "m": 8,
+    "u": 432,
+    "s": "72dd74e19a5ebf4b0e5cb20554aaed21e0e1533c20e137aaaa1194145529d739"
+   },
+   {
+    "n": "OEBPS/Text/part0132_0001.xhtml",
+    "m": 8,
+    "u": 28838,
+    "s": "d8647d9e3e73eb32b45385a9e5ffe9cb8ae91995cffb03a1302189bf03168400"
+   },
+   {
+    "n": "OEBPS/Text/part0132_0002.xhtml",
+    "m": 8,
+    "u": 36333,
+    "s": "7307318ed0a81445bd23a254a2b99c4d42933fd657bfa66162fe7e193fbb7225"
+   },
+   {
+    "n": "OEBPS/Text/part0133.xhtml",
+    "m": 8,
+    "u": 4353,
+    "s": "9095fe9111610a380ef014d172fe90825529e139a0a0b3d96b78c2870e646174"
+   },
+   {
+    "n": "OEBPS/toc.ncx",
+    "m": 8,
+    "u": 75632,
+    "s": "d63482adbb8d9964174f96d91d60d2ed7e54564c66fabb7c5cfbb9bc07838b66"
+   }
+  ]
+ }
+]

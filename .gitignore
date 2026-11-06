@@ -1,0 +1,52 @@
+# ---- 构建产物 / 二进制（用 build 脚本自行生成，不进仓库） ----
+*.exe
+*.apk
+*.apk.idsig
+*.dll
+*.so
+*.dylib
+*.pyd
+*.spec
+
+# ---- 语音引擎与模型（第三方面积大，用 VoicePack/install.py 下载） ----
+VoicePack/engine/
+VoicePack/models/
+VoicePack/_download_tmp/
+VoicePack/*.exe
+*.onnx
+*.wav
+*.tar.bz2
+*.parts
+
+# ---- PyInstaller / 打包中间目录 ----
+build/
+dist/
+stage_*/
+isolated/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# ---- 运行时日志与体检输出 ----
+*.log
+apk_audit.txt
+domcheck_final.txt
+
+# ---- 测试样本（体积大且可能含版权内容，请自备书） ----
+_samples/*
+!_samples/expect.json
+
+# ---- 一次性开发脚本 / 本地环境 ----
+_patch_*.py
+_fetch_fast.py
+_probe_*.js
+build.local.cmd
+*.keystore
+.env
+
+# ---- 系统与编辑器 ----
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
