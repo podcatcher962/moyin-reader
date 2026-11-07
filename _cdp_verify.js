@@ -61,12 +61,14 @@ function get(port, p, method) {
 }
 
 async function main() {
-  // 回归用样本：工作区里没留大副本时，从本机原始书库临时补一份
-  const SRC = {
-    'zhongguo.epub': 'D:\\C geng\\书籍下载\\2021年1月余秋雨书籍\\中国文脉.epub',
-    'rulin.epub': 'D:\\C geng\\书籍下载\\好读\\吳敬梓 儒林外史.epub',
-    'bigbook.epub': 'D:\\C geng\\书籍下载\\侯卫东官场笔记（1-8册 巴国侯氏）.epub'
-  };
+  // 回归用样本：工作区里没留大副本时，从本机原始书库临时补一份。
+  // 真实书库路径写在 _local_books.json（已在 .gitignore，不入库），避免个人路径进公开仓库。
+  let SRC = {};
+  const localCfg = path.join(HERE, '_local_books.json');
+  if (fs.existsSync(localCfg)) {
+    try { SRC = JSON.parse(fs.readFileSync(localCfg, 'utf8')); }
+    catch (e) { console.warn('  _local_books.json 解析失败，跳过样本补齐'); }
+  }
   Object.keys(SRC).forEach(n => {
     const d = path.join(SAMPLES, n);
     if (!fs.existsSync(d) && fs.existsSync(SRC[n])) fs.copyFileSync(SRC[n], d);
