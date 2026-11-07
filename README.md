@@ -19,9 +19,9 @@
 
 ### 截图
 
-| 统信 UOS 20 上运行（真机实测） | 同一台 UOS 的桌面 |
-|---|---|
-| ![UOS](docs/screenshots/linux-uos.png) | ![UOS 桌面](docs/screenshots/linux-desktop.png) |
+**统信 UOS 20 专业版上运行**（真机实测，独立窗口、无地址栏）：
+
+![统信 UOS 上运行](docs/screenshots/linux-uos.png)
 
 | 翻页 · 双栏 · 1920 宽 | 翻页 · 单栏 · 羊皮纸 |
 |---|---|
