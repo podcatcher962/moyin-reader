@@ -51,3 +51,14 @@ Thumbs.db
 desktop.ini
 .idea/
 .vscode/
+
+# 虚拟机调试密钥（勿提交）
+_vmkey
+_vmkey.pub
+_vm_cmd.txt
+_vm_out.log
+_vm_inject.txt
+_vm_shot*.png
+_vm_relay.py
+get-pip.py
+_uos_*.png

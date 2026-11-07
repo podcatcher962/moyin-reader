@@ -35,7 +35,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 APP = 'MoYinReader'
 APP_CN = '墨吟阅读器'
-VER = '1.10.0'
+VER = '1.10.1'
 VOICE_PORT = 8177
 PORTS = (38975, 38976, 0)
 CREATE_NO_WINDOW = 0x08000000
@@ -92,6 +92,15 @@ def norm_net_path(raw):
     p = p.strip('"').strip("'").strip()
     if not p:
         return ''
+    if not IS_WIN:
+        # Linux / macOS 上「网络位置」就是挂载点（/mnt/nas、~/books、smb:// 之类），
+        # 路径必须原样保留：早先无条件把 / 换成 \，会把 /tmp/x 变成「\\tmp\x」，整条路径失效。
+        if p.startswith('\\\\') or p.startswith('//') or p.startswith('smb://'):
+            return p
+        q = os.path.expanduser(p)
+        while len(q) > 1 and q.endswith('/'):
+            q = q[:-1]                    # /mnt/nas/books/ → /mnt/nas/books
+        return q
     p = p.replace('/', '\\')
     if p.startswith('\\\\?\\'):
         p = p[4:]
@@ -1040,11 +1049,18 @@ def selftest(out=None):
                      % str(jj.get('error'))[:44])
         finally:
             shutil.rmtree(tmpd, ignore_errors=True)
-        ok &= ck(norm_net_path('//192.168.1.10/Books') == '\\\\192.168.1.10\\Books', '斜杠写的共享路径能纠正成 UNC')
-        ok &= ck(norm_net_path('192.168.1.10/Books') == '\\\\192.168.1.10\\Books', '省略开头的 \\\\ 也能认')
-        ok &= ck(norm_net_path('D:/Desktop') == 'D:\\Desktop', '本地路径的斜杠也纠正')
+        if IS_WIN:
+            ok &= ck(norm_net_path('//192.168.1.10/Books') == '\\\\192.168.1.10\\Books', '斜杠写的共享路径能纠正成 UNC')
+            ok &= ck(norm_net_path('192.168.1.10/Books') == '\\\\192.168.1.10\\Books', '省略开头的 \\\\ 也能认')
+            ok &= ck(norm_net_path('D:/Desktop') == 'D:\\Desktop', '本地路径的斜杠也纠正')
+            ok &= ck(is_net_path('\\\\nas\\books') and not is_net_path('D:\\Desktop'), '网络位置判定正确')
+        else:
+            # Linux / macOS：网络位置是挂载点，路径必须原样保留（换成反斜杠会直接失效）
+            ok &= ck(norm_net_path('/mnt/nas/books/') == '/mnt/nas/books', '挂载点路径原样保留、去掉尾斜杠')
+            ok &= ck(norm_net_path('~/books').startswith('/'), '~ 能展开成绝对路径')
+            ok &= ck(norm_net_path('\\\\nas\\books') == '\\\\nas\\books', 'UNC 原样返回，不去破坏它')
+            ok &= ck(not is_net_path('/mnt/nas/books'), '挂载点不算 UNC 网络位置（已由系统挂载）')
         ok &= ck(norm_net_path('  ') == '', '空路径被拒')
-        ok &= ck(is_net_path('\\\\nas\\books') and not is_net_path('D:\\Desktop'), '网络位置判定正确')
         try:
             urllib.request.urlopen('http://127.0.0.1:%d/__dirfile?sid=x&i=0' % PORT, timeout=5)
             ok &= ck(False, '无效会话应 403')
@@ -1224,6 +1240,52 @@ def domcheck(path):
 
 
 # ---------------------------------------------------------------- 主入口
+def browser_profiles():
+    """候选的 chromium 系浏览器。按「信创系统上更可能装」的顺序排。"""
+    return [
+        'org.deepin.browser',      # 统信 / Deepin 自带
+        'chromium', 'chromium-browser',
+        'browser',                 # UOS 的封装脚本
+        'google-chrome', 'google-chrome-stable',
+        'microsoft-edge', 'microsoft-edge-stable',
+        'brave-browser', '360browser', 'qqbrowser',
+    ]
+
+
+def open_ui(u):
+    """Linux / macOS 上开界面：优先 --app 模式（无地址栏、独立窗口）。
+
+    --app 是 Chromium 系通用参数，配合独立的 user-data-dir 才不会把请求
+    转交给已经开着的浏览器实例（那种情况会退化成普通标签页）。
+
+    返回 Popen 对象；发不起来返回 None。
+    """
+    profile = os.path.join(local_dir(), 'ui-profile')
+    try:
+        os.makedirs(profile, exist_ok=True)
+    except Exception:
+        profile = ''
+    for name in browser_profiles():
+        exe = shutil.which(name)
+        if not exe:
+            continue
+        cmd = [exe, '--app=' + u, '--window-size=1180,820',
+               '--no-first-run', '--no-default-browser-check',
+               '--disable-features=Translate']
+        if profile:
+            cmd.append('--user-data-dir=' + profile)
+        try:
+            return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            continue
+    try:
+        import webbrowser
+        webbrowser.open(u)
+    except Exception:
+        pass
+    return None
+
+
 def main():
     if sys.stdout is None:
         sys.stdout = open(os.devnull, 'w')
@@ -1290,17 +1352,18 @@ def main():
     except Exception as e:
         if IS_WIN:
             raise
-        import webbrowser
-        print('[墨吟] 原生窗口没起来（%s）。' % e)
-        print('[墨吟] 改用系统浏览器打开：%s' % url())
-        print('[墨吟] 关掉这个终端窗口即退出。')
+        u = url()
+        print('[墨吟] 原生窗口没起来（%s），改用浏览器打开。' % e)
+        print('[墨吟] 地址：%s' % u)
+        proc = open_ui(u)
         try:
-            webbrowser.open(url())
-        except Exception:
-            pass
-        try:
-            while True:
-                time.sleep(3600)
+            if proc is not None:
+                # --app 窗口关掉 = 进程结束 = 程序退出；这类窗口没有别的收尾方式
+                while proc.poll() is None:
+                    time.sleep(0.8)
+            else:
+                while True:
+                    time.sleep(3600)
         except KeyboardInterrupt:
             pass
         finally:

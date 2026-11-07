@@ -121,6 +121,11 @@
       '<p>The shelf + reader layout and the speech scheduling were informed by Koodo Reader on this machine, with all code rewritten from zero and no dependencies: EPUB unzipping, OPF / NCX / Nav contents, body and illustration parsing are all built in, with no external scripts or CDN.</p>' +
       '<p class="kv">Speech can use the free open-source offline neural voices (sherpa-onnx + AISHELL3 multi-speaker VITS): no network, no fees, no account. The model contains 174 Chinese speakers (148 female + 26 male), 11 curated by default, and supports role-based reading. The library ships in <code>VoicePack</code>; the full Windows EXE has it appended inside, so one file is enough.</p>' +
       '<p>Released under the <b>MIT License</b>: use, modify and redistribute freely, including commercially, keeping the copyright and license notice. Full terms under <b>Open source &amp; license</b>.</p>' +
+      '<h3>What changed in 1.10.1</h3><ul>' +
+      '<li><b>The Linux / UOS build is a real program now</b>: not "HTML plus a launcher script" but a 10 MB standalone executable. Double-click and it runs — <b>no Python, no dependencies</b>. Verified on UOS Desktop 20 Professional (x86_64): shelf, import, page turning and themes all work.</li>' +
+      '<li>It only needs the system libc / libz / libpthread (glibc 2.28+), so UOS 20, Kylin V10 and openEuler 20.03+ run it as is.</li>' +
+      '<li>The window uses the system browser in app mode: no address bar, no tabs, a standalone window; closing it quits the program.</li>' +
+      '<li>On aarch64 (Phytium / Kunpeng) and loongarch64 (Loongson) it still uses the Python or web route; build-linux.sh in the package builds a native binary on that machine.</li></ul>' +
       '<h3>What changed in 1.10</h3><ul>' +
       '<li><b>Drag files in</b>: drop TXT / EPUB (or a whole folder) onto the window and it imports straight away — no need to open the import dialog and browse. Dropping while reading does not interrupt you.</li>' +
       '<li><b>Window size and position are remembered</b> between launches; a window left off-screen falls back to the default position.</li>' +
