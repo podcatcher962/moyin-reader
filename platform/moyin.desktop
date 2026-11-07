@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=墨吟阅读器
+Name[en]=MoYin Reader
+GenericName=电子书阅读器
+GenericName[en]=E-book reader
+Comment=TXT / EPUB 阅读与朗读，本地离线
+Comment[en]=Offline TXT / EPUB reader with text-to-speech
+Exec=bash %k/../start-linux.sh
+Icon=%k/../moyin.png
+Terminal=false
+Categories=Office;Viewer;Literature;
+Keywords=read;ebook;epub;txt;reader;
+StartupWMClass=MoYinReader

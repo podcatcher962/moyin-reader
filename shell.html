@@ -171,6 +171,14 @@ html[data-motion="low"] *{animation:none!important;transition:none!important}
 .mbox .seg{display:flex;gap:5px;flex-wrap:wrap}
 .mbox .kv{color:var(--tx2);font-size:.9em}
 .mbox code{background:var(--card2);padding:1px 5px;border-radius:4px;font-size:.9em}
+/* 拖文件进来时的提示层 */
+#dropHint{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;
+  background:rgba(20,22,26,.62);backdrop-filter:blur(2px)}
+#dropHint.on{display:flex}
+#dropHint .dh{padding:26px 34px;border-radius:14px;border:2px dashed var(--acc);
+  background:var(--card);color:var(--tx);text-align:center;box-shadow:0 18px 46px rgba(0,0,0,.5)}
+#dropHint .dh b{display:block;font-size:1.16em;margin-bottom:6px;color:var(--acc)}
+#dropHint .dh span{font-size:.9em;color:var(--tx2)}
 #toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);background:#000c;color:#fff;padding:10px 16px;border-radius:10px;z-index:90;display:none;max-width:86vw;text-align:center;font-size:.9em}
 #toast.on{display:block}
 .docnav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
@@ -276,6 +284,7 @@ html[data-mode="page"] #page.pg-fade{animation:pgFade .26s ease}
    否则一本书写 body{margin:5%} 就能把双栏挤出屏幕 */
 html[data-mode] #page{margin:0 auto;padding:34px var(--padx) 70px;
   font-family:var(--ff);font-size:var(--fs);line-height:var(--lh);letter-spacing:var(--ls);
+  font-weight:var(--fw,400);
   background:var(--paper);color:var(--paperTx)}
 /* 翻页：上下留白统一走这里，底部多留一成行高，避免最后一行贴住工具栏 */
 html[data-mode="page"] #page{padding:24px var(--padx) calc(24px + .9em)}
@@ -526,6 +535,7 @@ body.imm #clockFloat{display:block}
     <button id="restTipOk" class="pri" data-i18n="休息一下">休息一下</button>
     <button id="restTipSnooze" data-i18n="稍后再提">稍后再提</button>
   </div>
+  <div id="dropHint"><div class="dh"><b>松手导入</b><span>把 TXT / EPUB 拖进来就行，也可以拖整个文件夹</span></div></div>
   <div id="toast"></div>
 </div>
 <script>/*__APP_JS__*/</script>

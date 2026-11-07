@@ -35,10 +35,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 APP = 'MoYinReader'
 APP_CN = '墨吟阅读器'
-VER = '1.9.6'
+VER = '1.10.0'
 VOICE_PORT = 8177
 PORTS = (38975, 38976, 0)
 CREATE_NO_WINDOW = 0x08000000
+IS_WIN = os.name == 'nt'
+IS_MAC = sys.platform == 'darwin'
+IS_LINUX = (not IS_WIN) and (not IS_MAC)
 
 # 完整版 EXE 把 VoicePack 压成 zip 追加在 PE 尾部（overlay），文件末尾
 # 56 字节是索引 '<8sQQ32s'。轻量版没有这段，会自动回落到同目录 VoicePack。
@@ -130,8 +133,12 @@ def scan_dir(root, limit=500, min_size=1024, max_size=300 * 1024 * 1024):
 
 
 def ask_folder(title):
-    """原生「选择文件夹」对话框（SHBrowseForFolderW），不经过 WebView2 的文件选择器。"""
-    if os.name != 'nt':
+    """原生「选择文件夹」对话框，绕开 WebView2 那个「选择要上传的文件夹」的浏览器选择器。"""
+    if IS_MAC:
+        return ask_folder_mac(title)
+    if IS_LINUX:
+        return ask_folder_linux(title)
+    if not IS_WIN:
         return ''
     import ctypes
     from ctypes import wintypes
@@ -174,6 +181,55 @@ def ask_folder(title):
             pass
 
 
+def ask_folder_mac(title):
+    """macOS：用 AppleScript 调系统原生选文件夹面板。"""
+    try:
+        script = ('POSIX path of (choose folder with prompt "%s")'
+                  % str(title).replace('"', "'"))
+        r = subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=600)
+        if r.returncode != 0:
+            return ''                      # 用户取消
+        return (r.stdout or '').strip().rstrip('/') or ''
+    except Exception:
+        return ''
+
+
+def ask_folder_linux(title):
+    """Linux / 信创系统：zenity → kdialog → tkinter，谁在就用谁。
+
+    信创机器常常装不了额外依赖，所以三级兜底；tkinter 是 python3 自带的
+    （部分发行版拆到 python3-tk 包里），最后还有一层保底：返回空，让用户
+    改从「网络位置」手填路径。
+    """
+    for cmd in (
+        ['zenity', '--file-selection', '--directory', '--title=' + str(title)],
+        ['kdialog', '--getexistingdirectory', os.path.expanduser('~'), '--title', str(title)],
+    ):
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+            if r.returncode != 0:
+                if r.returncode in (1, 255):      # 取消
+                    return ''
+                continue
+            out = (r.stdout or '').strip()
+            if out:
+                return out
+        except FileNotFoundError:
+            continue
+        except Exception:
+            continue
+    try:
+        import tkinter
+        from tkinter import filedialog
+        root = tkinter.Tk()
+        root.withdraw()
+        d = filedialog.askdirectory(title=str(title))
+        root.destroy()
+        return d or ''
+    except Exception:
+        return ''
+
+
 # ---------------------------------------------------------------- 路径
 def res_dir():
     """PyInstaller onefile 解包目录优先；源码运行时取脚本同级。"""
@@ -187,14 +243,77 @@ def base_dir():
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def data_home():
+    '''各平台的「应用数据」根目录。'''
+    if IS_WIN:
+        return os.environ.get('LOCALAPPDATA') or os.path.join(os.path.expanduser('~'), 'AppData', 'Local')
+    if IS_MAC:
+        return os.path.join(os.path.expanduser('~'), 'Library', 'Application Support')
+    return os.environ.get('XDG_DATA_HOME') or os.path.join(os.path.expanduser('~'), '.local', 'share')
+
+
 def local_dir():
-    d = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), APP)
+    d = os.path.join(data_home(), APP)
     os.makedirs(d, exist_ok=True)
     return d
 
 
 def page_file():
     return os.path.join(res_dir(), 'MoYinReader.html')
+
+
+def geo_file():
+    return os.path.join(local_dir(), 'window.json')
+
+
+def load_geo():
+    # 记住上次的窗口大小与位置；读不到就用默认值
+    try:
+        with open(geo_file(), 'r', encoding='utf-8') as f:
+            d = json.load(f)
+        out = {}
+        for k in ('w', 'h', 'x', 'y'):
+            v = d.get(k)
+            if isinstance(v, (int, float)) and abs(v) < 30000:
+                out[k] = int(v)
+        # 宽高太小/太大说明上次异常，丢掉
+        if out.get('w', 0) < 700 or out.get('h', 0) < 480:
+            out.pop('w', None)
+            out.pop('h', None)
+        # 屏幕外的坐标也丢掉，免得窗口跑到看不见的地方
+        if out.get('x', 0) < -4000:
+            out.pop('x', None)
+            out.pop('y', None)
+        if out.get('y', 0) < -4000:
+            out.pop('x', None)
+            out.pop('y', None)
+        return out
+    except Exception:
+        return {}
+
+
+def save_geo(win):
+    # 退出时记下窗口大小与位置（pywebview 各平台属性支持不一，能读多少读多少）
+    d = {}
+    try:
+        d['w'] = int(win.width)
+        d['h'] = int(win.height)
+    except Exception:
+        pass
+    for k in ('x', 'y'):
+        try:
+            v = getattr(win, k)
+            if isinstance(v, (int, float)):
+                d[k] = int(v)
+        except Exception:
+            pass
+    if not d:
+        return
+    try:
+        with open(geo_file(), 'w', encoding='utf-8') as f:
+            json.dump(d, f)
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------- 注入脚本
@@ -553,8 +672,11 @@ class _Slice(io.RawIOBase):
 
 
 def bundle_info():
-    """(exe 路径, zip 起点, zip 长度, sha256)；轻量版返回 None。"""
-    if not getattr(sys, 'frozen', False):
+    """(exe 路径, zip 起点, zip 长度, sha256)；轻量版返回 None。
+
+    PE 尾部追加 zip 这一套只在 Windows 上做，其他平台返回 None。
+    """
+    if not IS_WIN or not getattr(sys, 'frozen', False):
         return None
     exe = sys.executable
     try:
@@ -578,7 +700,7 @@ def window_title():
 
 
 def cache_dir():
-    base = os.environ.get('LOCALAPPDATA') or tempfile.gettempdir()
+    base = data_home() if (IS_WIN or os.access(data_home(), os.W_OK)) else tempfile.gettempdir()
     return os.path.join(base, APP, 'VoicePack')
 
 
@@ -724,8 +846,14 @@ def start_voice_inproc(vp):
 
 
 def ensure_voice():
-    """服务没起就拉起：同进程线程 → 独立 MoYinVoice.exe → 系统 Python。"""
+    """服务没起就拉起：同进程线程 → 独立 MoYinVoice.exe → 系统 Python。
+
+    语音引擎是 Windows 二进制（sherpa-onnx .exe）。Linux / macOS 上没有它，
+    直接返回 'unsupported'，页面会自动回落到系统语音，不影响看书。
+    """
     global VOICE_PROC
+    if not IS_WIN:
+        return 'unsupported'
     if voice_health():
         return 'running'
     vp = prepare_voice_dir()
@@ -741,14 +869,14 @@ def ensure_voice():
         if os.path.isfile(exe):
             VOICE_PROC = subprocess.Popen(
                 [exe, str(VOICE_PORT), '--no-open'], cwd=vp, env=env,
-                creationflags=CREATE_NO_WINDOW,
+                creationflags=(CREATE_NO_WINDOW if IS_WIN else 0),
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return 'started-exe' + ('-bundled' if bundled else '')
         py = shutil.which('python') or shutil.which('python3')
         if py and os.path.isfile(script):
             VOICE_PROC = subprocess.Popen(
                 [py, script, str(VOICE_PORT), '--no-open'], cwd=vp, env=env,
-                creationflags=CREATE_NO_WINDOW,
+                creationflags=(CREATE_NO_WINDOW if IS_WIN else 0),
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return 'started-python'
     except OSError:
@@ -786,6 +914,14 @@ def run_tts_server(args):
 
 # ---------------------------------------------------------------- 单实例
 def single_instance():
+    if not IS_WIN:
+        try:
+            import fcntl
+            f = open(os.path.join(local_dir(), 'app.lock'), 'a+')
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return f                # 持有引用，锁才不释放
+        except Exception:
+            return None
     import msvcrt
     f = open(os.path.join(local_dir(), 'app.lock'), 'a+')
     try:
@@ -1124,22 +1260,56 @@ def main():
         # 给引擎一点初始化时间，页面自己的 localProbe 会重试
         pass
 
-    import webview
-    webview.settings['ALLOW_DOWNLOADS'] = True
-    storage = os.path.join(local_dir(), 'webview')
-    os.makedirs(storage, exist_ok=True)
-    w = webview.create_window(window_title(), url(),
-                              width=1180, height=800, min_size=(760, 520),
-                              background_color='#F5F2EA', text_select=True)
+    # 原生窗口：Windows/macOS 走各自内核，Linux 走 GTK/Qt(WebKit)。
+    # 信创机器上常见的坑是「装了 pywebview 但没装 webkit2gtk」，
+    # 这时不报错退出，而是退回系统浏览器，照样能用。
     try:
-        webview.start(private_mode=False, storage_path=storage, debug=False)
-    finally:
+        import webview
+        webview.settings['ALLOW_DOWNLOADS'] = True
+        storage = os.path.join(local_dir(), 'webview')
+        os.makedirs(storage, exist_ok=True)
+        geo = load_geo()
+        w = webview.create_window(window_title(), url(),
+                                  width=geo.get('w') or 1180, height=geo.get('h') or 800,
+                                  x=geo.get('x'), y=geo.get('y'),
+                                  min_size=(760, 520),
+                                  background_color='#F5F2EA', text_select=True)
         try:
-            SERVER.shutdown()
+            webview.start(private_mode=False, storage_path=storage, debug=False)
+        finally:
+            try:
+                save_geo(w)
+            except Exception:
+                pass
+            try:
+                SERVER.shutdown()
+            except Exception:
+                pass
+            stop_voice_proc()
+        return 0
+    except Exception as e:
+        if IS_WIN:
+            raise
+        import webbrowser
+        print('[墨吟] 原生窗口没起来（%s）。' % e)
+        print('[墨吟] 改用系统浏览器打开：%s' % url())
+        print('[墨吟] 关掉这个终端窗口即退出。')
+        try:
+            webbrowser.open(url())
         except Exception:
             pass
-        stop_voice_proc()
-    return 0
+        try:
+            while True:
+                time.sleep(3600)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            try:
+                SERVER.shutdown()
+            except Exception:
+                pass
+            stop_voice_proc()
+        return 0
 
 
 if __name__ == '__main__':

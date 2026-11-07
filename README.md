@@ -59,6 +59,19 @@
 |---|---|
 | ![英文界面](docs/screenshots/shelf-en.png) | ![分角色](docs/screenshots/role-bar.png) |
 
+### 平台
+
+| 平台 | 怎么用 | 说明 |
+|---|---|---|
+| **Windows** | 下载 `MoYinReader.exe` 双击 | 完整版，174 个离线语音与分角色朗读都在这一版 |
+| **安卓** | 下载 `MoYinReader.apk` 安装 | 页面内嵌，朗读走系统 TTS |
+| **任意系统** | 双击 `MoYinReader.html` | 单文件网页版，功能与桌面版一致 |
+| **Linux / 信创**（统信 UOS、麒麟、openEuler、Deepin） | 解压 `MoYinReader-Linux-*.tar.gz`，双击「墨吟阅读器.sh」 | 免安装 Python；x86_64 / aarch64（飞腾鲲鹏）/ loongarch64（龙芯）通用 |
+| **macOS**（Intel / Apple Silicon） | 解压 `MoYinReader-macOS-*.zip`，双击「墨吟阅读器.command」 | 免安装 Python |
+
+Linux / 信创 与 macOS 包里另附 `build-*.sh`，想打成二进制或 `.app` 可以在自己机器上跑一次。
+朗读在两个平台都走系统语音；分角色朗读需要 Windows 版打包的神经语音引擎。
+
 ### 功能
 
 | 类别 | 说明 |
@@ -71,6 +84,7 @@
 | 📤 导出分享 | 笔记一键导出 Markdown；划线生成带书名与署名的分享图（PNG），也可只复制文字 |
 | 📊 阅读总结 | 累计时长、进度、批注 / 书签数、逐章摘录一页看完，可复制或导出成笔记 |
 | 🗂️ 书架 | 自建书架分组、★收藏、批量移动 / 移除、改书名作者、整目录导入、阅读计时 |
+| 📥 拖拽导入 | 把 TXT / EPUB（或整个文件夹）直接拖进窗口，松手就导入，正在看书也不打断 |
 | 🖧 网络位置 | **桌面版**可直接读局域网共享（SMB）：填 `\\192.168.1.10\Books`、映射盘 `Z:\书` 或本机任意路径，像本地文件夹一样扫描导入，凭据交给 Windows 记住 |
 | 🌐 双语 | 全窗口中英切换（含设置、弹窗、提示与全部说明文档），选择记住 |
 | 🔖 续听 | 「听到哪」与「读到哪」分开记，书架卡片一键「续听 · 第 N 章」接着念 |
@@ -90,7 +104,7 @@
 |---|---|---|
 | `MoYinReader.exe` | 约 47 MB | **完整版**，语音库打包在 exe 尾部，只拷这一个文件就能听，首次启动自动释放到缓存 |
 | `MoYinReader_Lite.exe` | 约 17 MB | 轻量版，需同目录放 `VoicePack` 文件夹（约 53 MB） |
-| `MoYinReader.html` | 约 341 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
+| `MoYinReader.html` | 约 346 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
 | `MoYinReader.apk` | 约 177 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
 
 不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本；或者用 **[在线版](https://podcatcher962.github.io/moyin-reader/)** 什么都不装。
@@ -145,7 +159,7 @@ _pkg_win/build_exe.py              exe 打包 + 验收
 _pkg_apk/TtsBridge.java            安卓 TTS 桥（系统语音）
 _pkg_apk/build_apk.py              apk 打包 + 体检
 _cdp_verify.js                     117 项界面回归（headless Edge，CDP）
-_check_v19.js                     112 项回归（分栏 / 主题面板 / 时钟 / 休息提醒 / 网络位置）
+_check_v19.js                     124 项回归（分栏 / 主题面板 / 时钟 / 休息提醒 / 网络位置）
 _check_v18.js                      95 项版式回归（分栏 / 翻页 / 主题 / 自动阅读 / 全屏）
 _check_v17.js  _check_v171.js      1.7 与 1.7.1 的回归
 _check_voices.js  _check_role.js   声线 / 分角色朗读回归（22 / 48 项）
@@ -227,7 +241,7 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 |---|---|---|
 | `MoYinReader.exe` | ~47 MB | Full build, voice pack appended inside the exe |
 | `MoYinReader_Lite.exe` | ~17 MB | Needs a `VoicePack` folder (~53 MB) next to it |
-| `MoYinReader.html` | ~341 KB | Standalone web build |
+| `MoYinReader.html` | ~346 KB | Standalone web build |
 | `MoYinReader.apk` | ~177 KB | Android shell with the page embedded |
 
 Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** — or open the **[web version](https://podcatcher962.github.io/moyin-reader/)** and install nothing.

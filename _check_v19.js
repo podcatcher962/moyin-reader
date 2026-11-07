@@ -6,6 +6,16 @@ const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
 
 let pass = 0, fail = 0;
 const ok = (c, label, extra) => { if (c) { pass++; console.log('  ok   ' + label); } else { fail++; console.log('  FAIL ' + label + '  ' + (extra === undefined ? '' : JSON.stringify(extra))); } };
+/* 版本号按段比较：字符串比较会把 1.10.0 判成小于 1.9.0 */
+const vge = (a, b) => {
+  const A = String(a).split('.').map(Number), B = String(b).split('.').map(Number);
+  for (let i = 0; i < Math.max(A.length, B.length); i++) {
+    const x = A[i] || 0, y = B[i] || 0;
+    if (x !== y) return x > y;
+  }
+  return true;
+};
+
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const STUB = `(function(){
@@ -116,7 +126,7 @@ async function main() {
   await viewsize(1280, 900);
   await send('Page.navigate', { url: APP });
   ok(await ready(), '页面初始化完成');
-  ok((await ev('MY.VER')) >= '1.9.0', '版本号 ≥ 1.9.0', await ev('MY.VER'));
+  ok(vge(await ev('MY.VER'), '1.9.0'), '版本号 ≥ 1.9.0', await ev('MY.VER'));
 
   /* 一部长文：多栏才有东西可排 */
   await ev(`(async()=>{var t='第一章 起风\\n';
@@ -450,6 +460,71 @@ async function main() {
   const a4 = await align();
   ok(a4.cols === 2, '收起侧栏后自动回到双栏', a4);
   ok(a4.n > 4 && Math.abs(a4.leftMost - a4.wantL) <= 3, '收起侧栏后正文对齐正常', a4);
+
+  console.log('=== 1.10 新增：拖拽导入 / 字重 / 目录搜索');
+  /* 字重：设置里四档，选粗之后正文计算样式要变 */
+  await ev("document.getElementById('btnSet').click()"); await sleep(400);
+  ok(await ev("document.querySelectorAll('#modalBody [data-set=\"fw\"]').length") === 4, '设置里有四档字重',
+    await ev("document.querySelectorAll('#modalBody [data-set=\"fw\"]').length"));
+  await ev("(function(){document.querySelector('#modalBody [data-set=\"fw\"][data-v=\"700\"]').click();return 1;})()");
+  await sleep(450);
+  ok(String(await ev("getComputedStyle(document.getElementById('page')).fontWeight")) === '700', '选「粗」正文真的变粗',
+    await ev("getComputedStyle(document.getElementById('page')).fontWeight"));
+  await ev("(function(){document.querySelector('#modalBody [data-set=\"fw\"][data-v=\"400\"]').click();return 1;})()");
+  await sleep(400);
+  await ev("document.getElementById('modalX').click()"); await sleep(250);
+
+  /* 拖拽导入：造一个 File 塞进 DataTransfer，再派发 drop */
+  await ev("(function(){MY.showView('lib');return 1;})()"); await sleep(400);
+  const dropBefore = await ev("MY.BOOKS.length");
+  await ev(`(function(){
+    var txt='拖拽导入测试\\n\\n' + '夜色像一层薄薄的尘，落在旧城的瓦上没有声响。'.repeat(40);
+    var dt=new DataTransfer();
+    dt.items.add(new File([txt],'拖进来的书.txt',{type:'text/plain'}));
+    var ev2=new DragEvent('dragenter',{bubbles:true,dataTransfer:dt});
+    window.dispatchEvent(ev2);
+    var hint = document.getElementById('dropHint').classList.contains('on');
+    var ev3=new DragEvent('drop',{bubbles:true,dataTransfer:dt});
+    window.dispatchEvent(ev3);
+    return JSON.stringify({hint:hint, closed:!document.getElementById('dropHint').classList.contains('on')});
+  })()`).then(v => {
+    const r = JSON.parse(v);
+    ok(r.hint === true, '拖文件进来时出现「松手导入」提示');
+    ok(r.closed === true, '松手后提示层自动收起');
+  });
+  await sleep(1500);
+  ok(await ev("MY.BOOKS.some(function(b){return b.name==='拖进来的书';})"), '拖进来的书真的进了书架',
+    await ev("MY.BOOKS.map(function(b){return b.name;}).slice(-3)"));
+  ok((await ev("MY.BOOKS.length")) === dropBefore + 1, '书架多了一本',
+    { before: dropBefore, after: await ev("MY.BOOKS.length") });
+
+  /* 拖非书文件：不导入，但要给提示 */
+  const nonBook = await ev(`(function(){
+    var b0=MY.BOOKS.length;
+    var dt=new DataTransfer();
+    dt.items.add(new File(['x'],'照片.jpg',{type:'image/jpeg'}));
+    window.dispatchEvent(new DragEvent('drop',{bubbles:true,dataTransfer:dt}));
+    return b0;
+  })()`);
+  await sleep(600);
+  ok((await ev("MY.BOOKS.length")) === nonBook, '拖进来的非 TXT/EPUB 不会被当成书');
+
+  /* 目录搜索 */
+  await ev("MY.openBook(MY.BOOKS[MY.BOOKS.length-1].id)"); await sleep(1400);
+  await ev("(function(){document.getElementById('btnToc').click();return 1;})()"); await sleep(500);
+  ok(await ev("!!document.getElementById('tocQ')"), '目录侧栏顶部有搜索框');
+  const total = await ev("document.querySelectorAll('#tocList .it').length");
+  await ev(`(function(){var i=document.getElementById('tocQ');i.value='章';i.dispatchEvent(new Event('input',{bubbles:true}));return 1;})()`);
+  await sleep(400);
+  const hit = await ev("document.querySelectorAll('#tocList .it').length");
+  ok(hit > 0 && hit <= Math.max(1, total), '输入关键字后目录被过滤', { total, hit });
+  ok(await ev("document.getElementById('tocQ').value") === '章', '过滤时输入框不丢焦点与内容');
+  await ev(`(function(){var i=document.getElementById('tocQ');i.value='绝对不存在的章节名';i.dispatchEvent(new Event('input',{bubbles:true}));return 1;})()`);
+  await sleep(400);
+  ok((await ev("document.querySelectorAll('#tocList .it').length")) === 0, '搜不到时列表为空');
+  ok(/没有匹配/.test(await ev("document.getElementById('tocList').textContent")), '并且给出「没有匹配的章节」提示',
+    (await ev("document.getElementById('tocList').textContent")).slice(0, 20));
+  await ev("(function(){document.getElementById('btnToc').click();return 1;})()"); await sleep(300);
 
   console.log('=== 网络位置导入（SMB / 映射盘）');
   ok(await ev("document.getElementById('btnImportNet').hidden"), '网页版不显示「网络位置」（没有本地文件权限）');

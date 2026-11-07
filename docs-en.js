@@ -121,6 +121,12 @@
       '<p>The shelf + reader layout and the speech scheduling were informed by Koodo Reader on this machine, with all code rewritten from zero and no dependencies: EPUB unzipping, OPF / NCX / Nav contents, body and illustration parsing are all built in, with no external scripts or CDN.</p>' +
       '<p class="kv">Speech can use the free open-source offline neural voices (sherpa-onnx + AISHELL3 multi-speaker VITS): no network, no fees, no account. The model contains 174 Chinese speakers (148 female + 26 male), 11 curated by default, and supports role-based reading. The library ships in <code>VoicePack</code>; the full Windows EXE has it appended inside, so one file is enough.</p>' +
       '<p>Released under the <b>MIT License</b>: use, modify and redistribute freely, including commercially, keeping the copyright and license notice. Full terms under <b>Open source &amp; license</b>.</p>' +
+      '<h3>What changed in 1.10</h3><ul>' +
+      '<li><b>Drag files in</b>: drop TXT / EPUB (or a whole folder) onto the window and it imports straight away — no need to open the import dialog and browse. Dropping while reading does not interrupt you.</li>' +
+      '<li><b>Window size and position are remembered</b> between launches; a window left off-screen falls back to the default position.</li>' +
+      '<li><b>Searchable contents</b>: the chapter list has a search box with a live match count.</li>' +
+      '<li><b>Font weight</b>: light / regular / medium / bold.</li>' +
+      '<li><b>Linux, UOS/Kylin and macOS builds</b>: unzip and double-click, no Python required.</li></ul>' +
       '<h3>What changed in 1.9.6</h3><ul>' +
       '<li><b>Auto page-turn interval is yours to set</b>: it used to sit at a fixed 20 seconds, with a slider buried in the Type panel that only covered 4–60 in steps of two. Settings now has an <b>Auto-read</b> section up front: <b>3–180 seconds per page</b> in one-second steps, scroll speed 1–10, and a Start button. Dragging the interval while it is running re-times immediately — no need to switch it off and on.</li></ul>' +
       '<h3>What changed in 1.9.5</h3><ul>' +

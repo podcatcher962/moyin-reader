@@ -52,14 +52,14 @@ if rel is None:
         print('建 tag 失败（可能已存在）: %s' % e)
     rel = gh('POST', '/repos/%s/releases' % REPO, {
         'tag_name': TAG,
-        'name': 'v1.9.6 — 自动翻页停留可调 3–180 秒',
+        'name': 'v1.10.0 — 拖拽导入 / 窗口记忆 / 目录搜索 / 字重 + Linux·信创·macOS 版',
         'body': body,
         'draft': False,
         'prerelease': False,
     })
     print('已建 Release id=%s' % rel['id'])
 else:
-    rel = gh('PATCH', '/repos/%s/releases/%s' % (REPO, rel['id']), {'body': body, 'name': 'v1.9.6 — 自动翻页停留可调 3–180 秒'})
+    rel = gh('PATCH', '/repos/%s/releases/%s' % (REPO, rel['id']), {'body': body, 'name': 'v1.10.0 — 拖拽导入 / 窗口记忆 / 目录搜索 / 字重 + Linux·信创·macOS 版'})
     print('已更新 Release 说明')
 
 existing = {a['name']: a for a in rel.get('assets', [])}

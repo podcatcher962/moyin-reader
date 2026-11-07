@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.9.6';
+  var VER = '1.10.0';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -39,7 +39,7 @@
      three / four 只为兼容 1.9 早期配置，一律按双栏算 */
   var LAYN = { one: 1, two: 2, three: 2, four: 2 };
   var DEF = {
-    theme: 'dark', lay: 'auto', motion: 0, fs: 19, lh: 1.85, pagew: 720,
+    theme: 'dark', lay: 'auto', motion: 0, fs: 19, lh: 1.85, pagew: 720, fw: 400,
     ff: 'serif', align: 'justify', sort: 'last', txtEnc: 'auto',
     /* --- 1.8 排版与阅读方式 --- */
     mode: 'scroll',        // scroll 滚动 / page 翻页
@@ -156,6 +156,7 @@
     s.setProperty('--ff', FONTS[CFG.ff] || FONTS.serif);
     s.setProperty('--ps', Number(CFG.ps) + 'em');
     s.setProperty('--ls', Number(CFG.ls) + 'em');
+    s.setProperty('--fw', String(CFG.fw || 400));
     s.setProperty('--ind', Number(CFG.indent) + 'em');
     s.setProperty('--padx', Number(CFG.padw) + 'px');
     // 自定义底色 / 字色：空 = 跟随主题
@@ -1625,7 +1626,8 @@
   function openSide(tab) {
     var same = tab && tab === SIDE && $('side').classList.contains('on');
     if (same) { closeSide(); return; }        // 再点同一个按钮 = 收起
-    SIDE = tab || SIDE; $('side').classList.add('on');
+    SIDE = tab || SIDE; if (tab === 'toc' && tab !== SIDE_PREV) TOC_Q = '';
+    SIDE_PREV = SIDE; $('side').classList.add('on');
     $('side').querySelectorAll('.tabs button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === SIDE); });
     renderSide();
     pgAfterLayout();
@@ -1637,16 +1639,28 @@
     pgAfterLayout();
   }
   function hlChapterLabel(h) { return T('第 {n} 章', { n: (h.ch | 0) + 1 }) + ' · ' + chapterTitle(h.ch); }
+  var TOC_Q = '', SIDE_PREV = '';
+  function tocListHTML(q) {
+    var toc = BK.toc && BK.toc.length ? BK.toc : BK.titles.map(function (t, i) { return { label: t, ch: i, level: 0 }; });
+    var key = String(q || '').trim().toLowerCase();
+    var list = key ? toc.filter(function (t) { return String(t.label || '').toLowerCase().indexOf(key) >= 0; }) : toc;
+    var html = list.slice(0, 2000).map(function (t) {
+      return '<button class="it' + (t.ch === BK.ch ? ' cur' : '') + (t.level ? ' lv' + Math.min(2, t.level) : '') +
+        '" data-ch="' + t.ch + '" data-anchor="' + esc(t.anchor || '') + '">' + esc(t.label) + '</button>';
+    }).join('');
+    if (!html) {
+      html = '<div class="hint">' + esc(key ? T('没有匹配的章节') : T('这本书没有目录')) + '</div>';
+    } else if (key) {
+      html = '<div class="hint">' + esc(T('匹配 {n} 章', { n: list.length })) + '</div>' + html;
+    }
+    return html;
+  }
   function renderSide() {
     if (!BK || !$('side').classList.contains('on')) return;
     var b = $('sideBody'), html = '';
     if (SIDE === 'toc') {
-      var toc = BK.toc && BK.toc.length ? BK.toc : BK.titles.map(function (t, i) { return { label: t, ch: i, level: 0 }; });
-      html = toc.slice(0, 2000).map(function (t) {
-        return '<button class="it' + (t.ch === BK.ch ? ' cur' : '') + (t.level ? ' lv' + Math.min(2, t.level) : '') +
-          '" data-ch="' + t.ch + '" data-anchor="' + esc(t.anchor || '') + '">' + esc(t.label) + '</button>';
-      }).join('');
-      if (!html) html = '<div class="hint">' + esc(T('这本书没有目录')) + '</div>';
+      html = '<input type="search" id="tocQ" class="q" data-i18n-ph="搜索章节…" placeholder="' + esc(T('搜索章节…')) +
+        '" value="' + esc(TOC_Q) + '" autocomplete="off"><div id="tocList">' + tocListHTML(TOC_Q) + '</div>';
     } else if (SIDE === 'mark') {
       var ms = (BK.meta.marks || []).slice().sort(function (a, c) { return c.ts - a.ts; });
       html = '<div class="row" style="margin:0 0 8px"><button id="sideAddMark">' + esc(T('＋ 在当前位置加书签')) + '</button></div>' +
@@ -2779,7 +2793,7 @@
       '<p>在正文里选中任意一句，会浮出一个小工具条：四色高亮、写笔记、复制、生成分享图。高亮和批注随书保存，右侧「笔记」页会按章节列出全部批注，点一条就能跳回去；在那里还能按「仅看有笔记的」筛选、改色、编辑或删除，并一键<b>导出成 Markdown</b> 或打开<b>阅读总结</b>（累计时长、进度、批注数、逐章摘录，可复制或导出）。</p>' +
       '<h3>书架与收藏</h3>' +
       '<p>书架上方一排标签是书架本身：「全部书籍」「★ 收藏」和你自建的书架。点「管理书架」可新建、重命名或解散书架（解散不会删书，书回到「未分组」）。每本书封面右上角的 ☆ 是收藏、⋯ 是菜单（改书名作者、移动书架、批量管理、移除）。批量管理可一次移动或移除多本。</p>' +
-      '<p>「导入文件夹」会把整个目录里的 TXT / EPUB 一次收进来，重复文件自动跳过。</p>' +
+      '<p>「导入文件夹」会把整个目录里的 TXT / EPUB 一次收进来，重复文件自动跳过。更快的办法是把文件或文件夹<b>直接拖进窗口</b>，松手就导入。</p>' +
       '<p><b>网络位置</b>（桌面版）：书架上的「网络位置」可以填局域网共享路径，比如 <code>\\\\192.168.1.10\\Books</code>、映射到网络的盘符 <code>Z:\\书</code>，或本机任意绝对路径。走的是系统自己的网络访问，账号密码由 Windows 记着——只要在资源管理器里能打开，这里就能直接扫、直接读，不用先把书拷过来。手机上不显示这个按钮。</p>' +
       '<h3>朗读</h3><p>点「朗读」从当前屏幕位置开始念。底部条可选语音、语速、上一段 / 下一段、定时停止；正在念的段落会高亮并自动跟随滚动，念完一章自动接下一章。</p>' +
       '<p><b>续听</b>：听到哪会单独记住（与「读到哪」分开记，互不干扰）。回到书架，书本卡片下方会出现「▶ 续听 · 第 N 章」，点一下就从上次听的那一段接着念；想按看书的位置念，点开书再点「朗读」即可。朗读条最左边的下拉可随时换声线，正在念时会用新声线把当前这段重念一遍。</p>' +
@@ -2875,6 +2889,12 @@
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + AISHELL3 多说话人 VITS 模型）：不联网、不收费、无需账号，模型内含 174 个中文说话人（148 女 + 26 男），精选 11 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.10 改了什么</h3><ul>' +
+      '<li><b>拖进来就能导入</b>：把 TXT / EPUB（或整个文件夹里的书）直接拖到窗口上，松手就开始导入，不用先点「导入」再翻目录。正在看书时拖也不打断，导入完成后回书架就能看到。</li>' +
+      '<li><b>记住窗口大小和位置</b>：下次打开还是你上次调好的样子，不用每次重新拉窗口。</li>' +
+      '<li><b>目录能搜了</b>：长书几百章，侧栏「目录」顶部有搜索框，输关键字即时过滤，还能看到命中多少章。</li>' +
+      '<li><b>字重可选</b>：细 / 常规 / 中粗 / 粗，中文正文看久了换一档会更顺眼。</li>' +
+      '<li><b>能装在 Linux / 信创 / macOS 上了</b>：另附两个包，解压双击即用，不用装 Python。</li></ul>' +
       '<h3>1.9.6 改了什么</h3><ul>' +
       '<li><b>自动翻页的停留时间可以自己定了</b>：以前默认写死 20 秒，滑杆藏在「排版」面板里、范围只有 4–60 秒还得两秒一跳。现在「设置」第一屏就有「自动阅读」一段：<strong>翻页停留 3–180 秒</strong>（步长 1 秒）、滚动速度 1–10，旁边还有「现在开始」按钮。正在自动翻页时拖动秒数，会立刻按新间隔重新计时，不用关掉重开。</li></ul>' +
       '<h3>1.9.5 改了什么</h3><ul>' +
@@ -2921,7 +2941,7 @@
       '<li><b>桌面版终于能划线了</b>：桌面外壳默认把网页的文字选择关掉了，导致选中正文没反应、浮动色块也不出来。已放开，Windows 版的划线与批注和其他版本一样。</li>' +
       '<li><b>导入文件夹不再像在上传</b>：桌面版改用系统的「选择文件夹」对话框，不再是浏览器那个「选择要上传的文件夹 … 上传」的选择器。</li>' +
       '<li><b>左侧导航能退出了</b>：标签栏右侧加了 ×，再点同一个按钮也能收起，点正文空白处自动收起（有选区时不收，免得把手选的位置抖掉）。</li></ul>' +
-      '<p class="kv">版本 1.9.6 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
+      '<p class="kv">版本 1.10.0 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
   };
   function showDoc(k) {
     var d = DOCS[k] || DOCS.help;
@@ -2959,6 +2979,8 @@
       '<div class="row"><label>' + T('行距') + '</label><input type="range" data-set="lh" min="1.2" max="2.6" step="0.05" value="' + CFG.lh + '">' +
         '<span id="cfgLh">' + Number(CFG.lh).toFixed(2) + '</span></div>' +
       '<div class="row"><label>' + T('字体') + '</label>' + fontGrid() + '</div>' +
+      '<div class="row"><label>' + T('字重') + '</label>' + seg('fw', [
+        [300, T('细')], [400, T('常规')], [600, T('中粗')], [700, T('粗')]]) + '</div>' +
       '<div class="row clrRow"><label>' + T('字色') + '</label>' + swRow('tx') +
         '<input type="color" data-set="customTx" value="' + ctx + '"><span class="kv">' + T('自定义') + '</span></div>' +
       '<div class="row clrRow"><label>' + T('底色') + '</label>' + swRow('bg') +
@@ -3087,7 +3109,7 @@
     };
   }
   /* ---------------- 排版面板（1.8） ---------------- */
-  var TYPE_KEYS = ['theme', 'mode', 'lay', 'pageAnim', 'fs', 'lh', 'ps', 'ls', 'indent', 'padw', 'pagew', 'ff', 'align', 'dim', 'customBg', 'customTx', 'autoScrollSpeed', 'autoPageSec', 'showClock', 'restMin'];
+  var TYPE_KEYS = ['theme', 'mode', 'lay', 'pageAnim', 'fs', 'lh', 'fw', 'ps', 'ls', 'indent', 'padw', 'pagew', 'ff', 'align', 'dim', 'customBg', 'customTx', 'autoScrollSpeed', 'autoPageSec', 'showClock', 'restMin'];
   var TYPE_NUM = { fs: 'int', pagew: 'int', padw: 'int', autoScrollSpeed: 'int', autoPageSec: 'int', lh: 'float', ps: 'float', ls: 'float', dim: 'float' };
   var TH_SW = { dark: '#1F2125', light: '#FFFFFF', sepia: '#FAF3E3', green: '#F3F8EC', gray: '#252D37', black: '#000000' };
   function hex6(v, alt) { v = String(v || '').trim(); return /^#[0-9a-fA-F]{6}$/.test(v) ? v : alt; }
@@ -3169,6 +3191,8 @@
       '<div class="row"><label>' + T('字间距') + '</label>' + rng('ls', -0.02, 0.16, 0.01, 'flex:1') + '<span id="fLs">' + CFG.ls + '</span></div>' +
       '<div class="row"><label>' + T('首行缩进') + '</label>' + seg('indent', [[0, T('无缩进')], [2, T('缩进 2 字')]]) + '</div>' +
       '<div class="row"><label>' + T('字体') + '</label>' + fontGrid() + '</div>' +
+      '<div class="row"><label>' + T('字重') + '</label>' + seg('fw', [
+        [300, T('细')], [400, T('常规')], [600, T('中粗')], [700, T('粗')]]) + '</div>' +
       '<div class="row"><label>' + T('对齐') + '</label>' + seg('align', [['justify', T('两端')], ['left', T('左对齐')]]) + '</div>';
     h += '<h3>' + T('版心') + '</h3>' +
       '<div class="row"><label>' + T('页宽') + '</label>' + rng('pagew', 380, 1100, 20, 'flex:1') + '<span id="fPw">' + CFG.pagew + 'px</span></div>' +
@@ -3390,6 +3414,45 @@
       b.onclick = function () { openSide(b.getAttribute('data-tab')); };
     });
     $('sideClose').onclick = closeSide;
+    /* 拖文件进来就能导入：桌面阅读器的基本操作，别让人非得点「导入」再翻目录 */
+    (function () {
+      var depth = 0;
+      function hasFiles(e) {
+        var t = e.dataTransfer && e.dataTransfer.types;
+        return !!t && Array.prototype.indexOf.call(t, 'Files') >= 0;
+      }
+      window.addEventListener('dragenter', function (e) {
+        if (!hasFiles(e)) return;
+        e.preventDefault(); depth++; $('dropHint').classList.add('on');
+      });
+      window.addEventListener('dragover', function (e) {
+        if (!hasFiles(e)) return;
+        e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+      });
+      window.addEventListener('dragleave', function (e) {
+        if (!hasFiles(e)) return;
+        depth = Math.max(0, depth - 1);
+        if (!depth) $('dropHint').classList.remove('on');
+      });
+      window.addEventListener('drop', function (e) {
+        if (!hasFiles(e)) return;
+        e.preventDefault(); depth = 0; $('dropHint').classList.remove('on');
+        var fs = Array.prototype.slice.call(e.dataTransfer.files || []);
+        var good = fs.filter(function (f) { return readExt(f.name); });
+        if (!good.length) {
+          toast(fs.length ? T('拖进来的不是 TXT / EPUB，读不了这些文件') : T('没识别到文件'), 3600);
+          return;
+        }
+        importFiles(good);   // 正在看书也不打断，导入完在书架里能看到
+      });
+    })();
+    $('sideBody').oninput = function (e) {
+      if (e.target && e.target.id === 'tocQ') {
+        TOC_Q = e.target.value;
+        var list = $('tocList');
+        if (list) list.innerHTML = tocListHTML(TOC_Q);
+      }
+    };
     $('sideBody').onclick = function (e) {
       var dm = e.target.closest('[data-delmark]');
       if (dm) {
@@ -3635,6 +3698,7 @@
       openBookMenu: openBookMenu, copyText: copyText, rtFlush: rtFlush, saveStats: saveStats,
       /* 1.8：排版 / 分页 / 自动阅读 / 全屏 */
       showType: showType, showTheme: showTheme, showClockPanel: showClockPanel,
+      showView: showView, openBook: openBook, renderSide: renderSide,
       importNet: importNet, applyScan: applyScan, importFolder: importFolder,
       CLK: CLK, clkStart: clkStart, clkStop: clkStop, clkPaint: clkPaint, clkTick: clkTick,
       showRest: showRest, hideRest: hideRest, LAYN: LAYN,
