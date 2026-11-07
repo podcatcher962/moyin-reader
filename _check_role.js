@@ -232,9 +232,19 @@ async function main() {
     var first = {on:MY.SPK.on, playing:MY.SPK.playing, ci:MY.SPK.ci, v:MY.SPK.cv[0], cv:cv0,
       src:(a2&&a2.src||'').slice(0,5), dur:(a2&&a2.duration)||0, who:whoAtFirst, now:(document.getElementById('spNow')||{}).textContent||'',
       btn:(document.getElementById('spRole')||{}).textContent||''};
-    await new Promise(r=>setTimeout(r, 3000));
-    var b = MY.SPK.audio;
-    first.advCi = MY.SPK.ci; first.advPi = MY.SPK.pi; first.advDur = (b&&b.duration)||0;
+    /* 采样播放进度：不要只看 3 秒那一瞬间的 audio.duration，
+       那时可能刚好换了新音频、duration 还是 0 */
+    var maxT = 0, maxDur = 0;
+    for (var k = 0; k < 16; k++) {
+      await new Promise(r=>setTimeout(r, 200));
+      var b = MY.SPK.audio;
+      if (b) {
+        if (b.currentTime > maxT) maxT = b.currentTime;
+        if (b.duration > maxDur) maxDur = b.duration;
+      }
+    }
+    first.advCi = MY.SPK.ci; first.advPi = MY.SPK.pi;
+    first.advDur = maxDur; first.advTime = maxT;
     return first;
   })()`);
   console.log('  ', JSON.stringify(speak));
@@ -243,7 +253,8 @@ async function main() {
   ok(speak.cv.length === 2 && speak.cv[0] !== speak.cv[1], '同一段里旁白与对白用了两个声音', speak.cv);
   ok(speak.cv[0] !== 's12' && speak.cv[1] === 's12', '开头是对白（角色声），后半是旁白（所选声线）', speak.cv);
   ok(speak.who === '她', '朗读条显示当前说话的人物名', speak.who);
-  ok((speak.advCi > 0 || speak.advPi > 1) && speak.advDur > 0.3, '念完对白自动接旁白，再往下走', [speak.advCi, speak.advPi, speak.advDur]);
+  ok((speak.advCi > 0 || speak.advPi > 1) && (speak.advTime > 0.3 || speak.advDur > 0.3),
+    '念完对白自动接旁白，再往下走', [speak.advCi, speak.advPi, speak.advTime, speak.advDur]);
   await sleep(300);
   await shot('shot_16_role_bar.png');
   await ev("MY.stopSpeak()");

@@ -7,6 +7,16 @@ const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
 
 let pass = 0, fail = 0;
 const ok = (c, label, extra) => { if (c) { pass++; console.log('  ok   ' + label); } else { fail++; console.log('  FAIL ' + label + '  ' + (extra === undefined ? '' : JSON.stringify(extra))); } };
+/* 版本号按段比较：字符串比较会把 1.10.0 判成小于 1.9.0 */
+const vge = (a, b) => {
+  const A = String(a).split('.').map(Number), B = String(b).split('.').map(Number);
+  for (let i = 0; i < Math.max(A.length, B.length); i++) {
+    const x = A[i] || 0, y = B[i] || 0;
+    if (x !== y) return x > y;
+  }
+  return true;
+};
+
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const STUB = `(function(){
@@ -117,7 +127,7 @@ async function main() {
   await viewsize(1280, 900);
   await send('Page.navigate', { url: APP });
   ok(await ready(), '页面初始化完成');
-  ok((await ev('MY.VER')) >= '1.8.1', '版本号 ≥ 1.8.1', await ev('MY.VER'));
+  ok(vge(await ev('MY.VER'), '1.8.1'), '版本号 ≥ 1.8.1', await ev('MY.VER'));
 
   console.log('=== 默认是滚动模式');
   ok(await ev("document.documentElement.getAttribute('data-mode')") === 'scroll', '默认滚动模式');
