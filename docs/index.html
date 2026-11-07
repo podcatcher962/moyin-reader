@@ -46,6 +46,15 @@ input[type=range]{accent-color:var(--acc);height:var(--tap);min-width:90px}
 .view{display:none;flex:1;min-height:0;flex-direction:column}
 .view.on{display:flex}
 .top{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border-bottom:1px solid var(--line);flex:0 0 auto;flex-wrap:wrap}
+#webTip{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:7px 14px;font-size:.82em;line-height:1.45;
+  background:linear-gradient(90deg,rgba(74,158,255,.16),rgba(74,158,255,.05));color:var(--tx2);
+  border-bottom:1px solid var(--line)}
+#webTip[hidden]{display:none}
+#webTip span{flex:1;min-width:0}
+#webTip b{color:var(--tx);font-weight:600}
+#webTip a{color:var(--acc);text-decoration:none;white-space:nowrap}
+#webTip a:hover{text-decoration:underline}
+#webTip button{min-height:24px;padding:1px 7px;font-size:1.15em;line-height:1;background:transparent;border-color:transparent;color:var(--tx2)}
 .brand{font-size:1.25em;font-weight:700;letter-spacing:.12em;white-space:nowrap}
 .brand small{font-size:.55em;font-weight:400;color:var(--tx2);letter-spacing:.05em;margin-left:8px}
 .acts{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
@@ -156,6 +165,11 @@ html[data-lay="p"] #libTop,html[data-lay="p"] #readTop{gap:7px;padding:8px}html[
 
   <!-- ============ 书架 ============ -->
   <section id="viewLib" class="view on">
+    <div id="webTip" hidden>
+      <span>这是<b>网页在线版</b>：朗读使用浏览器自带语音（一般只有 1–3 个老式音色）。想要 174 个离线中文声线，装 Windows 版即可。</span>
+      <a href="https://github.com/podcatcher962/moyin-reader/releases/latest" target="_blank" rel="noopener">下载 Windows / 安卓版</a>
+      <button id="webTipX" title="不再提示">×</button>
+    </div>
     <header class="top" id="libTop">
       <div class="brand">墨吟<small>MoYin Reader</small></div>
       <input type="search" id="libSearch" placeholder="搜索书名…" style="width:170px">
@@ -2266,6 +2280,23 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       buildVoiceList: buildVoiceList, setPara: setPara, speakerOf: speakerOf
     };
     document.documentElement.setAttribute('data-ready', '1');
+    webEditionTip();
+  }
+
+  /* 在线版（GitHub Pages）提示：网页里只有系统语音，别让人以为声线坏了 */
+  function webEditionTip() {
+    if (!/\.github\.io$/i.test(location.hostname)) return;
+    var tip = document.getElementById('webTip');
+    if (!tip) return;
+    var off = false;
+    try { off = localStorage.getItem('moyin.webTip') === 'off'; } catch (e) { }
+    if (off) return;
+    tip.hidden = false;
+    var x = document.getElementById('webTipX');
+    if (x) x.onclick = function () {
+      tip.hidden = true;
+      try { localStorage.setItem('moyin.webTip', 'off'); } catch (e) { }
+    };
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

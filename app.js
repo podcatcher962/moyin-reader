@@ -1807,6 +1807,23 @@
       buildVoiceList: buildVoiceList, setPara: setPara, speakerOf: speakerOf
     };
     document.documentElement.setAttribute('data-ready', '1');
+    webEditionTip();
+  }
+
+  /* 在线版（GitHub Pages）提示：网页里只有系统语音，别让人以为声线坏了 */
+  function webEditionTip() {
+    if (!/\.github\.io$/i.test(location.hostname)) return;
+    var tip = document.getElementById('webTip');
+    if (!tip) return;
+    var off = false;
+    try { off = localStorage.getItem('moyin.webTip') === 'off'; } catch (e) { }
+    if (off) return;
+    tip.hidden = false;
+    var x = document.getElementById('webTipX');
+    if (x) x.onclick = function () {
+      tip.hidden = true;
+      try { localStorage.setItem('moyin.webTip', 'off'); } catch (e) { }
+    };
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
