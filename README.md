@@ -47,6 +47,8 @@
 | `MoYinReader.html` | 约 120 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
 | `MoYinReader.apk` | 约 100 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
 
+不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本。
+
 ### 使用
 
 1. 双击 `MoYinReader.exe`（或 `MoYinReader.html`）。
@@ -143,6 +145,8 @@ A single-file, offline-first Chinese TXT / EPUB reader with text-to-speech. 174 
 | `MoYinReader_Lite.exe` | ~17 MB | Needs a `VoicePack` folder (~53 MB) next to it |
 | `MoYinReader.html` | ~120 KB | Standalone web build |
 | `MoYinReader.apk` | ~100 KB | Android shell with the page embedded |
+
+Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/releases)**.
 
 ### Build from source
 
