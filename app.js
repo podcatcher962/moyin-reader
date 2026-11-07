@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.8.0';
+  var VER = '1.8.1';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -113,9 +113,15 @@
   function saveCfg() { try { localStorage.setItem(CFGKEY, JSON.stringify(CFG)); } catch (e) { /* 隐私模式 */ } }
   function applyCfg() {
     var h = document.documentElement, s = h.style;
+    /* 双栏必须靠翻页成立：一屏高度固定，超出的内容才会向右排成新列。
+       滚动模式没有固定屏高，column-count 摆出来是两列同步滚动，读起来会串行，所以强制走翻页。 */
+    if (CFG.lay === 'two' && CFG.mode !== 'page') CFG.mode = 'page';
+    var nowPage = CFG.mode === 'page', wasPage = h.getAttribute('data-mode') === 'page';
+    /* 切换阅读方式时先抓住眼前那段，切完再定位回去，别让人丢位置 */
+    var keep = BK ? (wasPage ? pgTopPara() : scrollTopPara()) : null;
     h.setAttribute('data-theme', CFG.theme);
     h.setAttribute('data-lay', CFG.lay);
-    h.setAttribute('data-mode', CFG.mode === 'page' ? 'page' : 'scroll');
+    h.setAttribute('data-mode', nowPage ? 'page' : 'scroll');
     h.setAttribute('data-motion', CFG.motion ? 'low' : '');
     s.setProperty('--fs', Number(CFG.fs) + 'px');
     s.setProperty('--lh', CFG.lh);
@@ -135,8 +141,15 @@
     var i = $('spRate'); if (i) { i.value = CFG.rate; $('spRateTx').textContent = Number(CFG.rate).toFixed(1) + '×'; }
     syncAutoBtn(); syncFullBtn();
     // 排版变化后：翻页模式重新分页（尽量停在原来那段），滚动模式清掉分页残留
-    if (!pgEnabled()) pgReset();
-    else if (BK) pgReflow();
+    if (!pgEnabled()) {
+      pgReset();
+      if (BK && nowPage !== wasPage && keep) {
+        try { keep.scrollIntoView({ block: 'start' }); } catch (e) { }
+      }
+    } else if (BK) {
+      PG.ready = 0; pgMeasure();
+      pgTo(keep ? paraPage(keep) : PG.i, { instant: true });
+    }
   }
   /* ---------------- 语言 ---------------- */
   function syncLangBtn() {
@@ -268,10 +281,21 @@
     for (var i = 0; i < list.length; i++) if (paraPage(list[i]) === PG.i) return list[i];
     return null;
   }
+  /* 滚动模式下：视口里第一个露头的段落（从滚动切到翻页时拿它当锚点） */
+  function scrollTopPara() {
+    var list = $('page') ? $('page').querySelectorAll('.rdp') : [];
+    if (!list.length) return null;
+    var box = $('pageWrap').getBoundingClientRect();
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i].getBoundingClientRect();
+      if (r.height && r.bottom > box.top + 6) return list[i];
+    }
+    return null;
+  }
   /* 改字号 / 换屏宽后：重新分页，尽量停在原来那段 */
-  function pgReflow() {
+  function pgReflow(anchor) {
     if (!BK || !pgEnabled()) return;
-    var anchor = pgTopPara();
+    if (!anchor) anchor = pgTopPara();
     pgMeasure();
     pgTo(anchor ? paraPage(anchor) : PG.i, { instant: true });
   }
@@ -2548,6 +2572,10 @@
       '<li><b>自动阅读</b>：滚动模式匀速下滚，翻页模式按秒自动翻页；一键暂停 / 继续，暂停时留个小胶囊，到章末自动接下一章。</li>' +
       '<li><b>沉浸全屏</b>：一键收起上下工具栏，鼠标移到屏幕上缘或下缘再唤出；F11 或顶栏「全屏」都行，Esc 依次退出工具栏 / 自动阅读 / 全屏。</li>' +
       '<li><b>顺带修掉的老毛病</b>：书里自带的 <code>body{margin:5%}</code> 之类的样式会窜进正文、把版心挤歪（双栏因此右栏被切），现在书只能管自己段落里的样式，版心与字号一律听你的；正文里那行和顶栏重复的章节标题也去掉了。</li></ul>' +
+      '<h3>1.8.1 修了什么</h3><ul>' +
+      '<li><b>「双栏」现在一点就生效</b>：以前得先切到「翻页」再选双栏，在滚动模式下点双栏毫无反应（看着像坏了）。现在点「双栏」会自动切到翻页并排成两列，切回滚动则自动回到单栏，两个方向都会给一句提示。TXT 和 EPUB 一样。</li>' +
+      '<li><b>切换阅读方式不丢位置</b>：滚动翻到一半再切翻页（或反过来），会停在你正看的那一段，不再跳回章首。</li>' +
+      '<li><b>每页底部留白加宽</b>：翻页时最后一行不再紧贴底部工具栏。</li></ul>' +
       '<h3>1.7 新加了什么</h3><ul>' +
       '<li><b>全窗口中英双语</b>：书架顶栏一个开关，界面、设置、弹窗、提示与全部说明文档在中文 / 英文之间切换，选择会被记住。</li>' +
       '<li><b>划线高亮与批注</b>：选中正文四色高亮、随手写笔记；「笔记」页按章节汇总，可跳转、改色、编辑、删除。</li>' +
@@ -2560,7 +2588,7 @@
       '<li><b>桌面版终于能划线了</b>：桌面外壳默认把网页的文字选择关掉了，导致选中正文没反应、浮动色块也不出来。已放开，Windows 版的划线与批注和其他版本一样。</li>' +
       '<li><b>导入文件夹不再像在上传</b>：桌面版改用系统的「选择文件夹」对话框，不再是浏览器那个「选择要上传的文件夹 … 上传」的选择器。</li>' +
       '<li><b>左侧导航能退出了</b>：标签栏右侧加了 ×，再点同一个按钮也能收起，点正文空白处自动收起（有选区时不收，免得把手选的位置抖掉）。</li></ul>' +
-      '<p class="kv">版本 1.8.0 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
+      '<p class="kv">版本 1.8.1 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
   };
   function showDoc(k) {
     var d = DOCS[k] || DOCS.help;
@@ -2655,6 +2683,9 @@
       if (act === 'probe') { LOCAL.miss = 0; localProbe(true).then(function () { showSettings(); }); return; }
       var k = b.getAttribute('data-set'), v = b.getAttribute('data-v');
       if (k === 'bool') CFG[v] = CFG[v] ? 0 : 1; else CFG[k] = v;
+      /* 双栏与翻页联动，两个入口（设置 / 排版面板）行为保持一致 */
+      if (k === 'lay' && v === 'two') CFG.mode = 'page';
+      if (k === 'mode' && v === 'scroll' && CFG.lay === 'two') CFG.lay = 'auto';
       if (k === 'mode') PG.ready = 0;
       saveCfg(); applyCfg();
       if (v === 'voiceAuto' && CFG.voiceAuto) fillVoices();
@@ -2665,7 +2696,7 @@
     };
   }
   /* ---------------- 排版面板（1.8） ---------------- */
-  var TYPE_KEYS = ['theme', 'mode', 'lay', 'pageAnim', 'fs', 'lh', 'ps', 'ls', 'indent', 'padw', 'ff', 'align', 'dim', 'customBg', 'customTx', 'autoScrollSpeed', 'autoPageSec'];
+  var TYPE_KEYS = ['theme', 'mode', 'lay', 'pageAnim', 'fs', 'lh', 'ps', 'ls', 'indent', 'padw', 'pagew', 'ff', 'align', 'dim', 'customBg', 'customTx', 'autoScrollSpeed', 'autoPageSec'];
   var TYPE_NUM = { fs: 'int', pagew: 'int', padw: 'int', autoScrollSpeed: 'int', autoPageSec: 'int', lh: 'float', ps: 'float', ls: 'float', dim: 'float' };
   var TH_SW = { dark: '#1F2125', light: '#FFFFFF', sepia: '#FAF3E3', green: '#F3F8EC', gray: '#252D37', black: '#000000' };
   function hex6(v, alt) { v = String(v || '').trim(); return /^#[0-9a-fA-F]{6}$/.test(v) ? v : alt; }
@@ -2707,7 +2738,7 @@
       cell('模式', seg('mode', [['scroll', T('滚动')], ['page', T('翻页')]])) +
       cell('分栏', seg('lay', [['auto', T('自动分栏')], ['one', T('单栏')], ['two', T('双栏')]])) +
       cell('翻页动画', seg('pageAnim', [['slide', T('滑动')], ['fade', T('淡入')], ['none', T('无')]])) +
-      '</div><p class="kv">' + T('「翻页」是一页一页左右翻；双栏只在翻页模式下生效——宽屏自动两列，手机始终单列。') + '</p>';
+      '</div><p class="kv">' + T('「翻页」是一页一页左右翻。双栏靠翻页成立：宽屏自动两列、手机始终单列；点「双栏」会自动切到翻页，切回滚动就是单栏。') + '</p>';
     h += '<h3>' + T('文字') + '</h3>' +
       '<div class="row"><label>' + T('字号') + '</label><button data-font="fs-">A−</button><span id="fFs">' + CFG.fs + 'px</span><button data-font="fs+">A＋</button>' +
       rng('fs', 13, 34, 1, 'flex:1;min-width:110px') + '</div>' +
@@ -2771,16 +2802,17 @@
         return;
       }
       var b = e.target.closest('button[data-set]'); if (!b) return;
-      var k2 = b.getAttribute('data-set');
-      CFG[k2] = b.getAttribute('data-v');
-      saveCfg();
-      if (k2 === 'mode' && BK) {
-        var ratio = BK.ratio || 0;
-        PG.ready = 0; applyCfg();
-        if (pgEnabled()) { pgMeasure(); pgTo(Math.round((PG.count - 1) * ratio), { instant: true }); }
-        else { var w = $('pageWrap'); w.scrollTop = (w.scrollHeight - w.clientHeight) * ratio; }
-      } else { applyCfg(); }
-      showType(true);
+      var k2 = b.getAttribute('data-set'), v2 = b.getAttribute('data-v');
+      var tip = '';
+      if (k2 === 'lay' && v2 === 'two' && CFG.mode !== 'page') {
+        /* 双栏要配合翻页才有意义，点了就直接带过去，别让人以为没反应 */
+        CFG.mode = 'page'; tip = T('双栏需配合翻页，已切到翻页模式');
+      } else if (k2 === 'mode' && v2 === 'scroll' && CFG.lay === 'two') {
+        CFG.lay = 'auto'; tip = T('滚动模式只有单栏，双栏请留在翻页');
+      }
+      CFG[k2] = v2;
+      saveCfg(); applyCfg(); showType(true);
+      if (tip) toast(tip, 2400);
     };
     if (st) mb.scrollTop = st;
     typeLabels();
@@ -3152,6 +3184,7 @@
       openBookMenu: openBookMenu, copyText: copyText, rtFlush: rtFlush, saveStats: saveStats,
       /* 1.8：排版 / 分页 / 自动阅读 / 全屏 */
       showType: showType, PG: PG, pgEnabled: pgEnabled, pgCols: pgCols, pgMeasure: pgMeasure,
+      applyCfg: applyCfg, scrollTopPara: scrollTopPara,
       pgTo: pgTo, pgReflow: pgReflow, paraPage: paraPage, readNext: readNext, readPrev: readPrev,
       autoToggle: autoToggle, autoStart: autoStart, autoStop: autoStop, autoPause: autoPause,
       autoResume: autoResume, AUTO: AUTO, toggleFull: toggleFull, setTheme: setTheme,

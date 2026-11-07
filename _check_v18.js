@@ -117,7 +117,7 @@ async function main() {
   await viewsize(1280, 900);
   await send('Page.navigate', { url: APP });
   ok(await ready(), '页面初始化完成');
-  ok(await ev('MY.VER') === '1.8.0', '版本号 1.8.0', await ev('MY.VER'));
+  ok((await ev('MY.VER')) >= '1.8.1', '版本号 ≥ 1.8.1', await ev('MY.VER'));
 
   console.log('=== 默认是滚动模式');
   ok(await ev("document.documentElement.getAttribute('data-mode')") === 'scroll', '默认滚动模式');
@@ -229,6 +229,66 @@ async function main() {
   await sleep(800);
   ok(await ev('MY.BK.ratio') > 0.2, '滚动进度仍按位置计算', await ev('MY.BK.ratio'));
 
+  console.log('=== 双栏联动（滚动下点双栏要自动进翻页，真排成两列）');
+  await setScroll();
+  await ev("(function(){MY.CFG.lay='auto';MY.saveCfg();MY.applyCfg();return 1;})()");
+  await sleep(400);
+  ok(await ev("document.documentElement.getAttribute('data-mode')") === 'scroll', '起点是滚动模式');
+  const anchorTx = await ev(`(function(){var p=MY.scrollTopPara();return p?p.textContent.slice(0,24):'';})()`);
+  await ev("(function(){MY.showType();return 1;})()"); await sleep(320);
+  await ev(`(function(){var b=document.querySelector('[data-set="lay"][data-v="two"]');b.click();return 1;})()`);
+  await sleep(900);
+  const link = await ev(`JSON.stringify({mode:MY.CFG.mode,lay:MY.CFG.lay,
+    dm:document.documentElement.getAttribute('data-mode'),
+    cc:getComputedStyle(document.getElementById('page')).columnCount,
+    cols:MY.PG.cols,cw:Math.round(MY.PG.cw),
+    gap:getComputedStyle(document.getElementById('page')).columnGap})`).then(JSON.parse);
+  ok(link.mode === 'page' && link.dm === 'page', '点双栏自动切到翻页模式', link);
+  ok(link.cc === '2' && link.cols === 2, '双栏真的排成两列', link);
+  ok(parseFloat(link.gap) >= 20, '两列之间有栏间距', link.gap);
+  // 位置别跳：切过去后原来那段应该还在屏上
+  const still = await ev(`(function(){var t=${JSON.stringify(anchorTx)};if(!t)return 'no-anchor';
+    var ps=[].slice.call(document.getElementById('page').querySelectorAll('.rdp'));
+    for(var i=0;i<ps.length;i++){var r=ps[i].getBoundingClientRect();
+      if(ps[i].textContent.indexOf(t)===0) return (r.left>=-40&&r.left<window.innerWidth+40)?'onscreen':'offscreen';}
+    return 'lost';})()`);
+  ok(still === 'onscreen' || still === 'no-anchor', '切到翻页后仍停在原来那段', still);
+
+  // 切回滚动 → 自动回单栏，不留分栏残留
+  await ev(`(function(){var b=document.querySelector('[data-set="mode"][data-v="scroll"]');b.click();return 1;})()`);
+  await sleep(800);
+  const back = await ev(`JSON.stringify({mode:MY.CFG.mode,lay:MY.CFG.lay,
+    dm:document.documentElement.getAttribute('data-mode'),
+    cc:getComputedStyle(document.getElementById('page')).columnCount,
+    tf:document.getElementById('page').style.transform})`).then(JSON.parse);
+  ok(back.mode === 'scroll' && back.lay !== 'two', '切回滚动自动回到单栏', back);
+  ok(back.cc === 'auto' && back.tf === '', '滚动模式没有分栏/平移残留', back);
+  await ev("(function(){var m=document.querySelector('#modal');if(m){m.classList.remove('on','show');}return 1;})()");
+  await sleep(200);
+
+  console.log('=== TXT 也能双栏 / 单栏');
+  const longTxt = Array.from({ length: 12 }, (_, c) =>
+    '第' + (c + 1) + '章 长文\n\n' + Array.from({ length: 30 }, (_, i) =>
+      '这是第' + (c + 1) + '章第' + (i + 1) + '段。墨色在纸上慢慢晕开，像一场没有雷声的雨。他坐在窗前，把每一句都读得很慢。').join('\n\n')
+  ).join('\n\n');
+  await ev(`(async function(){var b=new TextEncoder().encode(${JSON.stringify(longTxt)});
+    var id=await MY.importBuffer(b.buffer,'双栏TXT.txt','txt');MY.openBook(id);return 1;})()`);
+  await sleep(1400);
+  await ev("(function(){MY.CFG.lay='two';MY.saveCfg();MY.applyCfg();MY.renderChapter(1,{silent:true});return 1;})()");
+  await sleep(900);
+  const txtTwo = await ev(`JSON.stringify({isTxt:(document.getElementById('page').textContent||'').indexOf('墨色在纸上')>=0,
+    sample:(document.getElementById('page').textContent||'').slice(0,10),cols:MY.PG.cols,count:MY.PG.count,
+    cc:getComputedStyle(document.getElementById('page')).columnCount,cw:Math.round(MY.PG.cw)})`).then(JSON.parse);
+  ok(txtTwo.isTxt, '当前书是长文 TXT', txtTwo.sample);
+  ok(txtTwo.cols === 2 && txtTwo.cc === '2' && txtTwo.count > 1, 'TXT 双栏生效且分页正常', txtTwo);
+  await ev("(function(){MY.CFG.lay='one';MY.saveCfg();MY.applyCfg();MY.renderChapter(1,{silent:true});return 1;})()");
+  await sleep(800);
+  const txtOne = await ev(`JSON.stringify({cols:MY.PG.cols,cc:getComputedStyle(document.getElementById('page')).columnCount})`).then(JSON.parse);
+  ok(txtOne.cols === 1 && txtOne.cc === '1', 'TXT 单栏也正常', txtOne);
+  /* 收尾回到单栏滚动，别把状态漏给后面的用例 */
+  await ev("(function(){MY.CFG.lay='auto';MY.CFG.mode='scroll';MY.saveCfg();MY.applyCfg();return 1;})()");
+  await sleep(500);
+
   console.log('=== 主题与自定义颜色');
   await ev("document.getElementById('btnTheme').click()"); await sleep(150);
   ok(await ev("document.documentElement.getAttribute('data-theme')") === 'light', '主题按钮仍可快速切换', await ev("document.documentElement.getAttribute('data-theme')"));
@@ -269,7 +329,7 @@ async function main() {
   await sleep(250);
 
   console.log('=== 自动阅读（滚动）');
-  await ev('(function(){var w=document.getElementById("pageWrap");w.scrollTop=0;MY.CFG.autoScrollSpeed=6;MY.saveCfg();MY.autoStart();return 1;})()');
+  await ev('(function(){MY.CFG.mode="scroll";MY.CFG.lay="auto";MY.saveCfg();MY.applyCfg();var w=document.getElementById("pageWrap");w.scrollTop=0;MY.CFG.autoScrollSpeed=6;MY.saveCfg();MY.autoStart();return 1;})()');
   await sleep(900);
   const a1 = await ev("document.getElementById('pageWrap').scrollTop");
   ok(a1 > 4, '自动滚动确实在走', a1);

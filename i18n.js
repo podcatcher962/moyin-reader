@@ -496,6 +496,10 @@
     '分栏：{n}': 'Columns: {n}',
     '「翻页」是一页一页左右翻；双栏只在翻页模式下生效——宽屏自动两列，手机始终单列。':
       'Pages turns one screen at a time. Two columns only apply in page mode — wide screens get two, phones always stay single.',
+    '「翻页」是一页一页左右翻。双栏靠翻页成立：宽屏自动两列、手机始终单列；点「双栏」会自动切到翻页，切回滚动就是单栏。':
+      'Pages turns one screen at a time. Two columns need paging to work: wide screens get two, phones always stay single. Picking Two columns switches to Pages automatically; going back to Scroll returns to one column.',
+    '双栏需配合翻页，已切到翻页模式': 'Two columns need paging — switched to Pages',
+    '滚动模式只有单栏，双栏请留在翻页': 'Scroll mode is single column; choose Pages for two',
     '翻页动画': 'Page animation',
     '滑动': 'Slide',
     '淡入': 'Fade',

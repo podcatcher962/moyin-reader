@@ -254,7 +254,7 @@ html[data-theme="light"] #page mark.hl-p{background:rgba(255,150,196,.45)}
 /* ---------- 翻页模式（分栏） ---------- */
 html[data-mode="page"] #pageWrap{overflow:hidden}
 html[data-mode="page"] #page{
-  height:100%;min-height:0;padding:26px var(--padx);margin:0 auto;
+  height:100%;min-height:0;margin:0 auto;
   max-width:min(100%,calc(var(--pagew) * var(--pcols,1) + 60px * (var(--pcols,1) - 1)));
   column-fill:auto;column-gap:60px;
   column-rule:1px solid rgba(128,128,128,.20);
@@ -267,7 +267,8 @@ html[data-mode="page"] #page.pg-fade{animation:pgFade .26s ease}
 html[data-mode] #page{margin:0 auto;padding:34px var(--padx) 70px;
   font-family:var(--ff);font-size:var(--fs);line-height:var(--lh);letter-spacing:var(--ls);
   background:var(--paper);color:var(--paperTx)}
-html[data-mode="page"] #page{padding:26px var(--padx)}
+/* 翻页：上下留白统一走这里，底部多留一成行高，避免最后一行贴住工具栏 */
+html[data-mode="page"] #page{padding:24px var(--padx) calc(24px + .9em)}
 @keyframes pgFade{from{opacity:.30}to{opacity:1}}
 html[data-mode="page"] #chEnd{break-inside:avoid}
 /* 翻页模式：左右点击区提示 */
