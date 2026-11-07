@@ -302,6 +302,40 @@ async function main() {
   const stitle = await ev("document.getElementById('modalTitle').textContent");
   ok(stitle.indexOf('设置') >= 0, '标题是阅读设置', stitle);
   ok(await ev("document.querySelectorAll('#modalBody [data-set=\"lay\"]').length") === 3, '设置里分栏也是三档');
+
+  /* 设置里必须能直接调字号 / 行距 / 字体 / 颜色，不能只留一个「去排版面板」的跳板 */
+  ok(await ev("!!document.querySelector('#modalBody input[data-set=\"fs\"]')"), '设置里有字号滑块');
+  ok(await ev("!!document.querySelector('#modalBody [data-act=\"fsUp\"]')"), '设置里有 A+ / A−');
+  ok(await ev("!!document.querySelector('#modalBody input[data-set=\"lh\"]')"), '设置里有行距滑块');
+  ok(await ev("document.querySelectorAll('#modalBody [data-set=\"ff\"]').length") === 5, '设置里有五种字体',
+    await ev("document.querySelectorAll('#modalBody [data-set=\"ff\"]').length"));
+  ok(await ev("document.querySelectorAll('#modalBody input[type=color]').length") === 2, '设置里有字色 / 底色两个取色器',
+    await ev("document.querySelectorAll('#modalBody input[type=color]').length"));
+  const fs0 = await ev("Number(MY.CFG.fs)");
+  await ev("(function(){document.querySelector('#modalBody [data-act=\"fsUp\"]').click();return 1;})()");
+  await sleep(450);
+  ok(await ev("Number(MY.CFG.fs)") === fs0 + 1, 'A+ 真的把字号加了一号',
+    { before: fs0, after: await ev("Number(MY.CFG.fs)") });
+  const fs1 = await ev("getComputedStyle(document.getElementById('page')).fontSize");
+  ok(Math.round(parseFloat(fs1)) === fs0 + 1, '正文实际字号跟着变', fs1);
+  /* 字体：切仿宋，正文计算样式要换成 FangSong */
+  await ev("(function(){document.querySelector('#modalBody [data-set=\"ff\"][data-v=\"fang\"]').click();return 1;})()");
+  await sleep(420);
+  const ffCss = await ev("getComputedStyle(document.getElementById('page')).fontFamily");
+  ok(/FangSong/i.test(ffCss), '设置里选仿宋，正文真的换字体', ffCss.slice(0, 40));
+  /* 自定义字色 */
+  await ev(`(function(){var i=document.querySelector('#modalBody input[data-set="customTx"]');
+    i.value='#ff8866';i.dispatchEvent(new Event('input',{bubbles:true}));return 1;})()`);
+  await sleep(420);
+  ok(await ev("MY.CFG.customTx") === '#ff8866', '取色器能改字色', await ev("MY.CFG.customTx"));
+  ok(/255,\s*136,\s*102/.test(await ev("getComputedStyle(document.getElementById('page')).color")),
+    '字色真的应用到了正文', await ev("getComputedStyle(document.getElementById('page')).color"));
+  /* 跟随主题：清掉自定义 */
+  await ev("(function(){document.querySelector('#modalBody [data-act=\"clrColor\"]').click();return 1;})()");
+  await sleep(420);
+  ok(await ev("MY.CFG.customTx") === '' && await ev("MY.CFG.customBg") === '', '「跟随主题」能清掉自定义色');
+  await ev("(function(){MY.CFG.fs=19;MY.CFG.ff='serif';MY.CFG.customTx='';MY.CFG.customBg='';MY.saveCfg();MY.applyCfg();return 1;})()");
+  await sleep(300);
   await ev("document.getElementById('modalX').click()");
   await sleep(250);
 
