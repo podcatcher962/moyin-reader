@@ -252,13 +252,20 @@ html[data-theme="light"] #page mark.hl-p{background:rgba(255,150,196,.45)}
 .sumEx .e .n{color:var(--acc);font-size:.85em;margin-top:3px}
 .sumEx .e .h{color:var(--tx2);font-size:.76em;margin-top:3px}
 /* ---------- 翻页模式（分栏） ---------- */
-html[data-mode="page"] #pageWrap{overflow:hidden}
-html[data-mode="page"] #page{
-  height:100%;min-height:0;margin:0 auto;
-  /* 大屏上正文盒居中、两侧留白：多栏溢出的后续列会露到盒外，
-     看上去就是「两列半」。这里裁掉，翻页只走 translateX。 */
+/* 版心宽度限制放在容器上：容器居中、自己裁掉溢出；
+   #page 铺满容器，多栏溢出的后续列被容器裁掉，翻页只靠 translateX。
+   ⚠️ overflow:hidden 绝不能加在 #page 上——那会把平移过去的内容一起裁掉，
+      翻到第 2 页之后整页空白。 */
+html[data-mode="page"] #pageWrap{
   overflow:hidden;
-  max-width:min(100%,calc(var(--pagew) * var(--pcols,1) + 60px * (var(--pcols,1) - 1)));
+  width:100%;
+  max-width:calc(var(--pagew) * var(--pcols,1) + 60px * (var(--pcols,1) - 1));
+  margin:0 auto;
+}
+html[data-mode="page"] #page{
+  height:100%;min-height:0;margin:0;
+  width:100%;max-width:none;
+  overflow:visible;
   column-fill:auto;column-gap:60px;
   column-rule:1px solid rgba(128,128,128,.20);
   transform:translateX(0);will-change:transform;backface-visibility:hidden;

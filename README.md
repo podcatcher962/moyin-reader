@@ -90,7 +90,7 @@
 |---|---|---|
 | `MoYinReader.exe` | 约 47 MB | **完整版**，语音库打包在 exe 尾部，只拷这一个文件就能听，首次启动自动释放到缓存 |
 | `MoYinReader_Lite.exe` | 约 17 MB | 轻量版，需同目录放 `VoicePack` 文件夹（约 53 MB） |
-| `MoYinReader.html` | 约 320 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
+| `MoYinReader.html` | 约 324 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
 | `MoYinReader.apk` | 约 169 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
 
 不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本；或者用 **[在线版](https://podcatcher962.github.io/moyin-reader/)** 什么都不装。
@@ -145,7 +145,7 @@ _pkg_win/build_exe.py              exe 打包 + 验收
 _pkg_apk/TtsBridge.java            安卓 TTS 桥（系统语音）
 _pkg_apk/build_apk.py              apk 打包 + 体检
 _cdp_verify.js                     117 项界面回归（headless Edge，CDP）
-_check_v19.js                      77 项回归（分栏 / 主题面板 / 时钟 / 休息提醒 / 网络位置）
+_check_v19.js                      87 项回归（分栏 / 主题面板 / 时钟 / 休息提醒 / 网络位置）
 _check_v18.js                      95 项版式回归（分栏 / 翻页 / 主题 / 自动阅读 / 全屏）
 _check_v17.js  _check_v171.js      1.7 与 1.7.1 的回归
 _check_voices.js  _check_role.js   声线 / 分角色朗读回归
@@ -227,7 +227,7 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 |---|---|---|
 | `MoYinReader.exe` | ~47 MB | Full build, voice pack appended inside the exe |
 | `MoYinReader_Lite.exe` | ~17 MB | Needs a `VoicePack` folder (~53 MB) next to it |
-| `MoYinReader.html` | ~320 KB | Standalone web build |
+| `MoYinReader.html` | ~324 KB | Standalone web build |
 | `MoYinReader.apk` | ~169 KB | Android shell with the page embedded |
 
 Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** — or open the **[web version](https://podcatcher962.github.io/moyin-reader/)** and install nothing.

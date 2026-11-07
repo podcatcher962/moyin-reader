@@ -318,6 +318,55 @@ async function main() {
   await ev("document.getElementById('modalX').click()");
   await sleep(200);
 
+  console.log('=== 尺寸变化后翻页不错位（侧栏开合）');
+  /* 曾经的坑：开侧栏后正文变窄，分页还按旧步长平移 → 一翻页就停在「半截列」，
+     右边整片空白；另一种写法更狠——overflow:hidden 加在正文盒自己身上，
+     平移过去的内容被自己裁掉，第 2 页起整页空白。两条都靠这里兜住。 */
+  await viewsize(1080, 620);
+  await setPage('auto');
+  /* 固定回到第 1 章（80 段那章），位置给到第 2 页，避免被测样本恰好是章末短页 */
+  await ev("(function(){MY.renderChapter(0,{silent:true});return 1;})()");
+  await sleep(600);
+  await ev("(function(){MY.PG.ready=0;MY.pgMeasure();MY.pgTo(1,{instant:true});return 1;})()");
+  await sleep(450);
+  const align = async () => JSON.parse(await ev(`(function(){
+    var w=document.getElementById('pageWrap'), el=document.getElementById('page');
+    var wr=w.getBoundingClientRect(), cs=getComputedStyle(el);
+    var padL=parseFloat(cs.paddingLeft)||0, padR=parseFloat(cs.paddingRight)||0;
+    var n=0, leftMost=1e9, rightMost=-1e9;
+    el.querySelectorAll('.rdp').forEach(function(p){
+      var rs=p.getClientRects();
+      for(var i=0;i<rs.length;i++){var r=rs[i];
+        if(r.width<20||r.height<2) continue;
+        if(r.right<wr.left+2||r.left>wr.right-2) continue;
+        n++; if(r.left<leftMost)leftMost=r.left; if(r.right>rightMost)rightMost=r.right; }
+    });
+    return JSON.stringify({n:n,leftMost:Math.round(leftMost),rightMost:Math.round(rightMost),
+      wantL:Math.round(wr.left+padL),maxR:Math.round(wr.right-padR),
+      wrapW:Math.round(wr.width),cols:MY.PG.cols,step:Math.round(MY.PG.step),i:MY.PG.i,count:MY.PG.count});})()`));
+  const a1 = await align();
+  ok(a1.n > 4, '翻到第 2 页后屏幕上真有正文（没被自己裁成空白）', a1);
+  ok(Math.abs(a1.leftMost - a1.wantL) <= 3, '页面左缘正好落在栏首（不是半截列）', a1);
+  ok(a1.rightMost <= a1.maxR + 3, '页面右缘没越过版心', a1);
+
+  await ev("(function(){document.getElementById('btnToc').click();return 1;})()");
+  await sleep(700);
+  const a2 = await align();
+  ok(a2.n > 4, '开侧栏后正文依然可见', a2);
+  ok(Math.abs(a2.leftMost - a2.wantL) <= 3, '开侧栏后仍是整列对齐（重新量过）', a2);
+  ok(a2.step === a2.cols * (Math.round((a2.maxR - a2.wantL + 60) / a2.cols)), '开侧栏后步长跟着改（一屏 = 列数 × 列距）', a2);
+
+  await ev("MY.readNext()"); await sleep(600);
+  const a3 = await align();
+  ok(a3.i === a2.i + 1, '侧栏开着也能正常翻一页', { before: a2.i, after: a3.i });
+  ok(a3.n > 4 && Math.abs(a3.leftMost - a3.wantL) <= 3, '翻过之后还是整列对齐，没有半截列', a3);
+
+  await ev("(function(){document.getElementById('btnToc').click();return 1;})()");
+  await sleep(700);
+  const a4 = await align();
+  ok(a4.cols === 2, '收起侧栏后自动回到双栏', a4);
+  ok(a4.n > 4 && Math.abs(a4.leftMost - a4.wantL) <= 3, '收起侧栏后正文对齐正常', a4);
+
   console.log('=== 网络位置导入（SMB / 映射盘）');
   ok(await ev("document.getElementById('btnImportNet').hidden"), '网页版不显示「网络位置」（没有本地文件权限）');
   /* 装上桌面外壳那套桥，再走一遍真实点击路径 */

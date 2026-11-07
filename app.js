@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.9.2';
+  var VER = '1.9.3';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -288,9 +288,18 @@
 
   function pgEnabled() { return CFG.mode === 'page'; }
   /* 每屏几栏：只有单栏和双栏。auto 够宽就双栏，手机一律单栏 */
+  /* 真正可用的宽度：容器父级减掉侧栏。不能用 #pageWrap.clientWidth——
+     它已经被上一轮的 --pcols 限宽了，拿它做判断会越算越窄。 */
+  function pgAvailW() {
+    var rm = $('readMain');
+    var w = rm ? rm.clientWidth : (window.innerWidth || 800);
+    var side = $('side');
+    if (side && side.classList.contains('on')) w -= side.offsetWidth || 0;
+    return Math.max(240, w);
+  }
   function pgCols() {
     if (!pgEnabled()) return 1;
-    var w = ($('pageWrap') && $('pageWrap').clientWidth) || 800;
+    var w = pgAvailW();
     if (w < 620) return 1;                        // 手机一律单栏
     var pad = Math.max(10, Number(CFG.padw) || 32);
     var usable = w - pad * 2 + 60;                // 加上最后一个栏距，便于整除
@@ -312,6 +321,8 @@
   function pgReset() {
     var el = $('page'); if (!el) return;
     el.style.columnCount = ''; el.style.transform = ''; el.style.removeProperty('--pcols');
+    var wrap = $('pageWrap');
+    if (wrap) { wrap.style.removeProperty('--pcols'); wrap.style.removeProperty('max-width'); }
     el.classList.remove('pg-slide', 'pg-fade');
     PG.cols = 1; PG.count = 1; PG.i = 0; PG.ready = 0;
   }
@@ -342,7 +353,9 @@
     if (!el) return PG;
     if (!pgEnabled()) { pgReset(); return PG; }
     var cols = pgCols();
-    el.style.setProperty('--pcols', cols);
+    var wrap = $('pageWrap');
+    if (wrap) wrap.style.setProperty('--pcols', cols);   // 容器靠它算 max-width
+    el.style.removeProperty('--pcols');
     el.style.columnCount = cols;
     el.style.transform = 'translateX(0px)';
     var m = pgGeo();
@@ -414,6 +427,31 @@
     if (!anchor) anchor = pgTopPara();
     pgMeasure();
     pgTo(anchor ? paraPage(anchor) : PG.i, { instant: true });
+  }
+  /* 正文区域宽度变了（开合侧栏、切换视图、窗口缩放）就必须重新量：
+     列宽、列数、一屏步长全都跟着变；放着不管的话 translateX 还按旧步长走，
+     翻一页就会停在「半截列」，右边一大片空白。 */
+  var pgWaitT = 0;
+  function pgAfterLayout(delay) {
+    if (!BK || !pgEnabled()) return;
+    clearTimeout(pgWaitT);
+    pgWaitT = setTimeout(function () {
+      var el = $('pageWrap');
+      if (!el) return;
+      // 用「可用宽度」而不是容器自身的宽度：容器被 --pcols 限宽了，看它会自锁，
+      // 侧栏一收宽度回不去，就一直停在单栏。
+      var key = pgAvailW() + 'x' + el.clientHeight;
+      if (key === pgAfterLayout.lastKey && PG.ready) return;   // 尺寸没变，别白重排
+      pgAfterLayout.lastKey = key;
+      pgReflow();
+    }, delay === undefined ? 220 : delay);
+  }
+  function pgWatch() {
+    if (!window.ResizeObserver) return;
+    var ro = new ResizeObserver(function () { pgAfterLayout(120); });
+    ['pageWrap', 'readMain', 'side'].forEach(function (id) {
+      var el = $(id); if (el) ro.observe(el);
+    });
   }
   /* 把某段滚（翻）到眼前 */
   function revealPara(p, smooth) {
@@ -1378,7 +1416,7 @@
     $('viewLib').classList.toggle('on', v === 'lib');
     $('viewRead').classList.toggle('on', v === 'read');
     if (v === 'lib') { autoStop(true); hideRest(); clkStop(); renderShelf(); }
-    else clkStart();
+    else { clkStart(); pgAfterLayout(60); }
     applyImm();
   }
   async function openBook(id) {
@@ -1563,11 +1601,13 @@
     SIDE = tab || SIDE; $('side').classList.add('on');
     $('side').querySelectorAll('.tabs button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === SIDE); });
     renderSide();
+    pgAfterLayout();
   }
   function closeSide() {
     if (!$('side').classList.contains('on')) return;
     $('side').classList.remove('on');
     hideSelTools();
+    pgAfterLayout();
   }
   function hlChapterLabel(h) { return T('第 {n} 章', { n: (h.ch | 0) + 1 }) + ' · ' + chapterTitle(h.ch); }
   function renderSide() {
@@ -2794,6 +2834,9 @@
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + AISHELL3 多说话人 VITS 模型）：不联网、不收费、无需账号，模型内含 174 个中文说话人（148 女 + 26 男），精选 11 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.9.3 修了什么</h3><ul>' +
+      '<li><b>翻页不再「只剩一条窄栏 + 右边一片黑」</b>：翻页时正文盒自己带了裁切，平移过去的内容被自己剪掉，第 2 页起容易整页空白；同时开合侧栏后没有重新分页，还按旧列宽平移，一翻页就停在半截列上。现在裁切交给外层容器，正文盒只负责排版；侧栏开合、进入沉浸、窗口缩放都会自动重新量一次列宽与页数。</li>' +
+      '<li><b>版心宽度在翻页时也生效</b>：宽度限制从正文盒挪到了外层容器，双栏在 1920 宽的屏上是两栏各 688px、整体居中，不再把溢出的第三列露在留白里。</li></ul>' +
       '<h3>1.9.2 新加了什么</h3><ul>' +
       '<li><b>网络位置导入（SMB）</b>：书架多了「网络位置」，填 <code>\\\\192.168.1.10\\Books</code> 这样的局域网共享、映射好的网盘（<code>Z:\\书</code>）或本机任意绝对路径，就能像本地文件夹一样扫描导入。凭据交给 Windows 记着——资源管理器里能打开，这里就能读，不用先把书拷过来。连不上的主机 12 秒内给提示，不会一直转。</li></ul>' +
       '<h3>1.9.1 修了什么</h3><ul>' +
@@ -2828,7 +2871,7 @@
       '<li><b>桌面版终于能划线了</b>：桌面外壳默认把网页的文字选择关掉了，导致选中正文没反应、浮动色块也不出来。已放开，Windows 版的划线与批注和其他版本一样。</li>' +
       '<li><b>导入文件夹不再像在上传</b>：桌面版改用系统的「选择文件夹」对话框，不再是浏览器那个「选择要上传的文件夹 … 上传」的选择器。</li>' +
       '<li><b>左侧导航能退出了</b>：标签栏右侧加了 ×，再点同一个按钮也能收起，点正文空白处自动收起（有选区时不收，免得把手选的位置抖掉）。</li></ul>' +
-      '<p class="kv">版本 1.9.2 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
+      '<p class="kv">版本 1.9.3 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
   };
   function showDoc(k) {
     var d = DOCS[k] || DOCS.help;
@@ -3379,6 +3422,8 @@
         if (pgEnabled()) pgReflow(); else updateProgress();
       }, 180);
     });
+    /* 正文容器尺寸变了（开合侧栏、进出沉浸、窗口缩放）也重新分页 */
+    pgWatch();
     if (SYN && SYN.addEventListener) SYN.addEventListener('voiceschanged', fillVoices);
     if (SYN && 'onvoiceschanged' in SYN) SYN.onvoiceschanged = fillVoices;
     window.addEventListener('beforeunload', function () { try { savePos(); rtFlush(); } catch (e) { } });
