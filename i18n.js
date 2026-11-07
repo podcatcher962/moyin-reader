@@ -555,6 +555,44 @@
     '排版已恢复默认': 'Typography reset',
     '{a}/{b} 页': 'p. {a}/{b}',
     '点选即时生效，自动保存。': 'Changes apply instantly and are saved.',
+
+    /* ---------- 1.9 多栏档位 / 主题面板 / 阅读时钟 / 休息提醒 ---------- */
+    '设置': 'Settings',
+    '阅读设置：外观、朗读、语音、时钟与提醒': 'Settings: appearance, reading aloud, voices, clock and breaks',
+    '1 栏': '1 column',
+    '2 栏': '2 columns',
+    '3 栏': '3 columns',
+    '4 栏': '4 columns',
+    '「翻页」是一页一页左右翻。多栏靠翻页成立：自动按屏宽定，也可手动选 1~4 栏（手机始终单栏）；点 2 栏以上会自动切到翻页。':
+      'Pages turns one screen at a time. Multiple columns need paging: Auto picks by screen width, or pick 1–4 columns yourself (phones stay single). Choosing 2 or more switches to Pages.',
+    '更多排版…': 'More type…',
+    '点一下立刻换上，自动记住。字号 / 行距 / 分栏在「更多排版」里。':
+      'Tap to apply — remembered next time. Size, spacing and columns live under More type.',
+    '已跟随主题配色': 'Back to the theme colours',
+    '阅读时钟': 'Reading clock',
+    '顶栏时钟': 'Toolbar clock',
+    '显示': 'Show',
+    '隐藏': 'Hide',
+    '休息提醒': 'Break reminder',
+    '重新计时': 'Restart timer',
+    '当前时间 · 本次已读时长（点一下可换样式）': 'Current time · read this session (tap to change)',
+    '显示当前时间与本次已读时长，点顶栏那个时间块也能改':
+      'Shows the clock and how long you have read; tap the clock chip to change it too',
+    '连续读到设定时长提醒休息，可稍后再提': 'Get a break reminder after this much continuous reading',
+    '时长只算真正在读的时间：回书架、切走窗口都会停表。连续读满设定时长会提醒你休息。':
+      'Only reading time counts — going back to the shelf or leaving the window pauses it. A reminder appears once you reach the limit.',
+    '已读 {n}': 'read {n}',
+    '{n} 分': '{n} min',
+    '本次已读 {n}': '{n} read this session',
+    '当前时间 {t} · 本次已读 {n}': 'Now {t} · {n} read this session',
+    '{n} 分钟': '{n} min',
+    '{a} 小时 {b} 分': '{a} h {b} min',
+    '已连续阅读 {n}，抬头看看远处，喝口水吧。':
+      'You have been reading for {n}. Look up at something far away and have some water.',
+    '休息一下': 'Take a break',
+    '稍后再提': 'Later',
+    '已重新计时，读累了就歇会儿': 'Timer restarted — go easy on your eyes',
+    '10 分钟后再提醒': 'Remind me in 10 minutes',
   };
 
   /* 中文侧也可能需要「统一改写」的文案：留空表示中文原样 */

@@ -18,6 +18,13 @@ NARROW = r'''
 #libActs,#readActs{width:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 #libActs button,#readActs button{font-size:.8em;padding:6px 2px;min-height:36px;overflow:hidden;text-overflow:ellipsis}
 #readTitle{max-width:100%}
+#readTitle{max-width:calc(100% - 112px)}
+#btnMarkAdd{display:none}
+#clock{font-size:.7em;padding:2px 6px;border-radius:9px;white-space:nowrap}
+body.imm #clockFloat{font-size:.7em;top:6px;right:8px}
+#restTip{bottom:60px;left:8px;right:8px;max-width:none}
+#restTip.on{animation:none;transform:none}
+#restTip .rtTx{font-size:.94em}
 #libBody{padding:10px}
 .shelf{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:9px}
 .bk .cv{height:142px}

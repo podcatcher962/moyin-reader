@@ -120,6 +120,13 @@
       '<p>The shelf + reader layout and the speech scheduling were informed by Koodo Reader on this machine, with all code rewritten from zero and no dependencies: EPUB unzipping, OPF / NCX / Nav contents, body and illustration parsing are all built in, with no external scripts or CDN.</p>' +
       '<p class="kv">Speech can use the free open-source offline neural voices (sherpa-onnx + AISHELL3 multi-speaker VITS): no network, no fees, no account. The model contains 174 Chinese speakers (148 female + 26 male), 11 curated by default, and supports role-based reading. The library ships in <code>VoicePack</code>; the full Windows EXE has it appended inside, so one file is enough.</p>' +
       '<p>Released under the <b>MIT License</b>: use, modify and redistribute freely, including commercially, keeping the copyright and license notice. Full terms under <b>Open source &amp; license</b>.</p>' +
+      '<h3>What is new in 1.9</h3><ul>' +
+      '<li><b>1–4 columns</b>: big screens are no longer stuck at two. The column picker now offers <b>Auto / 1 / 2 / 3 / 4</b>; Auto decides from screen width (up to three), and you can override it. Columns never drop below 300px — the count steps down instead — and phones always stay single. Picking two or more switches to Pages.</li>' +
+      '<li><b>Theme button opens a picker</b>: it used to cycle one step per tap. Now it shows all six themes as cards painted in their own paper and ink, so you can compare them side by side; the panel stays open and each pick applies at once.</li>' +
+      '<li><b>Settings always reachable</b>: a <b>Settings</b> button now sits at the end of the reading toolbar, so the full settings are one tap away at any time. On phones the buttons wrap into two tidy rows.</li>' +
+      '<li><b>Reading clock</b>: the toolbar shows the current time and how long you have read this session; it turns amber at 30 minutes and red at 60. In immersive mode a faint clock stays in the top-right corner. Tap it to hide it or restart the timer.</li>' +
+      '<li><b>Break reminder</b>: after the set stretch (45 minutes by default; 30 / 45 / 60 / 90 or off) a reminder floats up. Take a break to restart the timer, or snooze for ten minutes. Only actual reading counts — going back to the shelf or leaving the window pauses it.</li>' +
+      '<li><b>No more half columns</b>: the page step is now measured from the real column pitch, so an extra partial column gets corrected immediately.</li></ul>' +
       '<h3>What is new in 1.8 — typography that can hold its own</h3><ul>' +
       '<li><b>Paged reading</b>: alongside scrolling, the whole chapter can now turn page by page. Wide screens and tablets get <b>two columns</b>, phones stay <b>single column</b>. Tap the left or right edge, use the wheel, space, ← →, or swipe on a phone; the turn animation can slide, fade or none.</li>' +
       '<li><b>One type panel</b>: the <b>Type</b> button collects everything — font size (A− / A+ / slider), line height, paragraph gap, letter spacing, first-line indent, five families (Song / Hei / Kai / FangSong / Mono), justified or ragged right, measure width and side margins, with a reset at the bottom.</li>' +
@@ -142,6 +149,6 @@
       '<li><b>Highlighting now works in the desktop app</b> — the Windows shell disabled web text selection by default, so dragging over the text did nothing and the colour toolbar never appeared. Selection is enabled now.</li>' +
       '<li><b>Folder import no longer looks like an upload</b> — the desktop build opens the native folder picker instead of the browser\'s “select the folder to upload … Upload” dialog.</li>' +
       '<li><b>The left sidebar can be dismissed</b> — there is a × on the tab strip, clicking the same toolbar button toggles it, and clicking the page closes it (unless you have text selected, so a fresh selection is never disturbed).</li></ul>' +
-      '<p class="kv">Version 1.8.1 · single file · offline by default · data stays on this device<br>Author / copyright © 2026 Lanlan Eternal (永远的兰兰)<br>Feedback and source: see the repository address in the bundled README</p>'
+      '<p class="kv">Version 1.9.0 · single file · offline by default · data stays on this device<br>Author / copyright © 2026 Lanlan Eternal (永远的兰兰)<br>Feedback and source: see the repository address in the bundled README</p>'
   };
 })(window);

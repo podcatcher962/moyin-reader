@@ -212,10 +212,15 @@ async function main() {
   await ev("document.getElementById('btnFind').click()");
   const find = await ev("(async()=>{await MY.doFind('文化');return document.querySelectorAll('#findRes .it').length;})()");
   ok(find > 0, '全书搜索命中', find);
-  await ev("document.getElementById('btnTheme').click()");
+  /* 1.9 起主题按钮弹面板，点卡片才换 */
+  await ev("document.getElementById('btnTheme').click()"); await sleep(300);
+  ok(await ev("document.getElementById('modal').classList.contains('on')"), '主题按钮弹出面板');
+  await ev("(function(){document.querySelector('#modalBody .thCard[data-th=\"light\"]').click();return 1;})()");
+  await sleep(350);
   ok(await ev("document.documentElement.getAttribute('data-theme')") === 'light', '主题切换到明亮');
   await shot('04_read_light');
-  await ev("document.getElementById('btnType').click()");
+  await ev("document.getElementById('modalX').click()"); await sleep(200);
+  await ev("document.getElementById('btnType').click()"); await sleep(250);
   const fs0 = await ev('MY.CFG.fs');
   await ev("document.querySelector('#modalBody [data-font=\"fs+\"]').click()");
   ok(await ev('MY.CFG.fs') === fs0 + 1, '字号 +1 即时生效');
