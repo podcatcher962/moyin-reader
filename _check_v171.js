@@ -101,7 +101,7 @@ async function main() {
   await send('Page.addScriptToEvaluateOnNewDocument', { source: STUB });
   await send('Page.navigate', { url: APP });
   ok(await ready(), '页面初始化完成');
-  ok(await ev('MY.VER') === '1.7.1', '版本号 1.7.1', await ev('MY.VER'));
+  ok(await ev('MY.VER') >= '1.7.1', '版本号（1.7.1 起）', await ev('MY.VER'));
 
   console.log('=== 正文可选中（划线前提）');
   await ev(`(async()=>{const txt='第一章 起风\\n'+('夜色像一层薄薄的尘，落在旧城的瓦上没有声响。'.repeat(6));

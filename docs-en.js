@@ -10,8 +10,9 @@
       '<h3>Reading</h3><ul>' +
       '<li><b>Contents</b> jumps between chapters, <b>Search</b> scans the whole book, <b>+ Mark</b> drops a bookmark where you are.</li>' +
       '<li>Drag the bottom slider to move anywhere in the book. Arrow keys change chapter, space scrolls a screen.</li>' +
-      '<li>Shortcuts: ← / → chapter, space scroll (or pause / resume while listening), Ctrl + F search, Esc back to the shelf or close a dialog.</li>' +
-      '<li><b>Font</b> sets size, line spacing, page width and typeface; <b>Theme</b> cycles dark / light / sepia.</li>' +
+      '<li>Shortcuts: ← / → chapter (pages when paged), space scroll (or pause / resume while listening), Ctrl + F search, Esc back to the shelf or close a dialog.</li>' +
+      '<li><b>Type</b> collects it all: scroll or paged, columns, turn animation, size, line height, paragraph gap, letter spacing, indent, typeface, alignment, measure width, side margins, six themes with custom paper and text colour, brightness, and auto-read speed.</li>' +
+      '<li><b>Theme</b> cycles the six palettes; <b>Auto</b> toggles auto reading; <b>Full</b> goes immersive.</li>' +
       '<li>Your position is saved automatically, and listening position is tracked separately.</li></ul>' +
       '<h3>Highlights, notes and sharing</h3>' +
       '<p>Select any sentence in the text and a small toolbar appears: pick one of four highlight colours, attach a note, copy the text, or turn it into a share card (PNG). Open <b>Notes</b> in the side panel to browse every highlight in the book, jump back to it, edit the note or delete it. From there you can also export all notes as Markdown, or open <b>Reading summary</b> to see how much you have read and to export the excerpts.</p>' +
@@ -83,7 +84,10 @@
       '<h3>What is “Resume” on the shelf?</h3><p>Listening position is remembered separately from reading position, so the two never interfere. After listening, the book card shows “▶ Resume · ch. N”; tap it to continue from the exact paragraph. To read from your reading position instead, open the book and tap <b>Read aloud</b>. The button only appears for books you have listened to.</p>' +
       '<h3>Can I change voice halfway through?</h3><p>Use the dropdown at the left of the reading bar — 11 curated voices by default, up to all 174 in Settings. To give dialogue its own voices, tap <b>Multi-voice</b>. The current paragraph is re-read with the new voice; no need to stop or go back to the shelf. <b>Preview voice</b> in Settings lets you compare first.</p>' +
       '<h3>How do highlights and notes work?</h3><p>Select text in the page, then choose a colour, add a note, copy, or make a share card. All highlights are listed under <b>Notes</b> in the side panel and stored with the book — they travel with a full backup. Export them as Markdown from that panel; the <b>Reading summary</b> collects them chapter by chapter.</p>' +
-      '<h3>Buttons cramped on a phone?</h3><p><b>Layout</b> on the shelf switches between phone and desktop; the default follows the screen width.</p>' +
+      '<h3>Buttons cramped on a phone?</h3><p>They reflow into a multi-row grid by screen width; nothing to switch by hand. Body text is always one column on a phone, even in landscape.</p>' +
+      '<h3>How do I get two columns?</h3><p>Tap <b>Type</b> in the reader and look at <b>Reading mode</b>: switch to <b>Pages</b>, and Columns set to <b>Auto</b> gives you two columns on a wide window; <b>Two</b> forces it when the window is wide enough. Narrow windows and phones fall back to a single column rather than squeezing the text.<br>Paged mode turns whole screens, not pixels: tap the left or right edge, use the wheel, space or ← →, or swipe on a phone.</p>' +
+      '<h3>How does auto reading work?</h3><p>Tap <b>Auto</b>: it scrolls at a steady pace, or turns a page every N seconds in paged mode. Tap again to pause — a small pill lets you resume or quit. The next chapter starts by itself at the end. Speech and auto reading never fight over the scroll position.</p>' +
+      '<h3>Can I get more immersion?</h3><p>Tap <b>Full</b>: both bars slide away and come back when the pointer reaches the top or bottom edge. For a darker page, lower <b>Brightness</b> under Type → Colours.</p>' +
       '<p class="kv">Still stuck? Read the implementation notes under <b>About</b>, or find the feedback link in the bundled README.</p>',
 
     open: '<h3>License</h3>' +
@@ -116,6 +120,17 @@
       '<p>The shelf + reader layout and the speech scheduling were informed by Koodo Reader on this machine, with all code rewritten from zero and no dependencies: EPUB unzipping, OPF / NCX / Nav contents, body and illustration parsing are all built in, with no external scripts or CDN.</p>' +
       '<p class="kv">Speech can use the free open-source offline neural voices (sherpa-onnx + AISHELL3 multi-speaker VITS): no network, no fees, no account. The model contains 174 Chinese speakers (148 female + 26 male), 11 curated by default, and supports role-based reading. The library ships in <code>VoicePack</code>; the full Windows EXE has it appended inside, so one file is enough.</p>' +
       '<p>Released under the <b>MIT License</b>: use, modify and redistribute freely, including commercially, keeping the copyright and license notice. Full terms under <b>Open source &amp; license</b>.</p>' +
+      '<h3>What is new in 1.8 — typography that can hold its own</h3><ul>' +
+      '<li><b>Paged reading</b>: alongside scrolling, the whole chapter can now turn page by page. Wide screens and tablets get <b>two columns</b>, phones stay <b>single column</b>. Tap the left or right edge, use the wheel, space, ← →, or swipe on a phone; the turn animation can slide, fade or none.</li>' +
+      '<li><b>One type panel</b>: the <b>Type</b> button collects everything — font size (A− / A+ / slider), line height, paragraph gap, letter spacing, first-line indent, five families (Song / Hei / Kai / FangSong / Mono), justified or ragged right, measure width and side margins, with a reset at the bottom.</li>' +
+      '<li><b>Six themes</b>: dark, light and sepia, plus <b>green, slate and pure black</b>; you can also pick your own paper and text colour and clear them again. Dark mode has an extra brightness dimmer for reading with the lights off.</li>' +
+      '<li><b>Auto read</b>: continuous scrolling, or timed page turns in paged mode. Pause and resume from a small pill; the next chapter starts automatically at the end.</li>' +
+      '<li><b>Immersive full screen</b>: both bars slide away and come back when the pointer reaches the top or bottom edge. F11 or the <b>Full</b> button; Esc backs out step by step.</li>' +
+      '<li><b>Two long-standing bugs fixed</b>: styles shipped inside a book (things like <code>body{margin:5%}</code>) used to leak onto the reading container and squeeze the measure — which is why the right column of a two-column page was clipped. Books can now only style their own paragraphs; the measure and type scale are yours. A chapter heading repeated inside the body is also removed.</li></ul>' +
+      '<h3>What was fixed in 1.8.1</h3><ul>' +
+      '<li><b>“Two columns” now works the moment you pick it.</b> Previously you had to switch to Pages first; choosing it while scrolling did nothing, which looked broken. Picking two columns now switches to Pages and lays out both columns right away, and going back to Scroll returns to one column — both directions show a short notice. Same for TXT and EPUB.</li>' +
+      '<li><b>Switching reading mode keeps your place</b>: flip between scroll and pages mid-chapter and you stay on the paragraph you were reading instead of jumping back to the start.</li>' +
+      '<li><b>More room at the foot of the page</b>: the last line no longer sits against the bottom toolbar in paged mode.</li></ul>' +
       '<h3>What is new in 1.7</h3><ul>' +
       '<li><b>Full bilingual interface</b>: one switch on the shelf flips the entire window — buttons, settings, dialogs, toasts and all documentation — between Chinese and English. Your choice is remembered.</li>' +
       '<li><b>Highlights &amp; notes</b>: select text to highlight it in four colours, attach a note, or both. Every annotation is listed in the new <b>Notes</b> panel where you can jump to it, edit it or delete it.</li>' +
@@ -127,6 +142,6 @@
       '<li><b>Highlighting now works in the desktop app</b> — the Windows shell disabled web text selection by default, so dragging over the text did nothing and the colour toolbar never appeared. Selection is enabled now.</li>' +
       '<li><b>Folder import no longer looks like an upload</b> — the desktop build opens the native folder picker instead of the browser\'s “select the folder to upload … Upload” dialog.</li>' +
       '<li><b>The left sidebar can be dismissed</b> — there is a × on the tab strip, clicking the same toolbar button toggles it, and clicking the page closes it (unless you have text selected, so a fresh selection is never disturbed).</li></ul>' +
-      '<p class="kv">Version 1.7.1 · single file · offline by default · data stays on this device<br>Author / copyright © 2026 Lanlan Eternal (永远的兰兰)<br>Feedback and source: see the repository address in the bundled README</p>'
+      '<p class="kv">Version 1.8.1 · single file · offline by default · data stays on this device<br>Author / copyright © 2026 Lanlan Eternal (永远的兰兰)<br>Feedback and source: see the repository address in the bundled README</p>'
   };
 })(window);

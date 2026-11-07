@@ -5,7 +5,7 @@
 🌐 **[在线使用（免安装）](https://podcatcher962.github.io/moyin-reader/)** — 浏览器直接打开，导入的书与进度存在本机，不上传任何服务器。
 
 
-一个单文件、默认离线的中文 TXT / EPUB 阅读器，带朗读、划线批注与阅读总结。174 个离线中文说话人（148 女 26 男，精选 11 个直接可选），支持分角色朗读；界面中英双语一键切换。Windows 一个 exe 直接跑，安卓一个 apk，浏览器双击 HTML 也能用。
+一个单文件、默认离线的中文 TXT / EPUB 阅读器，带朗读、划线批注与阅读总结；版式做到成熟阅读软件的水准——滚动或整屏翻页、宽屏双栏手机单栏、六套主题、自动阅读与沉浸全屏。174 个离线中文说话人（148 女 26 男，精选 11 个直接可选），支持分角色朗读；界面中英双语一键切换。Windows 一个 exe 直接跑，安卓一个 apk，浏览器双击 HTML 也能用。
 
 > 名字取「以墨为文、吟而出声」：把纸上的字念出来。与任何同名公司、配音平台、有声主播无关。
 
@@ -19,9 +19,21 @@
 
 ### 截图
 
-| 夜间阅读 | 明亮阅读 |
+| 翻页 · 双栏 · 夜间 | 翻页 · 双栏 · 明亮 |
 |---|---|
-| ![夜间阅读](docs/screenshots/read-dark.png) | ![明亮阅读](docs/screenshots/read-light.png) |
+| ![翻页双栏夜间](docs/screenshots/read-paged-dark.png) | ![翻页双栏明亮](docs/screenshots/read-paged-light.png) |
+
+| 羊皮纸 · 首行缩进 | 护眼绿 |
+|---|---|
+| ![羊皮纸](docs/screenshots/read-sepia.png) | ![护眼绿](docs/screenshots/theme-green.png) |
+
+| 排版与外观（一处调完） | 六套主题与自定义配色 |
+|---|---|
+| ![排版面板](docs/screenshots/type-panel.png) | ![配色](docs/screenshots/type-colors.png) |
+
+| 沉浸全屏 | 手机 · 单栏翻页 |
+|---|---|
+| ![沉浸](docs/screenshots/immersive.png) | ![手机翻页](docs/screenshots/phone-paged.png) |
 
 | 分角色朗读 | 书架 · 一键续听 |
 |---|---|
@@ -49,8 +61,11 @@
 | 🗂️ 书架 | 自建书架分组、★收藏、批量移动 / 移除、改书名作者、整目录导入、阅读计时 |
 | 🌐 双语 | 全窗口中英切换（含设置、弹窗、提示与全部说明文档），选择记住 |
 | 🔖 续听 | 「听到哪」与「读到哪」分开记，书架卡片一键「续听 · 第 N 章」接着念 |
-| ✍️ 阅读 | 夜间 / 明亮 / 羊皮纸三主题，字号、行距、页宽、字体、两端对齐可调 |
-| 🔍 导航 | 目录跳章、全文搜索、书签、章节内跳转、键盘 ← → 空格 |
+| ✍️ 阅读 | **滚动 / 翻页**两种读法：宽屏与平板自动双栏，手机单栏（点「双栏」会自动切到翻页）。字号、行距、段间距、字间距、首行缩进、五种字体、两端 / 左对齐、版心宽度、页边距全部可调 |
+| 🎨 外观 | 夜间 / 明亮 / 羊皮纸 / 护眼绿 / 雾蓝 / 纯黑六套主题，可自定底色与字色；另有亮度压暗，黑灯下不刺眼 |
+| ▶️ 自动阅读 | 滚动模式匀速下滚，翻页模式按秒自动翻页；一键暂停 / 继续，章末自动接下一章 |
+| 🖥️ 沉浸全屏 | 上下工具栏自动收起，鼠标移到屏幕边缘唤出；F11 / Esc 快捷键 |
+| 🔍 导航 | 目录跳章、全文搜索、书签、章节内跳转；翻页模式下点两侧、滚轮、空格、← →、手机左右滑都能翻页 |
 | 💾 数据 | IndexedDB 本机存储，可导出/导入备份（含书籍文件），换设备不丢 |
 | 🔒 隐私 | 默认零联网；语音在本机 127.0.0.1 合成，朗读文字不出本机 |
 
@@ -60,8 +75,8 @@
 |---|---|---|
 | `MoYinReader.exe` | 约 47 MB | **完整版**，语音库打包在 exe 尾部，只拷这一个文件就能听，首次启动自动释放到缓存 |
 | `MoYinReader_Lite.exe` | 约 17 MB | 轻量版，需同目录放 `VoicePack` 文件夹（约 53 MB） |
-| `MoYinReader.html` | 约 248 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
-| `MoYinReader.apk` | 约 141 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
+| `MoYinReader.html` | 约 283 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
+| `MoYinReader.apk` | 约 157 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
 
 不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本；或者用 **[在线版](https://podcatcher962.github.io/moyin-reader/)** 什么都不装。
 
@@ -72,7 +87,8 @@
 3. 点书打开，点右上「朗读」开始听；朗读条最左边可换声线。
 4. 回到书架能看见「▶ 续听 · 第 N 章」，接着上次听的地方继续。
 5. 选中正文任意一句即可高亮、写批注、复制或生成分享图；右侧「笔记」页汇总全部批注，可导出 Markdown 或打开阅读总结。
-6. 书架顶栏右侧的 `EN` / `中` 一键切换界面语言。
+6. 想换版式点顶栏「排版」：切滚动 / 翻页、选单栏或双栏（选双栏会自动切到翻页，TXT 和 EPUB 一样）、调字号行距段距、换六套主题；点「自动」进自动阅读，点「全屏」进沉浸阅读。
+7. 书架顶栏右侧的 `EN` / `中` 一键切换界面语言。
 
 ### 语音是怎么来的
 
@@ -113,7 +129,9 @@ _pkg_win/app.py                    Windows 外壳（pywebview + 内嵌 HTTP）
 _pkg_win/build_exe.py              exe 打包 + 验收
 _pkg_apk/TtsBridge.java            安卓 TTS 桥（系统语音）
 _pkg_apk/build_apk.py              apk 打包 + 体检
-_cdp_verify.js                     115 项界面回归（headless Edge，CDP）
+_cdp_verify.js                     117 项界面回归（headless Edge，CDP）
+_check_v18.js                      93 项版式回归（分栏 / 翻页 / 主题 / 自动阅读 / 全屏）
+_check_v17.js  _check_v171.js      1.7 与 1.7.1 的回归
 _check_voices.js  _check_role.js   声线 / 分角色朗读回归
 _unit_zip.js                       ZIP 解压内核单测（482 项）
 ```
@@ -132,15 +150,27 @@ _unit_zip.js                       ZIP 解压内核单测（482 项）
 
 ## English
 
-A single-file, offline-first Chinese TXT / EPUB reader with text-to-speech, highlights, notes and reading summaries. 174 offline Chinese speakers (148 female, 26 male; 11 curated by default), with role-based reading that switches voices per character in dialogue. The whole interface toggles between Chinese and English. One portable exe on Windows, one apk on Android, or just double-click the HTML.
+A single-file, offline-first Chinese TXT / EPUB reader with text-to-speech, highlights, notes and reading summaries — and typography that can hold its own: scroll or turn whole pages, two columns on wide screens and one on phones, six themes, auto reading and immersive full screen. 174 offline Chinese speakers (148 female, 26 male; 11 curated by default), with role-based reading that switches voices per character in dialogue. The whole interface toggles between Chinese and English. One portable exe on Windows, one apk on Android, or just double-click the HTML.
 
 Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 
 ### Screenshots
 
-| Dark reading | Light reading |
+| Paged · two columns · dark | Paged · two columns · light |
 |---|---|
-| ![dark](docs/screenshots/read-dark.png) | ![light](docs/screenshots/read-light.png) |
+| ![paged dark](docs/screenshots/read-paged-dark.png) | ![paged light](docs/screenshots/read-paged-light.png) |
+
+| Sepia · first-line indent | Green |
+|---|---|
+| ![sepia](docs/screenshots/read-sepia.png) | ![green](docs/screenshots/theme-green.png) |
+
+| Type &amp; appearance, all in one panel | Six themes and custom colours |
+|---|---|
+| ![type panel](docs/screenshots/type-panel.png) | ![colours](docs/screenshots/type-colors.png) |
+
+| Immersive full screen | Phone · single-column pages |
+|---|---|
+| ![immersive](docs/screenshots/immersive.png) | ![phone](docs/screenshots/phone-paged.png) |
 
 | Role-based reading | Shelf with one-click resume |
 |---|---|
@@ -161,7 +191,10 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 - **Role reading** — narration keeps your chosen voice while quoted dialogue switches per character, consistently for the whole book.
 - **Listening** — paragraph highlight with auto-scroll, auto-advance to the next chapter, sleep timer, speed control.
 - **Resume** — listening position is tracked separately from reading position; one click on a shelf card resumes "chapter N".
-- **Reading** — dark / light / sepia themes, adjustable font size, line height, page width and family.
+- **Reading** — two ways to read: continuous scroll, or whole-screen page turns with **two columns** on wide screens and tablets and **one column** on phones. Font size, line height, paragraph gap, letter spacing, first-line indent, five families, justified or ragged right, measure width and side margins are all adjustable.
+- **Appearance** — dark / light / sepia / green / slate / pure black, plus your own paper and text colour and a brightness dimmer for reading in the dark.
+- **Auto read** — continuous scrolling, or timed page turns; pause and resume from a pill, and the next chapter starts by itself.
+- **Immersive full screen** — both bars slide away and come back when the pointer reaches an edge; F11 and Esc work too.
 - **Highlights & notes** — select text for four highlight colours, a note, copy or a share card; the Notes panel lists every annotation by chapter with jump / recolour / edit / delete.
 - **Export & summary** — export notes as Markdown; a reading summary shows time read, progress, annotation counts and chapter-by-chapter excerpts.
 - **Shelves** — custom shelves, favorites, batch move / remove, edit title and author, whole-folder import, reading time per book.
@@ -176,8 +209,8 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 |---|---|---|
 | `MoYinReader.exe` | ~47 MB | Full build, voice pack appended inside the exe |
 | `MoYinReader_Lite.exe` | ~17 MB | Needs a `VoicePack` folder (~53 MB) next to it |
-| `MoYinReader.html` | ~248 KB | Standalone web build |
-| `MoYinReader.apk` | ~141 KB | Android shell with the page embedded |
+| `MoYinReader.html` | ~283 KB | Standalone web build |
+| `MoYinReader.apk` | ~157 KB | Android shell with the page embedded |
 
 Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** — or open the **[web version](https://podcatcher962.github.io/moyin-reader/)** and install nothing.
 

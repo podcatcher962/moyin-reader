@@ -15,9 +15,9 @@ NARROW = r'''
 .brand small{display:none}
 #libSearch{width:100%;order:3}
 #libTop .spacer,#readTop .spacer{display:none}
-#libActs,#readActs{width:100%;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-#libActs button,#readActs button{font-size:.84em;padding:6px 3px;min-height:36px;overflow:hidden;text-overflow:ellipsis}
-#readTitle{max-width:calc(100% - 92px)}
+#libActs,#readActs{width:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+#libActs button,#readActs button{font-size:.8em;padding:6px 2px;min-height:36px;overflow:hidden;text-overflow:ellipsis}
+#readTitle{max-width:100%}
 #libBody{padding:10px}
 .shelf{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:9px}
 .bk .cv{height:142px}
@@ -25,7 +25,8 @@ NARROW = r'''
 .bk .del{opacity:1}
 #readMain{position:relative}
 .side{position:absolute;left:0;top:0;bottom:0;width:86vw;max-width:330px;z-index:20;box-shadow:6px 0 24px rgba(0,0,0,.35)}
-#page{padding:18px 16px 60px}
+#page{padding:18px min(var(--padx),18px) 60px}
+html[data-mode="page"] #page{padding:14px min(var(--padx),16px)}
 #page h1{font-size:1.3em}
 #readFoot{padding:6px;gap:5px}
 #readFoot button{padding:6px 8px;font-size:.82em}
@@ -39,6 +40,8 @@ NARROW = r'''
 .speakbar #spNow{display:none}
 .mbox .mf button{flex:1}
 .foot{font-size:.78em}
+#autoPill{bottom:56px;font-size:.8em;padding:6px 8px 6px 11px}
+#pgHintL,#pgHintR{width:24%}
 '''
 
 def scoped(css, prefix):
@@ -48,10 +51,8 @@ def scoped(css, prefix):
     return re.sub(r'([^{}]+)\{([^{}]*)\}', one, css, flags=re.S)
 
 def narrow_css():
-    auto = scoped(NARROW, 'html[data-lay="auto"]')
-    phone = scoped(NARROW, 'html[data-lay="p"]')
-    return ('/* 窄屏：自动（按屏幕宽度） */\n@media (max-width:860px){\n' + auto + '\n}\n'
-            '/* 窄屏：强制手机版 */\n' + phone + '\n')
+    # 手机/平板窄屏：只按屏宽自动生效，不再有「强制手机版」那一套
+    return '/* 窄屏（按屏幕宽度自动） */\n@media (max-width:860px){\n' + NARROW + '\n}\n'
 
 def main():
     shell = io.open(os.path.join(HERE, 'shell.html'), encoding='utf-8').read()
