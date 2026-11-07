@@ -144,38 +144,41 @@ async function main() {
   ok(g.cols === 2, '1280 宽自动给 2 栏', g);
   ok(g.colCount == g.cols, 'CSS 列数与逻辑列数一致', g);
 
-  for (const [lay, want] of [['one', 1], ['two', 2], ['three', 3], ['four', 3]]) {
+  for (const [lay, want] of [['one', 1], ['two', 2]]) {
     await setPage(lay);
     g = await geo();
-    ok(g.cols === want, `点 ${lay} → ${want} 栏${lay === 'four' ? '（1280 放不下 4 栏，降到 3）' : ''}`, g);
+    ok(g.cols === want, `点 ${lay} → ${want} 栏`, g);
     if (g.real) ok(Math.abs(g.step - g.cols * g.real) <= 3, `  ${lay}：一屏 = 列数 × 实测列距（不出半列）`,
       { step: g.step, cols: g.cols, real: g.real });
     if (g.cols > 1) ok(g.count >= 1 && g.pageW > 0, `  ${lay}：分页正常`, { count: g.count, pageW: g.pageW });
   }
 
-  console.log('=== 宽屏 4 栏 / 手机单栏');
+  console.log('=== 最多双栏 / 旧配置降级 / 手机单栏');
   await viewsize(1920, 1000);
-  await setPage('four');
+  await setPage('two');
   g = await geo();
-  ok(g.cols === 4, '1920 宽点 4 栏 → 4 栏', g);
-  ok(g.cw >= 300, '4 栏时每栏仍够宽（≥300px）', g.cw);
-  ok(Math.abs(g.step - g.cols * g.real) <= 3 || !g.real, '4 栏一屏 = 4 × 列距', { step: g.step, cols: g.cols, real: g.real });
+  ok(g.cols === 2, '1920 宽双栏还是双栏，不会变成 3、4 栏', g);
+  ok(g.cw >= 300, '双栏每栏够宽（≥300px）', g.cw);
+  ok(Math.abs(g.step - g.cols * g.real) <= 3 || !g.real, '双栏一屏 = 2 × 列距', { step: g.step, cols: g.cols, real: g.real });
   await setPage('three');
   g = await geo();
-  ok(g.cols === 3, '1920 宽点 3 栏 → 3 栏', g);
-
-  await viewsize(390, 780);
+  ok(g.cols === 2, '旧配置里的 three 降级成双栏', g.cols);
   await setPage('four');
   g = await geo();
-  ok(g.cols === 1, '手机选 4 栏也强制单栏', g);
+  ok(g.cols === 2, '旧配置里的 four 降级成双栏', g.cols);
+
+  await viewsize(390, 780);
+  await setPage('two');
+  g = await geo();
+  ok(g.cols === 1, '手机选双栏也强制单栏', g);
   ok(g.pageW <= 390, '手机上正文不超宽', g.pageW);
 
   console.log('=== 多栏自动带翻页');
   await viewsize(1440, 900);
   await ev("MY.showType()"); await sleep(350);
-  await ev("(function(){document.querySelector('#modalBody [data-set=\"lay\"][data-v=\"three\"]').click();return 1;})()");
+  await ev("(function(){document.querySelector('#modalBody [data-set=\"lay\"][data-v=\"two\"]').click();return 1;})()");
   await sleep(500);
-  ok(await ev("MY.CFG.mode") === 'page' && await ev("MY.CFG.lay") === 'three', '在面板里选 3 栏 → 自动切到翻页');
+  ok(await ev("MY.CFG.mode") === 'page' && await ev("MY.CFG.lay") === 'two', '在面板里选双栏 → 自动切到翻页');
   await ev("(function(){document.querySelector('#modalBody [data-set=\"mode\"][data-v=\"scroll\"]').click();return 1;})()");
   await sleep(500);
   ok(await ev("MY.CFG.mode") === 'scroll', '在面板里选滚动 → 真的回到滚动');
@@ -215,7 +218,7 @@ async function main() {
   await sleep(450);
   ok((await ev("document.getElementById('modalTitle').textContent")).indexOf('排版') >= 0, '「更多排版」跳到排版面板',
     await ev("document.getElementById('modalTitle').textContent"));
-  ok(await ev("document.querySelectorAll('#modalBody [data-set=\"lay\"]').length") === 5, '排版面板分栏有 5 档',
+  ok(await ev("document.querySelectorAll('#modalBody [data-set=\"lay\"]').length") === 3, '排版面板分栏只有 自动 / 1 / 2 三档',
     await ev("document.querySelectorAll('#modalBody [data-set=\"lay\"]').length"));
   await ev("document.getElementById('modalX').click()");
   await sleep(250);
@@ -274,7 +277,7 @@ async function main() {
   ok(await ev("document.getElementById('modal').classList.contains('on')"), '点「设置」能打开设置面板');
   const stitle = await ev("document.getElementById('modalTitle').textContent");
   ok(stitle.indexOf('设置') >= 0, '标题是阅读设置', stitle);
-  ok(await ev("document.querySelectorAll('#modalBody [data-set=\"lay\"]').length") === 5, '设置里分栏也是 5 档');
+  ok(await ev("document.querySelectorAll('#modalBody [data-set=\"lay\"]').length") === 3, '设置里分栏也是三档');
   await ev("document.getElementById('modalX').click()");
   await sleep(250);
 
