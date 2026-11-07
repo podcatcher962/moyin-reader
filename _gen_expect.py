@@ -5,11 +5,14 @@ import io, os, json, zipfile, hashlib, struct, base64
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, '_samples')
-BOOKS = [
-    r'D:\C geng\书籍下载\2021年1月余秋雨书籍\中国文脉.epub',
-    r'D:\C geng\书籍下载\好读\吳敬梓 儒林外史.epub',
-    r'D:\C geng\书籍下载\侯卫东官场笔记（1-8册 巴国侯氏）.epub',
-]
+# 真实书库路径写在 _local_books.json（已在 .gitignore，不入库），
+# 这样生成脚本照常能用，但个人路径不会进公开仓库。
+_cfg = {}
+_cfg_path = os.path.join(HERE, '_local_books.json')
+if os.path.isfile(_cfg_path):
+    with io.open(_cfg_path, encoding='utf-8') as _f:
+        _cfg = json.load(_f)
+BOOKS = [v for v in _cfg.values() if v]
 
 def raw_entries(path):
     b = open(path, 'rb').read()
@@ -48,7 +51,11 @@ def main():
         stor = [e for e in ents if e['method'] == 0]
         pick = defl[:2] + stor[:1] + defl[-1:]
         print(os.path.basename(p), 'entries', len(ents), 'picked', [x['name'] for x in pick])
-        data.append({'book': os.path.basename(p), 'path': p, 'picks': pick,
+        # 用 _local_books.json 的键名（如 zhongguo.epub）作为中性标识，
+        # 不把真实书名和真实路径写进公开的 expect.json。
+        _hit = [k for k, v in _cfg.items() if v == p]
+        safe = _hit[0] if _hit else ('book%d.epub' % (len(data) + 1))
+        data.append({'book': safe, 'path': 'D:\\\\Books\\\\' + safe, 'picks': pick,
                      'allsha': [{'n': e['name'], 'm': e['method'], 'u': e['ulen'], 's': e['sha']}
                                 for e in ents]})
     io.open(os.path.join(OUT, 'expect.json'), 'w', encoding='utf-8').write(

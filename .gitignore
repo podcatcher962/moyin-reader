@@ -76,3 +76,11 @@ promo/_*.wav
 promo/_*.m4a
 promo/_mid.mp4
 _prev/
+
+# ---- 本机书库路径（真实路径只放本地，不入库） ----
+_local_books.json
+
+# ---- 本地运维脚本（含令牌路径，不入库） ----
+_push_via_api.py
+_apply_repo_meta.py
+_token.txt
