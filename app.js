@@ -2,7 +2,12 @@
 (function () {
   'use strict';
   var Z = window.MYZip, $ = function (id) { return document.getElementById(id); };
+  var I18N = window.MYI18N || null;
+  /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
+  function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
+  var VER = '1.7.0';
+  var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
     sans: '"Microsoft YaHei","PingFang SC",system-ui,sans-serif',
@@ -15,7 +20,8 @@
     rate: 1, pitch: 1, volume: 1, voiceURI: '', voiceAuto: 1, pause: 120, whole: 1,
     autoNext: 1, follow: 1,
     localOn: 1, localPort: 8177, localVoice: 's12',
-    voiceSet: 'curated', roleOn: 0, rolePool: 'mix'
+    voiceSet: 'curated', roleOn: 0, rolePool: 'mix',
+    lang: 'zh', noteFilter: 'all'
   };
   var CFG = Object.assign({}, DEF), BOOKS = [], BK = null, URLCACHE = {}, ACTIVE_ZIP = null, ZIPSEQ = 0;
   var SIDE = 'toc', SEARCHTOK = 0;
@@ -85,6 +91,7 @@
   function loadCfg() {
     try { var o = JSON.parse(localStorage.getItem(CFGKEY) || '{}'); Object.keys(DEF).forEach(function (k) { if (o[k] !== undefined) CFG[k] = o[k]; }); }
     catch (e) { /* 用默认值 */ }
+    if (I18N) I18N.set(CFG.lang);
     applyCfg();
   }
   function saveCfg() { try { localStorage.setItem(CFGKEY, JSON.stringify(CFG)); } catch (e) { /* 隐私模式 */ } }
@@ -97,8 +104,35 @@
     $('page').style.textAlign = CFG.align;
     var i = $('spRate'); if (i) { i.value = CFG.rate; $('spRateTx').textContent = Number(CFG.rate).toFixed(1) + '×'; }
   }
-  function cycleTheme() { var a = ['dark', 'light', 'sepia']; CFG.theme = a[(a.indexOf(CFG.theme) + 1) % 3]; saveCfg(); applyCfg(); toast('主题：' + ({ dark: '夜间', light: '明亮', sepia: '羊皮纸' })[CFG.theme]); }
-  function cycleLayout() { var a = ['auto', 'p', 'l']; CFG.lay = a[(a.indexOf(CFG.lay) + 1) % 3]; saveCfg(); applyCfg(); toast('版式：' + ({ auto: '自动', p: '手机版', l: '电脑版' })[CFG.lay]); }
+  /* ---------------- 语言 ---------------- */
+  function syncLangBtn() {
+    var b = $('btnLang'); if (!b) return;
+    b.textContent = CFG.lang === 'en' ? '中' : 'EN';
+    b.title = T('切换界面语言');
+    b.setAttribute('aria-label', b.title);
+  }
+  function setLang(l) {
+    CFG.lang = (l === 'en' ? 'en' : 'zh');
+    if (I18N) I18N.set(CFG.lang);
+    saveCfg();
+    if (I18N) I18N.apply();
+    syncLangBtn();
+    document.documentElement.setAttribute('lang', CFG.lang === 'en' ? 'en' : 'zh-CN');
+    // 动态生成的部分重新渲染一遍，静态部分由 I18N.apply() 刷
+    renderShelf();
+    if (BK) { renderChapter(BK.ch, { silent: true }); renderSide(); }
+    fillVoices(); syncRoleBtn(); voiceBadge(localReady() ? null : curVoice());
+    hideSelTools();
+    toast(T('界面语言已切换为 {n}', { n: CFG.lang === 'en' ? 'English' : '中文' }), 1800);
+  }
+  function cycleTheme() {
+    var a = ['dark', 'light', 'sepia']; CFG.theme = a[(a.indexOf(CFG.theme) + 1) % 3]; saveCfg(); applyCfg();
+    toast(T('主题：' + ({ dark: '夜间', light: '明亮', sepia: '羊皮纸' })[CFG.theme]));
+  }
+  function cycleLayout() {
+    var a = ['auto', 'p', 'l']; CFG.lay = a[(a.indexOf(CFG.lay) + 1) % 3]; saveCfg(); applyCfg();
+    toast(T('版式：' + ({ auto: '自动', p: '手机版', l: '电脑版' })[CFG.lay]));
+  }
 
   /* ---------------- TXT / EPUB 解析 ---------------- */
   function isChapterTitle(t) {
@@ -124,7 +158,7 @@
   function buildTxt(buf, name) {
     var d = Z.decodeTxt(buf, CFG.txtEnc);
     var text = d.text.replace(/\r\n?/g, '\n').replace(/\uFEFF/g, '').replace(/\u3000/g, ' ');
-    var lines = text.split('\n'), chapters = [], cur = { title: '开篇', lines: [] }, found = 0;
+    var lines = text.split('\n'), chapters = [], cur = { title: T('开篇'), lines: [] }, found = 0;
     lines.forEach(function (raw) {
       var t = raw.trim();
       if (isChapterTitle(t)) {
@@ -150,7 +184,7 @@
       });
       if (block.length) out.push({ title: c.title + (part > 1 ? '（' + part + '）' : ''), lines: block });
     });
-    if (!out.length) out = [{ title: name, lines: ['（空文件）'] }];
+    if (!out.length) out = [{ title: name, lines: [T('（空文件）')] }];
     var titles = out.map(function (c) { return c.title; });
     return {
       kind: 'txt', enc: d.enc, count: out.length, titles: titles, cover: null,
@@ -260,7 +294,7 @@
     var mm = cont.match(/full-path\s*=\s*["']([^"']+)["']/i);
     var opfPath = mm ? mm[1] : (zip.names.filter(function (n) { return /\.opf$/i.test(n); })[0]);
     var real = opfPath && zip.find(opfPath);
-    if (!real) throw new Error('找不到 OPF 描述文件，可能不是标准 EPUB');
+    if (!real) throw new Error(T('找不到 OPF 描述文件，可能不是标准 EPUB'));
     var opf = zip.text(real), doc = new DOMParser().parseFromString(opf, 'application/xml');
     var items = els(doc, 'item'), refs = els(doc, 'itemref'), i;
     var id2 = {}, props = {}, ncxPath = null, navPath = null, coverPath = null;
@@ -310,7 +344,7 @@
     var titles = hrefs.map(function (p, i) {
       if (titleMap[i]) return titleMap[i];
       var base = (p.split('/').pop() || '').replace(/\.[^.]+$/, '');
-      return /^(chapter|part|section|page|text|ch)?[\d_-]+$/i.test(base) ? '第 ' + (i + 1) + ' 节' : (base || '第 ' + (i + 1) + ' 节');
+      return /^(chapter|part|section|page|text|ch)?[\d_-]+$/i.test(base) ? T('第 {n} 节', { n: i + 1 }) : (base || T('第 {n} 节', { n: i + 1 }));
     });
     var title = xmlText(doc, 'title') || name, author = xmlText(doc, 'creator') || '';
     var css = '';
@@ -364,7 +398,7 @@
   function epubChapter(idx) {
     var href = BK.spineHrefs[idx];
     var raw = BK.zip.read(href);
-    if (!raw) return '<p class="rdp">（本章文件缺失）</p>';
+    if (!raw) return '<p class="rdp">' + T('（本章文件缺失）') + '</p>';
     var txt = Z.decodeAny(raw).text, dir = pathDir(href);
     var d = new DOMParser().parseFromString(txt, 'text/html'), body = d.body;
     var css = [BK.css || ''];
@@ -431,63 +465,313 @@
     });
   }
 
+  /* ---------------- 阅读统计（本机） ---------------- */
+  var STATS = { days: {}, total: 0 };
+  function loadStats() {
+    try { var o = JSON.parse(localStorage.getItem('MOYIN_STATS') || '{}'); if (o && typeof o === 'object') STATS = o; } catch (e) { }
+    STATS.days = STATS.days || {}; STATS.total = Number(STATS.total) || 0;
+  }
+  function saveStats() { try { localStorage.setItem('MOYIN_STATS', JSON.stringify(STATS)); } catch (e) { } }
+  function dayKey(d) { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function statAdd(sec) {
+    if (!sec || sec <= 0) return;
+    STATS.total += sec;
+    var k = dayKey(); STATS.days[k] = (STATS.days[k] || 0) + sec;
+    saveStats();
+  }
+  function statStreak() {
+    var n = 0, d = new Date();
+    // 今天还没读时，连击从昨天算起，不把「今天没读」当成断签
+    if (!STATS.days[dayKey(d)]) d.setDate(d.getDate() - 1);
+    while (STATS.days[dayKey(d)]) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  }
+  function statDays() { return Object.keys(STATS.days).length; }
+  /* 时长文案：小于 1 分钟说秒，1 小时内说分，超过说时分 */
+  function fmtDur(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    if (sec < 60) return T('{s} 秒', { s: sec });
+    var m = Math.round(sec / 60);
+    if (m < 60) return T('{m} 分', { m: m });
+    var h = Math.floor(m / 60), mm = m % 60;
+    return mm ? T('小时 {h} 分', { h: h, m: mm }) : h + ' ' + T('小时');
+  }
+  /* 单次阅读计时：打开书开始，关书 / 切后台 / 关页面结算 */
+  var RT = { t0: 0, id: null };
+  function rtStart(id) { rtFlush(); RT.t0 = Date.now(); RT.id = id; }
+  function rtFlush() {
+    if (!RT.t0 || !RT.id) { RT.t0 = 0; RT.id = null; return; }
+    var sec = Math.round((Date.now() - RT.t0) / 1000), id = RT.id;
+    RT.t0 = 0; RT.id = null;
+    if (sec < 3) return;                       // 翻两下就走的不记账
+    if (sec > 3 * 3600) sec = 3 * 3600;        // 挂机保护：单次最多记 3 小时
+    statAdd(sec);
+    var b = bookOf(id);
+    if (b) {
+      b.rt = (b.rt || 0) + sec;
+      b.sessions = (b.sessions || 0) + 1;
+      b.first = b.first || Date.now();
+      dbPut('books', b).catch(function () { });
+    }
+  }
+
   /* ---------------- 书架 ---------------- */
+  function bookOf(id) { return BOOKS.filter(function (b) { return b.id === id; })[0]; }
+  function shelves() { if (!Array.isArray(CFG.shelves)) CFG.shelves = []; return CFG.shelves; }
+  function hlList(b) { return (b && b.hl) || []; }
+  function noteCount(b) { return hlList(b).filter(function (h) { return h.note; }).length; }
   function sortBooks() {
     var f = ({ last: function (a, b) { return b.last - a.last; },
       name: function (a, b) { return (a.name || '').localeCompare(b.name || '', 'zh'); },
       added: function (a, b) { return b.added - a.added; },
       progress: function (a, b) { return b.progress - a.progress; } })[CFG.sort] || function (a, b) { return b.last - a.last; };
-    BOOKS.sort(f);
+    // 收藏的书永远排在前面，内部再按当前排序规则
+    BOOKS.sort(function (a, b) { return (b.fav ? 1 : 0) - (a.fav ? 1 : 0) || f(a, b); });
+  }
+  function shelfView() { return CFG.shelfView || 'all'; }
+  function matchShelf(b, v) {
+    if (v === 'fav') return !!b.fav;
+    if (v === 'none') return !b.group || shelves().indexOf(b.group) < 0;
+    if (v.indexOf('g:') === 0) return b.group === v.slice(2);
+    return true;
+  }
+  function renderShelfBar() {
+    var box = $('shelfBar'); if (!box) return;
+    var v = shelfView(), items = [];
+    items.push({ k: 'all', label: T('全部书籍'), n: BOOKS.length });
+    items.push({ k: 'fav', label: T('★ 收藏'), n: BOOKS.filter(function (b) { return b.fav; }).length });
+    shelves().forEach(function (nm) {
+      items.push({ k: 'g:' + nm, label: nm, n: BOOKS.filter(function (b) { return b.group === nm; }).length });
+    });
+    var noneN = BOOKS.filter(function (b) { return !b.group || shelves().indexOf(b.group) < 0; }).length;
+    if (shelves().length && noneN) items.push({ k: 'none', label: T('未分组'), n: noneN });
+    box.innerHTML = items.map(function (x) {
+      return '<button class="chip' + (v === x.k ? ' on' : '') + '" data-sv="' + esc(x.k) + '">' +
+        esc(x.label) + '<span class="n">' + x.n + '</span></button>';
+    }).join('') + '<button class="chip add" data-sv="__new">＋ ' + esc(T('新建书架')) + '</button>';
+  }
+  function shelfList() {
+    var q = ($('libSearch').value || '').trim().toLowerCase(), v = shelfView();
+    return BOOKS.filter(function (b) {
+      if (!matchShelf(b, v)) return false;
+      return !q || (b.name || '').toLowerCase().indexOf(q) >= 0 || (b.author || '').toLowerCase().indexOf(q) >= 0;
+    });
   }
   function renderShelf() {
     sortBooks();
-    var q = ($('libSearch').value || '').trim().toLowerCase(), box = $('shelf');
-    var list = BOOKS.filter(function (b) { return !q || (b.name || '').toLowerCase().indexOf(q) >= 0 || (b.author || '').toLowerCase().indexOf(q) >= 0; });
+    renderShelfBar();
+    var q = ($('libSearch').value || '').trim().toLowerCase(), box = $('shelf'), v = shelfView();
+    var list = shelfList();
     box.innerHTML = list.map(function (b) {
       var cv = b.cover ? '<img src="' + b.cover + '" alt="">'
-        : '<div class="ph">' + esc((b.name || '书').slice(0, 4)) + '</div>';
-      return '<div class="bk" data-id="' + b.id + '"><div class="cv">' + cv + '</div>' +
-        '<button class="del" data-del="' + b.id + '" title="从书架移除">×</button>' +
+        : '<div class="ph">' + esc((b.name || T('书')).slice(0, 4)) + '</div>';
+      var nc = noteCount(b);
+      return '<div class="bk' + (SELS[b.id] ? ' sel' : '') + '" data-id="' + b.id + '">' +
+        '<div class="cv">' + cv + (nc ? '<span class="kn">✎ ' + nc + '</span>' : '') + '</div>' +
+        '<div class="chk">✓</div>' +
+        '<button class="fav' + (b.fav ? ' on' : '') + '" data-fav="' + b.id + '" title="' +
+        esc(b.fav ? T('取消收藏') : T('收藏')) + '">' + (b.fav ? '★' : '☆') + '</button>' +
+        '<button class="more" data-more="' + b.id + '" title="' + esc(T('更多')) + '">⋯</button>' +
         '<div class="meta"><div class="nm">' + esc(b.name) + '</div>' +
         '<div class="sub"><span class="tag">' + esc(b.ext.toUpperCase()) + '</span>' + fmtSize(b.size) +
         (b.author ? ' · ' + esc(b.author.slice(0, 8)) : '') + '</div>' +
         '<div class="bar"><i style="width:' + Math.min(100, b.progress || 0) + '%"></i></div>' +
-        '<div class="sub">' + (b.progress > 0 ? '读到 ' + (b.progress).toFixed(1) + '%' : '未读') + ' · ' + fmtDate(b.last) + '</div>' +
+        '<div class="sub">' + (b.progress > 0 ? T('读到 {p}%', { p: (b.progress).toFixed(1) }) : T('未读')) + ' · ' + fmtDate(b.last) + '</div>' +
         (b.lCh != null && b.lPi != null
-          ? '<button class="resume" data-listen="' + b.id + '" title="从上次听到的地方继续听">▶ 续听 · 第 ' + ((b.lCh | 0) + 1) + ' 章</button>'
+          ? '<button class="resume" data-listen="' + b.id + '" title="' + esc(T('从上次听到的地方继续听')) + '">' +
+            esc(T('▶ 续听 · 第 {n} 章', { n: (b.lCh | 0) + 1 })) + '</button>'
           : '') +
         '</div></div>';
     }).join('');
     $('emptyLib').style.display = BOOKS.length ? 'none' : '';
-    $('libStat').textContent = '书架 ' + BOOKS.length + ' 本' + (q ? '（筛出 ' + list.length + ' 本）' : '');
+    $('libStat').textContent = T('书架 {n} 本', { n: BOOKS.length }) +
+      (q || v !== 'all' ? T('（筛出 {n} 本）', { n: list.length }) : '');
+    var st = $('libStats');
+    if (st) {
+      var bits = [];
+      if (STATS.total >= 60) bits.push(T('累计阅读 {t}', { t: fmtDur(STATS.total) }));
+      if (statDays()) bits.push(T('共 {n} 天，最长连续 {d} 天', { n: statDays(), d: statStreak() }));
+      st.textContent = bits.join(' · ');
+    }
+    renderSelBar();
   }
-  function readExt(name) { var e = (name.split('.').pop() || '').toLowerCase(); return e === 'epub' ? 'epub' : 'txt'; }
+  /* ------- 批量选择 ------- */
+  var SELS = {};
+  function selCount() { return Object.keys(SELS).filter(function (k) { return SELS[k]; }).length; }
+  function enterSelMode(on) {
+    document.body.classList.toggle('selmode', !!on);
+    if (!on) SELS = {};
+    $('selBar').hidden = !on;
+    renderShelf();
+  }
+  function renderSelBar() {
+    if (document.body.classList.contains('selmode')) $('selCount').textContent = T('已选 {n} 本', { n: selCount() });
+  }
+  function toggleSel(id) { SELS[id] = !SELS[id]; renderShelf(); }
+  function askBatchMove() {
+    var ids = Object.keys(SELS).filter(function (k) { return SELS[k]; });
+    if (!ids.length) { toast(T('先从书架选择书籍')); return; }
+    var opts = shelves().map(function (nm) { return '<option value="' + esc(nm) + '">' + esc(nm) + '</option>'; }).join('');
+    showModal(T('移动到书架'),
+      '<div class="row"><label>' + esc(T('移动到')) + '</label><select id="mvTo">' +
+      '<option value="">' + esc(T('未分组')) + '</option>' + opts + '</select>' +
+      '<input type="text" id="mvNew" placeholder="' + esc(T('或新建书架')) + '" style="width:150px"></div>',
+      [{ label: T('取消') }, { label: T('确定'), cls: 'pri', fn: function () {
+        var v = $('mvNew').value.trim() || $('mvTo').value;
+        if (v && shelves().indexOf(v) < 0) { shelves().push(v); saveCfg(); }
+        ids.forEach(function (id) { var b = bookOf(id); if (b) { b.group = v; dbPut('books', b).catch(function () { }); } });
+        closeModal(); exitSel(); toast(T('已移动 {n} 本', { n: ids.length }));
+      } }]);
+  }
+  function batchFav() {
+    var ids = Object.keys(SELS).filter(function (k) { return SELS[k]; });
+    if (!ids.length) { toast(T('先从书架选择书籍')); return; }
+    ids.forEach(function (id) { var b = bookOf(id); if (b) { b.fav = 1; dbPut('books', b).catch(function () { }); } });
+    toast(T('已收藏 {n} 本', { n: ids.length })); renderShelf();
+  }
+  function batchDel() {
+    var ids = Object.keys(SELS).filter(function (k) { return SELS[k]; });
+    if (!ids.length) { toast(T('先从书架选择书籍')); return; }
+    confirmModal(T('把选中的 {n} 本从书架移除？原文件不会从电脑删除。', { n: ids.length }), async function () {
+      for (var i = 0; i < ids.length; i++) { await dbDel('books', ids[i]); await dbDel('blobs', ids[i]); }
+      BOOKS = BOOKS.filter(function (b) { return ids.indexOf(b.id) < 0; });
+      exitSel();
+    });
+  }
+  function exitSel() { enterSelMode(false); }
+
+  /* ------- 单本菜单：收藏 / 编辑信息 / 移动 / 移除 ------- */
+  function openBookMenu(id) {
+    var b = bookOf(id); if (!b) return;
+    var opts = '<option value="">' + esc(T('未分组')) + '</option>' +
+      shelves().map(function (nm) { return '<option value="' + esc(nm) + '"' + (b.group === nm ? ' selected' : '') + '>' + esc(nm) + '</option>'; }).join('') +
+      (b.group && shelves().indexOf(b.group) < 0 ? '<option value="' + esc(b.group) + '" selected>' + esc(b.group) + '</option>' : '');
+    showModal(b.name,
+      '<div class="row"><label>' + esc(T('书名')) + '</label><input type="text" id="bkName" value="' + esc(b.name) + '" style="flex:1"></div>' +
+      '<div class="row"><label>' + esc(T('作者')) + '</label><input type="text" id="bkAuthor" value="' + esc(b.author || '') + '" style="flex:1"></div>' +
+      '<div class="row"><label>' + esc(T('移动到')) + '</label><select id="bkGroup" style="flex:1">' + opts + '</select></div>' +
+      '<div class="row"><label></label><div class="seg">' +
+      '<button data-bkact="fav">' + esc(b.fav ? T('取消收藏') : T('收藏')) + '</button>' +
+      '<button data-bkact="select">' + esc(T('批量管理')) + '</button>' +
+      '<button data-bkact="del" class="danger">' + esc(T('从书架移除')) + '</button></div></div>' +
+      '<p class="kv">' + esc(T('改名只影响书架显示，不会改动原文件。')) + '</p>',
+      [{ label: T('取消') }, { label: T('保存'), cls: 'pri', fn: function () {
+        var nm = $('bkName').value.trim(), au = $('bkAuthor').value.trim(), g = $('bkGroup').value;
+        if (nm) b.name = nm;
+        b.author = au; b.group = g;
+        dbPut('books', b).catch(function () { }); closeModal(); renderShelf(); toast(T('已保存'));
+      } }]);
+    $('modalBody').onclick = function (e) {
+      var a = e.target.closest('[data-bkact]'); if (!a) return;
+      var act = a.getAttribute('data-bkact');
+      if (act === 'fav') { b.fav = b.fav ? 0 : 1; dbPut('books', b).catch(function () { }); closeModal(); renderShelf(); }
+      else if (act === 'select') {
+        closeModal();
+        if (!document.body.classList.contains('selmode')) enterSelMode(true);
+        SELS[id] = true; renderShelf();
+      } else if (act === 'del') {
+        closeModal();
+        confirmModal(T('把《{n}》从书架移除？原文件不会从电脑删除。', { n: b.name }), async function () {
+          await dbDel('books', id); await dbDel('blobs', id);
+          BOOKS = BOOKS.filter(function (x) { return x.id !== id; }); renderShelf(); toast(T('已移除'));
+        });
+      }
+    };
+  }
+  function toggleFav(id) {
+    var b = bookOf(id); if (!b) return;
+    b.fav = b.fav ? 0 : 1;
+    dbPut('books', b).catch(function () { });
+    renderShelf();
+    toast(b.fav ? T('已收藏') : T('已取消收藏'), 1500);
+  }
+
+  /* ------- 书架的增删改 ------- */
+  function showShelves() {
+    var list = shelves();
+    var rows = list.map(function (nm, i) {
+      var n = BOOKS.filter(function (b) { return b.group === nm; }).length;
+      return '<div class="row"><label style="min-width:0;flex:1">' + esc(nm) + '<span class="kv"> · ' + T('共 {n} 本', { n: n }) + '</span></label>' +
+        '<button data-sh="ren" data-i="' + i + '">' + esc(T('重命名')) + '</button>' +
+        '<button data-sh="del" data-i="' + i + '" class="danger">' + esc(T('解散书架')) + '</button></div>';
+    }).join('') || '<p class="kv">' + esc(T('还没有自定义书架。新建一个，把书分类放进去。')) + '</p>';
+    showModal(T('管理书架'),
+      '<div class="row"><label>' + esc(T('新建书架')) + '</label>' +
+      '<input type="text" id="shNew" placeholder="' + esc(T('书架名')) + '" style="flex:1;min-width:120px">' +
+      '<button class="pri" data-sh="add">' + esc(T('新建')) + '</button></div>' + rows +
+      '<p class="kv">' + esc(T('解散书架不会删书，里面的书会回到「未分组」。')) + '</p>',
+      [{ label: T('关闭') }]);
+    $('modalBody').onclick = function (e) {
+      var b = e.target.closest('[data-sh]'); if (!b) return;
+      var act = b.getAttribute('data-sh'), i = Number(b.getAttribute('data-i'));
+      if (act === 'add') {
+        var nm = ($('shNew').value || '').trim();
+        if (!nm) { toast(T('请先填写书架名')); return; }
+        if (shelves().indexOf(nm) >= 0) { toast(T('已经有同名书架')); return; }
+        shelves().push(nm); saveCfg(); showShelves(); renderShelf(); toast(T('书架已建好'));
+      } else if (act === 'ren') {
+        var old = shelves()[i];
+        showModal(T('重命名'), '<input type="text" id="shRen" value="' + esc(old) + '" style="width:100%">',
+          [{ label: T('取消') }, { label: T('保存'), cls: 'pri', fn: function () {
+            var nm2 = ($('shRen').value || '').trim();
+            if (!nm2 || nm2 === old) { closeModal(); return; }
+            shelves()[i] = nm2; saveCfg();
+            BOOKS.forEach(function (x) { if (x.group === old) { x.group = nm2; dbPut('books', x).catch(function () { }); } });
+            if (shelfView() === 'g:' + old) CFG.shelfView = 'g:' + nm2;
+            saveCfg(); closeModal(); renderShelf(); toast(T('书架已重命名'));
+          } }]);
+      } else if (act === 'del') {
+        var nm3 = shelves()[i];
+        confirmModal(T('解散书架「{n}」？书不会被删除。', { n: nm3 }), function () {
+          shelves().splice(i, 1);
+          BOOKS.forEach(function (x) { if (x.group === nm3) { x.group = ''; dbPut('books', x).catch(function () { }); } });
+          if (shelfView() === 'g:' + nm3) CFG.shelfView = 'all';
+          saveCfg(); closeModal(); renderShelf(); toast(T('已解散书架「{n}」，书都还在「全部书籍」里', { n: nm3 }), 3600);
+        });
+      }
+    };
+  }
+  function readExt(name) {
+    var e = (name.split('.').pop() || '').toLowerCase();
+    if (e === 'epub') return 'epub';
+    if (e === 'txt' || e === 'text') return 'txt';
+    return '';
+  }
   async function importFiles(files) {
-    var okN = 0, errs = [];
+    var okN = 0, skipN = 0, errs = [], total = files.length;
     for (var i = 0; i < files.length; i++) {
       var f = files[i], ext = readExt(f.name);
+      if (!ext) { skipN++; continue; }
+      var bname = f.name.replace(/\.[^.]+$/, '');
+      if (BOOKS.some(function (b) { return b.name === bname && b.size === f.size; })) { skipN++; continue; }
       try {
+        if (total > 3) toast(T('导入中… {a}/{b}', { a: i + 1, b: total }), 1500);
         var buf = await f.arrayBuffer();
-        var b = await parseBook(buf, f.name.replace(/\.[^.]+$/, ''), ext);
+        var b = await parseBook(buf, bname, ext);
         var id = 'b' + Date.now() + Math.random().toString(36).slice(2, 7);
         await dbPut('blobs', { id: id, buf: buf });
         var meta = {
-          id: id, name: f.name.replace(/\.[^.]+$/, ''), ext: ext, size: f.size,
+          id: id, name: bname, ext: ext, size: f.size,
           added: Date.now(), last: Date.now(), ch: 0, ratio: 0, progress: 0,
-          cover: b.cover || '', title: b.title, author: b.author || '', marks: [],
-          chapters: b.titles.slice(0, 1000), tocCount: b.toc.length, enc: b.enc || ''
+          cover: b.cover || '', title: b.title, author: b.author || '', marks: [], hl: [],
+          chapters: b.titles.slice(0, 1000), tocCount: b.toc.length, enc: b.enc || '',
+          group: shelfView().indexOf('g:') === 0 ? shelfView().slice(2) : '',
+          fav: 0, rt: 0, sessions: 0, first: 0
         };
         await dbPut('books', meta); BOOKS.push(meta); okN++;
-        if (b.enc && b.enc !== 'UTF-8' && b.enc !== 'UTF-8 BOM') toast('《' + meta.name + '》按 ' + b.enc + ' 解码', 3200);
+        if (b.enc && b.enc !== 'UTF-8' && b.enc !== 'UTF-8 BOM') toast(T('《{n}》按 {e} 解码', { n: meta.name, e: b.enc }), 3200);
       } catch (e) { errs.push(f.name + '：' + e.message); }
     }
     renderShelf();
-    if (okN) toast('已导入 ' + okN + ' 本' + (errs.length ? '，' + errs.length + ' 本失败' : ''));
-    if (errs.length) showModal('部分文件未能导入', '<p>' + errs.map(esc).join('</p><p>') + '</p>', [{ label: '知道了' }]);
+    var msg = T('已导入 {n} 本', { n: okN });
+    if (skipN) msg += ' · ' + T('跳过 {n} 本（重复或不支持）', { n: skipN });
+    if (errs.length) msg += T('，{n} 本失败', { n: errs.length });
+    if (okN || skipN || errs.length) toast(msg, 3000);
+    if (errs.length) showModal(T('部分文件未能导入'), '<p>' + errs.map(esc).join('</p><p>') + '</p>', [{ label: T('知道了') }]);
   }
 
   /* ---------------- 阅读 ---------------- */
-  function chapterTitle(i) { return (BK.titles && BK.titles[i]) || '第 ' + (i + 1) + ' 节'; }
+  function chapterTitle(i) { return (BK.titles && BK.titles[i]) || T('第 {n} 节', { n: i + 1 }); }
   function chapterCount() { return BK ? BK.count : 0; }
   function showView(v) {
     $('viewLib').classList.toggle('on', v === 'lib');
@@ -496,20 +780,25 @@
   }
   async function openBook(id) {
     var rec = await dbGet('blobs', id);
-    if (!rec) { toast('这本书的文件已丢失，请重新导入'); return; }
+    if (!rec) { toast(T('这本书的文件已丢失，请重新导入')); return; }
     var meta = BOOKS.filter(function (b) { return b.id === id; })[0] || await dbGet('books', id);
     stopSpeak(true);
     resetCast();
     clearAssets();
     try {
       BK = await parseBook(rec.buf, meta.name, meta.ext);
-    } catch (e) { toast('打开失败：' + e.message, 4000); return; }
+    } catch (e) { toast(T('打开失败：') + e.message, 4000); return; }
     BK.id = id; BK.meta = meta;
+    if (!Array.isArray(meta.hl)) meta.hl = [];
+    if (!meta.first) meta.first = Date.now();
+    meta.last = Date.now();
     $('readTitle').textContent = meta.name;
     $('readTitle').title = meta.name + (meta.author ? ' · ' + meta.author : '');
     showView('read');
+    hideSelTools();
     renderChapter(meta.ch || 0, { ratio: meta.ratio || 0, silent: true });
     renderSide();
+    rtStart(id);
   }
   /* 从书架「续听」：打开书 → 跳到上次听到的那一章那段 → 直接开念 */
   async function resumeListen(id) {
@@ -522,11 +811,13 @@
     await new Promise(function (r) { setTimeout(r, 80); });
     var pi = Math.min(Math.max(0, b.lPi | 0), Math.max(0, SPK.paras.length - 1));
     startSpeak(pi);
-    toast('从上次听到的地方继续（第 ' + (ch + 1) + ' 章）', 2800);
+    toast(T('从上次听到的地方继续（第 {n} 章）', { n: ch + 1 }), 2800);
   }
   function closeBook() {
+    rtFlush();
     stopSpeak(true); savePos(); BK = null; showView('lib');
     $('side').classList.remove('on'); $('speakBar').classList.remove('on');
+    hideSelTools();
     clearAssets(); renderShelf();
   }
   function renderChapter(i, opt) {
@@ -535,10 +826,11 @@
     i = Math.max(0, Math.min(chapterCount() - 1, i | 0));
     BK.ch = i;
     var html;
-    try { html = BK.chapterHtml(i); } catch (e) { html = '<p class="rdp">本章读取失败：' + esc(e.message) + '</p>'; }
+    try { html = BK.chapterHtml(i); } catch (e) { html = '<p class="rdp">' + esc(T('本章读取失败：') + e.message) + '</p>'; }
     $('page').innerHTML = '<div id="chTitle">' + esc(chapterTitle(i)) + '</div>' + html +
-      '<div id="chEnd">— 本章完 —<br><button data-act="next">下一章 →</button></div>';
+      '<div id="chEnd">' + esc(T('— 本章完 —')) + '<br><button data-act="next">' + esc(T('下一章 →')) + '</button></div>';
     $('pageWrap').scrollTop = 0;
+    applyHighlights();
     SPK.paras = Array.prototype.slice.call($('page').querySelectorAll('.rdp'));
     applyCfg();
     if (opt.ratio) setTimeout(function () {
@@ -584,12 +876,13 @@
     return best;
   }
 
-  /* ---------------- 侧栏：目录 / 书签 / 搜索 ---------------- */
+  /* ---------------- 侧栏：目录 / 书签 / 笔记 / 搜索 ---------------- */
   function openSide(tab) {
     SIDE = tab || SIDE; $('side').classList.add('on');
     $('side').querySelectorAll('.tabs button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === SIDE); });
     renderSide();
   }
+  function hlChapterLabel(h) { return T('第 {n} 章', { n: (h.ch | 0) + 1 }) + ' · ' + chapterTitle(h.ch); }
   function renderSide() {
     if (!BK || !$('side').classList.contains('on')) return;
     var b = $('sideBody'), html = '';
@@ -599,18 +892,39 @@
         return '<button class="it' + (t.ch === BK.ch ? ' cur' : '') + (t.level ? ' lv' + Math.min(2, t.level) : '') +
           '" data-ch="' + t.ch + '" data-anchor="' + esc(t.anchor || '') + '">' + esc(t.label) + '</button>';
       }).join('');
-      if (!html) html = '<div class="hint">这本书没有目录</div>';
+      if (!html) html = '<div class="hint">' + esc(T('这本书没有目录')) + '</div>';
     } else if (SIDE === 'mark') {
       var ms = (BK.meta.marks || []).slice().sort(function (a, c) { return c.ts - a.ts; });
-      html = '<div class="row" style="margin:0 0 8px"><button id="sideAddMark">＋ 在当前位置加书签</button></div>' +
+      html = '<div class="row" style="margin:0 0 8px"><button id="sideAddMark">' + esc(T('＋ 在当前位置加书签')) + '</button></div>' +
         (ms.length ? ms.map(function (m, i) {
           return '<div class="it" style="display:flex;gap:6px;align-items:flex-start"><button class="it" style="flex:1;text-align:left;padding:4px" data-mark="' + i + '">' +
-            esc(m.text.slice(0, 40)) + '<br><span class="hint">' + fmtDate(m.ts) + ' · ' + (m.ch + 1) + ' 章</span></button>' +
-            '<button class="ghost danger" data-delmark="' + m.ts + '" title="删除">×</button></div>';
-        }).join('') : '<div class="hint">还没有书签。读到哪儿，点「＋书签」记一下。</div>');
+            esc(m.text.slice(0, 40)) + '<br><span class="hint">' + fmtDate(m.ts) + ' · ' + esc(T('第 {n} 章', { n: (m.ch | 0) + 1 })) + '</span></button>' +
+            '<button class="ghost danger" data-delmark="' + m.ts + '" title="' + esc(T('删除')) + '">×</button></div>';
+        }).join('') : '<div class="hint">' + esc(T('还没有书签。读到哪儿，点「＋书签」记一下。')) + '</div>');
+    } else if (SIDE === 'note') {
+      var hs = hlList(BK.meta).slice().sort(function (a, c) { return (a.ch - c.ch) || (a.p - c.p); });
+      var notes = hs.filter(function (h) { return h.note; });
+      var onlyNote = CFG.noteFilter === 'note', show = onlyNote ? notes : hs;
+      html = '<div style="display:flex;gap:5px;margin-bottom:9px;flex-wrap:wrap">' +
+        '<button data-nf="all" class="' + (onlyNote ? '' : 'on') + '" style="font-size:.82em">' + esc(T('全部批注')) + ' ' + hs.length + '</button>' +
+        '<button data-nf="note" class="' + (onlyNote ? 'on' : '') + '" style="font-size:.82em">' + esc(T('仅看有笔记的')) + ' ' + notes.length + '</button>' +
+        '</div>' +
+        (show.length ? show.map(function (h, i) {
+          return '<div class="noteIt" data-hlgo="' + esc(h.id) + '">' +
+            '<div class="q"><span class="dot noteclr-' + (h.c || 'y') + '" style="margin-right:5px"></span>' + esc(h.text.slice(0, 180)) + '</div>' +
+            (h.note ? '<div class="cm">' + esc(h.note.slice(0, 240)) + '</div>' : '') +
+            '<div class="ft"><span>' + esc(hlChapterLabel(h)) + '</span><span class="spacer"></span>' +
+            '<button data-hledit="' + esc(h.id) + '" title="' + esc(T('编辑笔记')) + '">✎</button>' +
+            '<button data-hlshare="' + esc(h.id) + '" title="' + esc(T('分享划线')) + '">↗</button>' +
+            '<button data-hldel="' + esc(h.id) + '" class="danger" title="' + esc(T('删除')) + '">×</button></div></div>';
+        }).join('') : '<div class="hint" style="line-height:1.9">' + esc(T('还没有笔记。选中正文里的句子，就能高亮、写批注。')) + '</div>') +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">' +
+        '<button id="noteExp">' + esc(T('导出笔记')) + '</button>' +
+        '<button id="noteSum">' + esc(T('阅读总结')) + '</button></div>';
     } else {
-      html = '<div style="display:flex;gap:6px;margin-bottom:9px"><input class="q" type="search" id="findQ" placeholder="全书搜索关键词"><button id="findGo">搜</button></div>' +
-        '<div id="findStat" class="hint">支持当前 EPUB / TXT 全文，最多显示 200 条</div><div id="findRes"></div>';
+      html = '<div style="display:flex;gap:6px;margin-bottom:9px"><input class="q" type="search" id="findQ" placeholder="' +
+        esc(T('全书搜索关键词')) + '"><button id="findGo">' + esc(T('搜')) + '</button></div>' +
+        '<div id="findStat" class="hint">' + esc(T('支持当前 EPUB / TXT 全文，最多显示 200 条')) + '</div><div id="findRes"></div>';
     }
     b.innerHTML = html;
     if (SIDE === 'find') {
@@ -623,7 +937,7 @@
   async function doFind(query) {
     var q = (query || '').trim(); if (!q || !BK) return;
     var tok = ++SEARCHTOK, res = [], low = q.toLowerCase(), stat = $('findStat');
-    stat.textContent = '搜索中… 0/' + chapterCount();
+    stat.textContent = T('搜索中… {a}/{b}', { a: 0, b: chapterCount() });
     for (var i = 0; i < chapterCount(); i++) {
       var t; try { t = BK.chapterText(i); } catch (e) { continue; }
       var idx = t.toLowerCase().indexOf(low);
@@ -632,11 +946,11 @@
         idx = t.toLowerCase().indexOf(low, idx + q.length);
         if (res.length >= 200) break;
       }
-      if (i % 8 === 0) { stat.textContent = '搜索中… ' + (i + 1) + '/' + chapterCount() + '，命中 ' + res.length; await sleep(0); }
+      if (i % 8 === 0) { stat.textContent = T('搜索中… {a}/{b}', { a: i + 1, b: chapterCount() }) + ' · ' + T('命中 {n}', { n: res.length }); await sleep(0); }
       if (tok !== SEARCHTOK || res.length >= 200) break;
     }
     if (tok !== SEARCHTOK) return;
-    stat.textContent = res.length ? '共 ' + res.length + ' 处' + (res.length >= 200 ? '（已截断）' : '') : '没找到「' + q + '」';
+    stat.textContent = res.length ? T('共 {n} 处', { n: res.length }) + (res.length >= 200 ? T('（已截断）') : '') : T('没找到「{q}」', { q: q });
     $('findRes').innerHTML = res.map(function (r) {
       return '<button class="it" data-ch="' + r.ch + '" data-q="' + esc(q) + '"><b>' + esc(r.label) + '</b><br><span class="hint">…' + esc(r.text) + '…</span></button>';
     }).join('');
@@ -646,7 +960,343 @@
     var p = currentPara(), t = (SPK.paras[p] ? SPK.paras[p].textContent : '').trim().slice(0, 80) || chapterTitle(BK.ch);
     BK.meta.marks = BK.meta.marks || [];
     BK.meta.marks.push({ ch: BK.ch, p: p, text: t, ts: Date.now() });
-    savePos(); toast('已加书签'); if (SIDE === 'mark') renderSide();
+    savePos(); toast(T('已加书签')); if (SIDE === 'mark') renderSide();
+  }
+
+  /* ---------------- 划线高亮与批注 ----------------
+     选区只在段落内部定位：段落序号 + 段内字符区间。渲染章节后按区间重新包 <mark>，
+     EPUB 的内联标签由 TreeWalker 按纯文本长度算，跨节点也能量准。 */
+  var SEL = { text: '', ch: 0, p: 0, s: 0, e: 0, rect: null };
+  function persistBook() {
+    if (!BK || !BK.meta) return;
+    dbPut('books', BK.meta).catch(function () { });
+    var x = bookOf(BK.meta.id); if (x) Object.assign(x, BK.meta);
+  }
+  function closestPara(node) {
+    var e = node && node.nodeType === 1 ? node : (node ? node.parentElement : null);
+    if (!e) return null;
+    if (e.closest) return e.closest('.rdp');
+    return null;
+  }
+  function textOffsetIn(para, node, offset) {
+    var w = document.createTreeWalker(para, NodeFilter.SHOW_TEXT, null), n, acc = 0;
+    while ((n = w.nextNode())) {
+      if (n === node) return acc + offset;
+      acc += n.nodeValue.length;
+    }
+    return -1;
+  }
+  function rangeAt(para, s, e) {
+    var w = document.createTreeWalker(para, NodeFilter.SHOW_TEXT, null), n, acc = 0, a = null, b = null;
+    while ((n = w.nextNode())) {
+      var len = n.nodeValue.length;
+      if (a === null && s <= acc + len) a = { n: n, o: Math.max(0, s - acc) };
+      if (e <= acc + len) { b = { n: n, o: Math.max(0, e - acc) }; break; }
+      acc += len;
+    }
+    if (!a || !b) return null;
+    var r = document.createRange();
+    try {
+      r.setStart(a.n, Math.min(a.o, a.n.nodeValue.length));
+      r.setEnd(b.n, Math.min(b.o, b.n.nodeValue.length));
+    } catch (err) { return null; }
+    return r.collapsed ? null : r;
+  }
+  function wrapRange(range, cls) {
+    var frag;
+    try { frag = range.extractContents(); } catch (e) { return null; }
+    var m = document.createElement('mark');
+    if (cls) m.className = cls;
+    m.appendChild(frag);
+    try { range.insertNode(m); } catch (e) { return null; }
+    return m;
+  }
+  /* 章节渲染完成后还原本章的所有高亮 */
+  function applyHighlights() {
+    var page = $('page');
+    if (!page || !BK || !BK.meta) return;
+    var list = hlList(BK.meta).filter(function (h) { return h.ch === BK.ch; });
+    if (!list.length) return;
+    var paras = page.querySelectorAll('.rdp');
+    list.forEach(function (h) {
+      var p = paras[h.p]; if (!p) return;
+      var r = rangeAt(p, h.s, h.e);
+      // 段落内容变动（换字号不会，换编码/重排会）：退化为按原文查找
+      if (!r || p.textContent.substr(h.s, h.e - h.s) !== h.text) {
+        var i = p.textContent.indexOf(h.text);
+        if (i < 0) return;
+        r = rangeAt(p, i, i + h.text.length);
+      }
+      if (!r) return;
+      var m = wrapRange(r, 'hl-' + (h.c || 'y') + (h.note ? ' hasNote' : ''));
+      if (!m) return;
+      m.setAttribute('data-hlid', h.id);
+      if (h.note) m.title = h.note;
+    });
+  }
+  /* ---- 选区工具条 ---- */
+  function readSelection() {
+    var s = window.getSelection();
+    if (!s || s.isCollapsed || !s.rangeCount) return null;
+    var range = s.getRangeAt(0), page = $('page');
+    if (!page || !page.contains(range.startContainer) || !page.contains(range.endContainer)) return null;
+    var p0 = closestPara(range.startContainer), p1 = closestPara(range.endContainer);
+    if (!p0) return null;
+    if (p1 && p1 !== p0) {                      // 跨段选区：只取第一段内的部分
+      range = range.cloneRange();
+      try { range.setEnd(p0, p0.childNodes.length); } catch (e) { }
+    }
+    var txt = String(range.toString() || '').replace(/\s+/g, ' ').trim();
+    if (!txt || txt.length > 1000) return null;
+    var paras = Array.prototype.slice.call(page.querySelectorAll('.rdp'));
+    var idx = paras.indexOf(p0);
+    if (idx < 0) return null;
+    var s0 = textOffsetIn(p0, range.startContainer, range.startOffset);
+    var s1 = textOffsetIn(p0, range.endContainer, range.endOffset);
+    if (s0 < 0 || s1 <= s0) return null;
+    return { text: txt, ch: BK ? BK.ch : 0, p: idx, s: s0, e: s1, rect: range.getBoundingClientRect() };
+  }
+  function showSelTools(sel) {
+    var box = $('selTools');
+    SEL = sel;
+    box.classList.add('on');
+    var bw = box.offsetWidth || 260, bh = box.offsetHeight || 36;
+    var r = sel.rect || { left: 0, top: 0, width: 0, bottom: 0 };
+    var x = r.left + r.width / 2 - bw / 2, y = r.top - bh - 10;
+    if (y < 6) y = r.bottom + 10;
+    x = Math.max(6, Math.min(window.innerWidth - bw - 6, x));
+    box.style.left = x + 'px'; box.style.top = y + 'px';
+  }
+  function hideSelTools() { var b = $('selTools'); if (b) b.classList.remove('on'); }
+  function onSelUp() {
+    if (!$('viewRead').classList.contains('on')) return;
+    setTimeout(function () {
+      var sel = readSelection();
+      if (sel) showSelTools(sel); else hideSelTools();
+    }, 10);
+  }
+  function addHighlight(color, note) {
+    if (!SEL.text || !BK) return;
+    var hl = {
+      id: 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      ch: SEL.ch, p: SEL.p, s: SEL.s, e: SEL.e, text: SEL.text,
+      note: note || '', c: color || 'y', ts: Date.now()
+    };
+    BK.meta.hl = BK.meta.hl || [];
+    BK.meta.hl.push(hl);
+    persistBook();
+    var st = $('pageWrap').scrollTop;
+    renderChapter(BK.ch, { silent: true });
+    $('pageWrap').scrollTop = st;
+    hideSelTools();
+    try { window.getSelection().removeAllRanges(); } catch (e) { }
+    if (!note) toast(T('已高亮'), 1400);
+    if (SIDE === 'note') renderSide();
+    return hl;
+  }
+  function hlById(id) { return hlList(BK && BK.meta).filter(function (h) { return h.id === id; })[0]; }
+  function removeHighlight(id) {
+    if (!BK) return;
+    BK.meta.hl = hlList(BK.meta).filter(function (h) { return h.id !== id; });
+    persistBook();
+    var st = $('pageWrap').scrollTop;
+    renderChapter(BK.ch, { silent: true });
+    $('pageWrap').scrollTop = st;
+    if (SIDE === 'note') renderSide();
+    toast(T('已删除批注'), 1600);
+  }
+  function noteEditor(hl) {
+    if (!hl) return;
+    showModal(T('编辑笔记'),
+      '<div class="kv" style="margin-bottom:10px;line-height:1.7">' + esc(hl.text.slice(0, 220)) +
+      (hl.text.length > 220 ? '…' : '') + '</div>' +
+      '<textarea id="noteTx" rows="5" placeholder="' + esc(T('写下你的想法…')) +
+      '" style="width:100%;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:10px;color:var(--tx);font-size:inherit;line-height:1.7;resize:vertical">' +
+      esc(hl.note || '') + '</textarea>',
+      [{ label: T('删除'), cls: 'danger', fn: function () { closeModal(); removeHighlight(hl.id); } },
+        { label: T('取消') },
+        { label: T('保存'), cls: 'pri', fn: function () {
+          hl.note = ($('noteTx').value || '').trim();
+          persistBook(); closeModal();
+          var st = $('pageWrap').scrollTop;
+          renderChapter(BK.ch, { silent: true });
+          $('pageWrap').scrollTop = st;
+          if (SIDE === 'note') renderSide();
+          toast(T('已保存'), 1400);
+        } }]);
+    setTimeout(function () { var x = $('noteTx'); if (x) x.focus(); }, 60);
+  }
+  /* 点已有高亮：菜单（换色 / 编辑笔记 / 分享 / 删除） */
+  function hlMenu(id) {
+    var h = hlById(id); if (!h) return;
+    var colors = HL_COLORS.map(function (c) {
+      return '<button data-hc="' + c + '" style="width:30px;height:30px;min-height:30px;padding:0;border-radius:50%;background:' +
+        ({ y: '#FFD666', g: '#7AD68C', b: '#7AB2FF', p: '#FF96C4' })[c] + ';border:2px solid ' +
+        (h.c === c ? 'var(--acc)' : 'transparent') + '" title="' + esc(T('高亮颜色')) + '"></button>';
+    }).join('');
+    showModal(T('批注'),
+      '<div class="kv" style="line-height:1.8;margin-bottom:10px">' + esc(h.text) + '</div>' +
+      (h.note ? '<p style="margin-bottom:10px">' + esc(h.note) + '</p>' : '') +
+      '<div class="row"><label>' + esc(T('高亮颜色')) + '</label><div class="seg">' + colors + '</div></div>',
+      [{ label: T('取消高亮'), cls: 'danger', fn: function () { closeModal(); removeHighlight(h.id); } },
+        { label: T('分享划线'), fn: function () { closeModal(); shareHighlight(h); } },
+        { label: T('编辑笔记'), cls: 'pri', fn: function () { closeModal(); noteEditor(h); } }]);
+    $('modalBody').onclick = function (e) {
+      var c = e.target.closest('[data-hc]'); if (!c) return;
+      h.c = c.getAttribute('data-hc');
+      persistBook(); closeModal();
+      var st = $('pageWrap').scrollTop;
+      renderChapter(BK.ch, { silent: true });
+      $('pageWrap').scrollTop = st;
+      if (SIDE === 'note') renderSide();
+    };
+  }
+  function copyText(txt) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(txt).then(function () { return true; }, function () { return legacyCopy(txt); });
+    }
+    return Promise.resolve(legacyCopy(txt));
+  }
+  function legacyCopy(txt) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      return true;
+    } catch (e) { return false; }
+  }
+  /* ---- 分享卡片：canvas 画一张 1080 宽的图文 ---- */
+  function wrapLines(g, text, maxW) {
+    var lines = [], cur = '';
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (ch === '\n') { lines.push(cur); cur = ''; continue; }
+      if (g.measureText(cur + ch).width > maxW && cur) { lines.push(cur); cur = ch; }
+      else cur += ch;
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
+  function shareHighlight(hl) {
+    if (!hl) return;
+    var W = 1080, pad = 92, fs = 46, lh = 1.72;
+    var cv = document.createElement('canvas'), g = cv.getContext('2d');
+    g.font = fs + 'px "Noto Serif CJK SC","Songti SC",serif';
+    var body = hl.text.length > 340 ? hl.text.slice(0, 340) + '…' : hl.text;
+    var lines = wrapLines(g, body, W - pad * 2).slice(0, 14);
+    var H = pad + 92 + lines.length * fs * lh + 150 + pad;
+    cv.width = W; cv.height = H;
+    g = cv.getContext('2d');
+    g.fillStyle = '#FAF7F0'; g.fillRect(0, 0, W, H);
+    // 左侧装饰竖线
+    g.fillStyle = '#B08A5A'; g.fillRect(pad, pad + 88, 6, lines.length * fs * lh - 8);
+    // 书名与章节
+    g.fillStyle = '#8A7A63'; g.font = '30px "Microsoft YaHei",system-ui,sans-serif';
+    var meta = (BK ? BK.meta.name : '') + (hl.ch != null && BK ? ' · ' + chapterTitle(hl.ch) : '');
+    g.fillText(meta.length > 26 ? meta.slice(0, 26) + '…' : meta, pad + 26, pad + 44);
+    // 正文
+    g.fillStyle = '#2C2620'; g.font = fs + 'px "Noto Serif CJK SC","Songti SC",serif';
+    lines.forEach(function (ln, i) { g.fillText(ln, pad + 30, pad + 88 + fs * 0.95 + i * fs * lh); });
+    // 脚注
+    var by = H - pad - 46;
+    g.fillStyle = '#B08A5A'; g.fillRect(pad, by - 40, W - pad * 2, 2);
+    g.fillStyle = '#8A7A63'; g.font = '28px "Microsoft YaHei",system-ui,sans-serif';
+    g.fillText(T('墨吟 · 阅读与朗读'), pad, by + 4);
+    var mark = '© 永远的兰兰';
+    g.textAlign = 'right'; g.fillText(mark, W - pad, by + 4); g.textAlign = 'left';
+    var name = (BK ? BK.meta.name : 'highlight').replace(/[\\/:*?"<>|]/g, '_').slice(0, 24);
+    try {
+      var url = cv.toDataURL('image/png');
+      var a = document.createElement('a');
+      a.href = url; a.download = name + '-划线.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      toast(T('分享图已保存'), 2600);
+    } catch (e) {
+      toast(T('生成分享图失败：') + e.message, 3600);
+    }
+  }
+
+  /* ---------------- 导出笔记 / 阅读总结 ---------------- */
+  function fmtDateTime(ts) {
+    var d = new Date(ts || Date.now());
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') +
+      ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  function fmtShort(ts) {
+    var d = new Date(ts || Date.now());
+    return String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') +
+      ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  function notesMarkdown(b) {
+    b = b || (BK && BK.meta);
+    if (!b) return '';
+    var hs = hlList(b).slice().sort(function (x, y) { return (x.ch - y.ch) || (x.p - y.p); });
+    var out = '# ' + (b.name || '') + '\n\n';
+    if (b.author) out += '> ' + b.author + '\n\n';
+    out += '-' + T('导出时间：') + fmtDateTime() + '\n';
+    out += '- ' + T('批注数：') + hs.length + '（' + T('其中带笔记 ') + hs.filter(function (h) { return h.note; }).length + '）\n\n';
+    var lastCh = -1;
+    hs.forEach(function (h) {
+      if (h.ch !== lastCh) {
+        lastCh = h.ch;
+        out += '\n## ' + T('第 {n} 章', { n: (h.ch | 0) + 1 }) + ' · ' + chapterTitle(h.ch) + '\n\n';
+      }
+      out += '> ' + String(h.text).replace(/\n/g, ' ') + '\n\n';
+      if (h.note) out += T('笔记：') + h.note + '\n\n';
+    });
+    return out;
+  }
+  function exportNotes() {
+    if (!BK || !BK.meta) return;
+    var hs = hlList(BK.meta);
+    if (!hs.length) { toast(T('还没有划线或批注')); return; }
+    var name = (BK.meta.name || 'notes').replace(/[\\/:*?"<>|]/g, '_').slice(0, 40);
+    download(name + '-笔记.md', notesMarkdown(BK.meta), 'text/markdown;charset=utf-8');
+    toast(T('笔记已导出'), 2400);
+  }
+  function gotoHighlight(h) {
+    if (!h) return;
+    if (h.ch !== BK.ch) renderChapter(h.ch, { silent: true });
+    setTimeout(function () {
+      var m = $('page').querySelector('mark[data-hlid="' + h.id + '"]');
+      if (m) { m.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      else { var p = SPK.paras[h.p]; if (p) p.scrollIntoView({ block: 'center' }); }
+    }, 90);
+  }
+  function showSummary() {
+    if (!BK || !BK.meta) return;
+    var b = BK.meta, hs = hlList(b).slice().sort(function (x, y) { return (x.ch - y.ch) || (x.p - y.p); });
+    var notes = hs.filter(function (h) { return h.note; });
+    var n = Math.max(1, chapterCount());
+    var prog = ((b.ch || 0) + (b.ratio || 0)) / n * 100;
+    var days = b.first ? Math.max(1, Math.ceil((Date.now() - b.first) / 86400000)) : 1;
+    var avg = b.sessions ? Math.round((b.rt || 0) / b.sessions) : 0;
+    var cells = [
+      [T('累计阅读'), b.rt ? fmtDur(b.rt) : '—'],
+      [T('阅读进度'), prog.toFixed(1) + '%'],
+      [T('章节'), (b.ch || 0) + 1 + ' / ' + chapterCount()],
+      [T('批注数'), String(hs.length)],
+      [T('其中笔记'), String(notes.length)],
+      [T('书签数'), String((b.marks || []).length)],
+      [T('阅读天数'), T('{n} 天', { n: days })],
+      [T('平均每次'), avg ? fmtDur(avg) : '—'],
+      [T('上次阅读'), b.last ? fmtShort(b.last) : '—']
+    ];
+    var ex = hs.map(function (h) {
+      return '<div class="e"><div class="t">' + esc(h.text) + '</div>' +
+        (h.note ? '<div class="n">' + esc(h.note) + '</div>' : '') +
+        '<div class="h">' + esc(T('第 {n} 章', { n: (h.ch | 0) + 1 })) + ' · ' + fmtDateTime(h.ts) + '</div></div>';
+    }).join('') || '<div class="hint" style="padding:8px">' + esc(T('还没有划线或批注')) + '</div>';
+    showModal(T('阅读总结') + ' · ' + b.name,
+      '<div class="sumGrid">' + cells.map(function (c) {
+        return '<div class="c"><b>' + esc(String(c[1])) + '</b><span>' + esc(c[0]) + '</span></div>';
+      }).join('') + '</div>' +
+      '<h3>' + esc(T('本书摘录')) + ' <span class="kv" style="font-weight:400">' + hs.length + '</span></h3>' +
+      '<p class="kv">' + esc(T('按章节顺序汇总你划过的高亮与批注，可导出成 Markdown 笔记。')) + '</p>' +
+      '<div class="sumEx">' + ex + '</div>',
+      [{ label: T('导出笔记'), fn: exportNotes },
+        { label: T('复制全部'), fn: function () { copyText(notesMarkdown(b)).then(function (ok) { toast(ok ? T('已复制') : T('复制失败，请手动选择文本')); }); } },
+        { label: T('关闭'), cls: 'pri' }]);
   }
 
   /* ---------------- 朗读 ---------------- */
@@ -699,9 +1349,9 @@
   }
   function voiceGroup(x) {
     var cur = (LOCAL.info && LOCAL.info.curated) || null;
-    if (cur && cur.indexOf(x[0]) >= 0) return '⭐ 推荐音色';
-    if (CFG.voiceSet === 'all' && LOCAL.list) return x[2] || '其他音色';
-    return '⭐ 推荐音色';
+    if (cur && cur.indexOf(x[0]) >= 0) return T('⭐ 推荐音色');
+    if (CFG.voiceSet === 'all' && LOCAL.list) return T(x[2] || '其他音色');
+    return T('⭐ 推荐音色');
   }
   function localVoiceOptions() {
     var list = localVoiceList(), html = '', last = null;
@@ -711,7 +1361,7 @@
         if (last !== null) html += '</optgroup>';
         html += '<optgroup label="' + esc(g) + '">'; last = g;
       }
-      html += '<option value="' + x[0] + '"' + (CFG.localVoice === x[0] ? ' selected' : '') + '>' + esc(x[1]) + '</option>';
+      html += '<option value="' + x[0] + '"' + (CFG.localVoice === x[0] ? ' selected' : '') + '>' + esc(T(x[1])) + '</option>';
     });
     return html + (last !== null ? '</optgroup>' : '');
   }
@@ -728,8 +1378,8 @@
   function localBase() { return 'http://127.0.0.1:' + (Number(CFG.localPort) || 8177); }
   function localReady() { return !!(CFG.localOn && LOCAL.ready); }
   function localErrText(status, txt) {
-    if (status === 404) return '服务路径不匹配，请更新语音包';
-    if (status === 503) return '语音引擎正在初始化，稍后再试';
+    if (status === 404) return T('服务路径不匹配，请更新语音包');
+    if (status === 503) return T('语音引擎正在初始化，稍后再试');
     return 'HTTP ' + status + (txt ? '：' + String(txt).slice(0, 80) : '');
   }
   /* 探测本机语音引擎；服务未启动时静默回退系统语音，不打扰阅读 */
@@ -744,12 +1394,12 @@
         LOCAL.list = buildVoiceList(j);
         LOCAL.miss = LOCAL.ready ? 0 : LOCAL.miss + 1;
         if (LOCAL.ready) fixLocalVoice();
-        fillVoices(); if (force && LOCAL.ready) toast('已连接免费离线神经语音（' + localVoiceList().length + ' 个声线可用）', 2600);
+        fillVoices(); if (force && LOCAL.ready) toast(T('已连接免费离线神经语音（{n} 个声线可用）', { n: localVoiceList().length }), 2600);
         return LOCAL.ready;
       })
       .catch(function () {
         LOCAL.ready = false; LOCAL.info = null; LOCAL.list = null; LOCAL.checking = false; LOCAL.miss++;
-        fillVoices(); if (force) toast('没找到本地语音引擎，请先双击「VoicePack/启动语音引擎.cmd」', 5200);
+        fillVoices(); if (force) toast(T('没找到本地语音引擎，请先双击「VoicePack/启动语音引擎.cmd」'), 5200);
         return false;
       });
   }
@@ -762,14 +1412,14 @@
       if (!r.ok) return r.text().then(function (t) { throw new Error(localErrText(r.status, t)); });
       return r.blob();
     }).then(function (b) {
-      if (!b || b.size < 1000) throw new Error('服务返回的音频为空');
+      if (!b || b.size < 1000) throw new Error(T('服务返回的音频为空'));
       return URL.createObjectURL(b);
     });
   }
   function withTimeout(p, ms) {
     return new Promise(function (res, rej) {
       var done = false;
-      var t = setTimeout(function () { if (!done) { done = true; rej(new Error('请求超时（语音引擎未响应）')); } }, ms);
+      var t = setTimeout(function () { if (!done) { done = true; rej(new Error(T('请求超时（语音引擎未响应）'))); } }, ms);
       p.then(function (v) { if (!done) { done = true; clearTimeout(t); res(v); } },
         function (e) { if (!done) { done = true; clearTimeout(t); rej(e); } });
     });
@@ -787,7 +1437,7 @@
     SPK.prefetch = null;
   }
   function localFail(msg) {
-    toast('本地语音引擎不可用：' + msg + '。已切回系统朗读（双击「VoicePack/启动语音引擎.cmd」可恢复）', 7000);
+    toast(T('本地语音引擎不可用：{m}。已切回系统朗读（双击「VoicePack/启动语音引擎.cmd」可恢复）', { m: msg }), 7000);
     LOCAL.ready = false; fillVoices();
     SPK.gen++; clearTimeout(SPK.watch); clearTimeout(SPK.gapT);
     stopLocalAudio();
@@ -816,14 +1466,14 @@
       var a = new Audio(); a.src = u; a.playbackRate = Number(CFG.rate) || 1;
       SPK.audio = a;
       a.onended = function () { if (g === SPK.gen && SPK.playing) speakNext(false); };
-      a.onerror = function () { if (g === SPK.gen) localFail('音频加载失败'); };
+      a.onerror = function () { if (g === SPK.gen) localFail(T('音频加载失败')); };
       try {
         var q = a.play();
-        if (q && q.catch) q.catch(function () { if (g === SPK.gen) localFail('浏览器阻止了播放，请点一下页面'); });
+        if (q && q.catch) q.catch(function () { if (g === SPK.gen) localFail(T('浏览器阻止了播放，请点一下页面')); });
       } catch (e) { localFail(e.message); return; }
       localPrefetch();
     }).catch(function (e) {
-      if (g === SPK.gen) localFail(e.message || '请求失败');
+      if (g === SPK.gen) localFail(e.message || T('请求失败'));
     });
   }
   /* 语音分级：Natural / Neural = 神经网络语音（接近真人）；localService=false = 在线合成 */
@@ -849,7 +1499,7 @@
       if (!short && nm.toLowerCase().indexOf(k) >= 0) short = VOICE_CN[k];
     });
     if (!short) short = nm.replace(/\s*Online.*$/i, '').replace(/^Microsoft\s*/i, '').replace(/\s*-\s*.*$/, '').trim() || nm;
-    var tag = isNatural(v) ? '自然' : (v.localService === false ? '在线' : '本地');
+    var tag = isNatural(v) ? T('自然') : (v.localService === false ? T('在线') : T('本地'));
     return short + ' · ' + tag + ' · ' + (v.lang || '');
   }
   function bestVoice(vs) {
@@ -863,25 +1513,25 @@
   function voiceBadge(v) {
     var b = $('spQuality'); if (!b) return;
     if (localReady()) {
-      b.textContent = '● 免费神经语音'; b.className = 'vq good';
-      b.title = '本机 sherpa-onnx 神经语音：完全离线、免费、无需账号。当前音色：' + localVoiceName(CFG.localVoice) + '。左侧下拉可随时换音色，点这里看说明';
+      b.textContent = T('● 免费神经语音'); b.className = 'vq good';
+      b.title = T('本机 sherpa-onnx 神经语音：完全离线、免费、无需账号。当前音色：{v}。左侧下拉可随时换音色，点这里看说明', { v: localVoiceName(CFG.localVoice) });
       var s = $('spVoice');
       if (s) {
         // 连上本机引擎后下拉不再禁用：精选声线就在这里换，听书时可边听边比
         s.disabled = false;
-        s.title = '本机 ' + localVoiceList().length + ' 个离线声线，选中即生效（当前：' + localVoiceName(CFG.localVoice) + '）';
+        s.title = T('本机 {n} 个离线声线，选中即生效（当前：{v}）', { n: localVoiceList().length, v: localVoiceName(CFG.localVoice) });
         var lv = 'local:' + CFG.localVoice;
         if (s.value !== lv && s.querySelector('option[value="' + lv + '"]')) s.value = lv;
       }
       return;
     }
-    if ($('spVoice')) { $('spVoice').disabled = false; $('spVoice').title = '朗读语音'; }
-    if (!v) { b.textContent = '无语音'; b.className = 'vq bad'; return; }
+    if ($('spVoice')) { $('spVoice').disabled = false; $('spVoice').title = T('朗读语音'); }
+    if (!v) { b.textContent = T('无语音'); b.className = 'vq bad'; return; }
     var n = isNatural(v), on = v.localService === false;
-    b.textContent = n ? '● 自然语音' : (on ? '● 在线语音' : '● 本地语音（较机械）');
+    b.textContent = n ? T('● 自然语音') : (on ? T('● 在线语音') : T('● 本地语音（较机械）'));
     b.className = 'vq ' + (n ? 'good' : (on ? 'mid' : 'bad'));
-    b.title = n ? '神经网络语音：语调接近真人；需联网，朗读文字会发送给语音服务合成。点击看说明'
-      : (on ? '在线合成，需联网。点击看说明' : '系统本地语音，离线可用但音质较机械。点击看说明');
+    b.title = n ? T('神经网络语音：语调接近真人；需联网，朗读文字会发送给语音服务合成。点击看说明')
+      : (on ? T('在线合成，需联网。点击看说明') : T('系统本地语音，离线可用但音质较机械。点击看说明'));
   }
   /* 朗读条只放精选声线 + 当前选中的那个（真正在用的必须在条上可见），
      其余声线进设置页挑，避免条上下拉长到 174 项 */
@@ -902,23 +1552,23 @@
     // 本机声线直接进朗读条：听书时一键换，不用跳设置页
     if (loc) {
       var lv = localBarList(), total = voiceStat().total;
-      html += '<optgroup label="⭐ 本机神经语音 · 免费离线（' + lv.length + ' 个声线）">' + lv.map(function (x) {
+      html += '<optgroup label="' + esc(T('⭐ 本机神经语音 · 免费离线（{n} 个声线）', { n: lv.length })) + '">' + lv.map(function (x) {
         return '<option value="local:' + x[0] + '"' + (x[0] === CFG.localVoice ? ' selected' : '') + '>' +
-          esc(x[1]) + '</option>';
+          esc(T(x[1])) + '</option>';
       }).join('');
       if (total > lv.length) {
-        html += '<option value="__more">⋯ 还有 ' + (total - lv.length) + ' 个声线，去设置里挑</option>';
+        html += '<option value="__more">' + esc(T('⋯ 还有 {n} 个声线，去设置里挑', { n: total - lv.length })) + '</option>';
       }
       html += '</optgroup>';
     }
     if (!vs.length) {
-      sel.innerHTML = html || '<option value="">（系统暂无语音）</option>';
+      sel.innerHTML = html || '<option value="">' + esc(T('（系统暂无语音）')) + '</option>';
       if (loc) sel.value = 'local:' + CFG.localVoice;
       voiceBadge(null); return;
     }
     var groups = [
-      [0, '⭐ 自然语音 · 接近真人（需联网）'], [1, '在线语音（需联网）'],
-      [2, '本地语音 · 较机械（离线可用）'], [3, '其他语言 · 自然语音'], [4, '其他语言']
+      [0, T('⭐ 自然语音 · 接近真人（需联网）')], [1, T('在线语音（需联网）')],
+      [2, T('本地语音 · 较机械（离线可用）')], [3, T('其他语言 · 自然语音')], [4, T('其他语言')]
     ];
     groups.forEach(function (g) {
       var arr = vs.filter(function (v) { return voiceTier(v) === g[0]; });
@@ -940,7 +1590,7 @@
       var best = bestVoice(vs);
       if (best && isNatural(best) && isZh(best)) {
         cur = best; CFG.voiceURI = voiceKey(best); saveCfg();
-        setTimeout(function () { toast('已自动切换到更自然的语音：' + voiceLabel(best).split(' · ')[0] + '（朗读条可随时更换）', 4600); }, 1000);
+        setTimeout(function () { toast(T('已自动切换到更自然的语音：{v}（朗读条可随时更换）', { v: voiceLabel(best).split(' · ')[0] }), 4600); }, 1000);
       }
     }
     if (!cur) { cur = bestVoice(vs); if (cur) { CFG.voiceURI = voiceKey(cur); saveCfg(); } }
@@ -1082,7 +1732,7 @@
   function roleLabel() {
     if (!CFG.roleOn) return '';
     if (!localReady()) return '';
-    return '多角色';
+    return T('多角色');
   }
 
   function onlineFallback() {
@@ -1093,7 +1743,7 @@
     SPK.fb = 1; CFG.voiceURI = voiceKey(local); CFG.voiceAuto = 0; saveCfg();
     if ($('spVoice')) $('spVoice').value = CFG.voiceURI;
     voiceBadge(local);
-    toast('在线自然语音连接失败，已自动切回本地语音（联网恢复后可在语音下拉里重新选）', 5200);
+    toast(T('在线自然语音连接失败，已自动切回本地语音（联网恢复后可在语音下拉里重新选）'), 5200);
     SPK.gen++; clearTimeout(SPK.watch); clearTimeout(SPK.gapT);
     try { SYN.cancel(); } catch (e) {}
     if (SPK.playing) speakChunk(0);
@@ -1109,7 +1759,7 @@
     var t = (SPK.chunks[SPK.ci] || '').slice(0, 46);
     var who = '';
     if (CFG.roleOn && localReady() && SPK.cv[SPK.ci] && SPK.cv[SPK.ci] !== CFG.localVoice) {
-      var nm = SPK.castName[SPK.cv[SPK.ci]] || '对白';
+      var nm = SPK.castName[SPK.cv[SPK.ci]] || T('对白');
       who = '<b class="spwho">' + esc(nm) + '</b>';
     }
     $('spNow').innerHTML = '<span class="spdot"></span>' + who + esc(t);
@@ -1138,7 +1788,7 @@
       speakNext(false);
     };
     highlight();
-    try { SYN.speak(u); } catch (e) { toast('朗读启动失败：' + e.message); stopSpeak(false); return; }
+    try { SYN.speak(u); } catch (e) { toast(T('朗读启动失败：') + e.message); stopSpeak(false); return; }
     // 长文本静默停止看门狗：按字数 + 语速动态估算，在线语音额外预留合成时间
     clearTimeout(SPK.watch);
     var est = Math.max(7000, Math.min(34000,
@@ -1161,7 +1811,7 @@
         SPK.paras = Array.prototype.slice.call($('page').querySelectorAll('.rdp'));
         SPK.pi = 0; setPara(0); speakChunk(0); return;
       }
-      stopSpeak(false); toast('朗读结束'); return;
+      stopSpeak(false); toast(T('朗读结束')); return;
     }
     setPara(SPK.pi); speakChunk(Math.min(900, (Number(CFG.pause) || 0) * 2));
   }
@@ -1201,25 +1851,25 @@
   function syncRoleBtn() {
     var b = $('spRole'); if (!b) return;
     b.classList.toggle('on', !!CFG.roleOn);
-    b.textContent = CFG.roleOn ? '多角色' : '单声线';
+    b.textContent = CFG.roleOn ? T('多角色') : T('单声线');
     b.title = CFG.roleOn
-      ? '分角色朗读已开启：旁白用当前声线，引号里的对白按人物换声。点击关闭'
-      : '分角色朗读：对话自动换声（旁白保持当前声线）。点击开启';
+      ? T('分角色朗读已开启：旁白用当前声线，引号里的对白按人物换声。点击关闭')
+      : T('分角色朗读：对话自动换声（旁白保持当前声线）。点击开启');
   }
   function toggleRole() {
     if (!CFG.roleOn && !localReady()) {
-      toast('分角色朗读需要本机神经语音（系统语音只能出一个声音）：先双击「VoicePack/启动语音引擎.cmd」', 6200);
+      toast(T('分角色朗读需要本机神经语音（系统语音只能出一个声音）：先双击「VoicePack/启动语音引擎.cmd」'), 6200);
       return;
     }
     CFG.roleOn = CFG.roleOn ? 0 : 1; saveCfg(); syncRoleBtn(); resetCast();
     if (SPK.playing) speakJump(0);
     else if (SPK.on) setPara(SPK.pi);
-    toast(CFG.roleOn ? '分角色朗读已开启：旁白照旧，对白按人物换声' : '已回到单一声音', 3000);
+    toast(CFG.roleOn ? T('分角色朗读已开启：旁白照旧，对白按人物换声') : T('已回到单一声音'), 3000);
   }
   var ROLE_TRY = '他把伞靠在门边，抖了抖上面的水。“外面雨真大。”她抬头看了一眼，又说：“今晚就别走了。”';
   /* 试听分角色：旁白 + 两句不同人物对白，挨个念一遍，听完就知道效果 */
   function tryRole() {
-    if (!localReady()) { toast('分角色试听需要本机神经语音：先双击「VoicePack/启动语音引擎.cmd」', 5600); return; }
+    if (!localReady()) { toast(T('分角色试听需要本机神经语音：先双击「VoicePack/启动语音引擎.cmd」'), 5600); return; }
     if (SPK.playing) stopSpeak(false);
     var keepCast = SPK.cast, keepUsed = SPK.used;
     SPK.cast = {}; SPK.used = {};
@@ -1228,7 +1878,7 @@
       jobs.push({ t: s.t, v: s.role === 'say' ? castVoice(s.who) : CFG.localVoice });
     });
     SPK.cast = keepCast; SPK.used = keepUsed;
-    toast('分角色试听：旁白 + ' + Math.max(0, jobs.length - 1) + ' 句对白，声音各不相同', 3400);
+    toast(T('分角色试听：旁白 + {n} 句对白，声音各不相同', { n: Math.max(0, jobs.length - 1) }), 3400);
     var i = 0;
     (function next() {
       if (i >= jobs.length) return;
@@ -1238,35 +1888,35 @@
         a.onended = a.onerror = function () { revokeURL(u); next(); };
         try { var q = a.play(); if (q && q.catch) q.catch(function () { revokeURL(u); }); }
         catch (e) { revokeURL(u); }
-      }).catch(function (e) { toast('试听失败：' + e.message, 5200); });
+      }).catch(function (e) { toast(T('试听失败：') + e.message, 5200); });
     })();
   }
   function tryVoice() {
-    if (SPK.playing) { stopSpeak(false); toast('已暂停书本朗读，开始试听'); }
+    if (SPK.playing) { stopSpeak(false); toast(T('已暂停书本朗读，开始试听')); }
     if (localReady()) {
-      toast('正在试听免费离线音色：' + localVoiceName(CFG.localVoice) + ' …', 3200);
+      toast(T('正在试听免费离线音色：') + localVoiceName(CFG.localVoice) + ' …', 3200);
       withTimeout(localURL(TRY_TEXT), 30000).then(function (u) {
         var a = new Audio(); a.src = u; a.playbackRate = Number(CFG.rate) || 1;
         try {
           var q = a.play(); if (q && q.catch) q.catch(function () {});
           a.onended = a.onerror = function () { revokeURL(u); };
         } catch (e) { revokeURL(u); }
-      }).catch(function (e) { toast('试听失败：' + e.message, 5600); });
+      }).catch(function (e) { toast(T('试听失败：') + e.message, 5600); });
       return;
     }
-    if (!SYN || !UTT) { toast('当前浏览器不支持朗读，请用新版 Edge'); return; }
+    if (!SYN || !UTT) { toast(T('当前浏览器不支持朗读，请用新版 Edge')); return; }
     var v = curVoice();
     try { SYN.cancel(); } catch (e) {}
     var u = new UTT(TRY_TEXT);
     if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'zh-CN';
     u.rate = Number(CFG.rate); u.pitch = Number(CFG.pitch); u.volume = Number(CFG.volume);
     SPK.trying = true;
-    toast('正在试听：' + (v ? voiceLabel(v).split(' · ')[0] : '默认语音') + '（不影响书本进度）', 3200);
+    toast(T('正在试听：{v}（不影响书本进度）', { v: v ? voiceLabel(v).split(' · ')[0] : T('默认语音') }), 3200);
     u.onend = u.onerror = function () { SPK.trying = false; };
-    try { SYN.speak(u); } catch (e) { SPK.trying = false; toast('试听失败：' + e.message); }
+    try { SYN.speak(u); } catch (e) { SPK.trying = false; toast(T('试听失败：') + e.message); }
   }
   function startSpeak(fromPi) {
-    if ((!SYN || !UTT) && !localReady()) { toast('当前浏览器不支持朗读，请用新版 Edge / Chrome'); return; }
+    if ((!SYN || !UTT) && !localReady()) { toast(T('当前浏览器不支持朗读，请用新版 Edge / Chrome')); return; }
     if (!BK) return;
     SPK.on = true; SPK.fb = 0; SPK.seenEnd = false;
     SPK.prefetch = null; stopLocalAudio(); voiceBadge(curVoice());
@@ -1281,7 +1931,7 @@
         SPK.paras = Array.prototype.slice.call($('page').querySelectorAll('.rdp'));
         tries++;
       }
-      if (!SPK.paras.length) { toast('这几章都没有可朗读的文字'); return; }
+      if (!SPK.paras.length) { toast(T('这几章都没有可朗读的文字')); return; }
     }
     setPara(fromPi === undefined ? currentPara() : fromPi);
     SPK.playing = true;
@@ -1289,8 +1939,8 @@
     speakChunk(0); $('spPlay').textContent = '❚❚';
     if (!$('spVoice').options.length || $('spVoice').options[0].value === '') fillVoices();
     var cv = curVoice();
-    if (SYN && !(SYN.getVoices() || []).length) toast('系统未检测到朗读语音；Windows 可在「设置→时间和语言→语音」添加中文语音', 5200);
-    else if (SYN && !localReady() && cv && !isNatural(cv)) toast('当前是机械语音；装一次免费语音包即可离线听接近真人的中文，详见「免费神经语音」', 5600);
+    if (SYN && !(SYN.getVoices() || []).length) toast(T('系统未检测到朗读语音；Windows 可在「设置→时间和语言→语音」添加中文语音'), 5200);
+    else if (SYN && !localReady() && cv && !isNatural(cv)) toast(T('当前是机械语音；装一次免费语音包即可离线听接近真人的中文，详见「免费神经语音」'), 5600);
   }
   function toggleSpeak() {
     if (!SPK.on) { startSpeak(); return; }
@@ -1298,7 +1948,7 @@
       SPK.playing = false; clearTimeout(SPK.gapT);
       if (SPK.audio) { try { SPK.audio.pause(); } catch (e) {} }
       else { SPK.gen++; clearTimeout(SPK.watch); try { SYN.pause(); } catch (e) {} }
-      $('spPlay').textContent = '▶'; $('spNow').textContent = '已暂停';
+      $('spPlay').textContent = '▶'; $('spNow').textContent = T('已暂停');
     } else {
       SPK.playing = true; clearTimeout(SPK.gapT);
       $('spPlay').textContent = '❚❚';
@@ -1333,10 +1983,10 @@
     if (!min) { $('spLeft').textContent = ''; return; }
     SPK.timer = setInterval(function () {
       var left = SPK.deadline - Date.now();
-      if (left <= 0) { clearInterval(SPK.timer); SPK.deadline = 0; $('spLeft').textContent = ''; stopSpeak(false); toast('朗读定时到，已停止'); return; }
-      $('spLeft').textContent = '剩 ' + Math.ceil(left / 60000) + ' 分';
+      if (left <= 0) { clearInterval(SPK.timer); SPK.deadline = 0; $('spLeft').textContent = ''; stopSpeak(false); toast(T('朗读定时到，已停止')); return; }
+      $('spLeft').textContent = T('剩 {n} 分', { n: Math.ceil(left / 60000) });
     }, 1000);
-    $('spLeft').textContent = '剩 ' + min + ' 分';
+    $('spLeft').textContent = T('剩 {n} 分', { n: min });
   }
 
   /* ---------------- 弹层 / 文档 ---------------- */
@@ -1346,7 +1996,7 @@
     mb.oninput = mb.onchange = mb.onclick = null;   // 防止多次打开时监听器叠加
     mb.innerHTML = body;
     var f = $('modalFoot'); f.innerHTML = '';
-    (buttons || [{ label: '关闭' }]).forEach(function (b) {
+    (buttons || [{ label: T('关闭') }]).forEach(function (b) {
       var el = document.createElement('button');
       el.textContent = b.label; if (b.cls) el.className = b.cls;
       el.onclick = function () { if (b.fn) b.fn(); else closeModal(); };
@@ -1356,14 +2006,19 @@
   }
   function closeModal() { $('modal').classList.remove('on'); }
   function confirmModal(msg, yes) {
-    showModal('请确认', '<p>' + esc(msg) + '</p>', [
-      { label: '取消' },
-      { label: '确定', cls: 'pri', fn: function () { closeModal(); yes(); } }
+    showModal(T('请确认'), '<p>' + esc(msg) + '</p>', [
+      { label: T('取消') },
+      { label: T('确定'), cls: 'pri', fn: function () { closeModal(); yes(); } }
     ]);
   }
   var DOCS = {
     help: ['使用说明', '<h3>导入</h3><p>书架点「＋ 导入书籍」，可选多本 <code>.txt</code> / <code>.epub</code>。文件只保存在这台设备的浏览器数据库里，导入过程不上传、不联网。</p>' +
       '<h3>阅读</h3><ul><li>顶部「目录」跳章，「搜索」全文找词，「＋书签」记位置。</li><li>底部进度条可拖到全书任意章节；← → 键翻章，空格向下翻页。</li><li>快捷键：← / → 翻章，空格 下翻一屏（朗读中则暂停 / 继续），Ctrl + F 搜索，Esc 退回书架或关掉弹窗。</li><li>「字体」调字号、行距、页宽、字体；「主题」在夜间 / 明亮 / 羊皮纸间切换。</li><li>阅读位置自动保存，下次打开接着读。</li></ul>' +
+      '<h3>划线、批注与分享</h3>' +
+      '<p>在正文里选中任意一句，会浮出一个小工具条：四色高亮、写笔记、复制、生成分享图。高亮和批注随书保存，右侧「笔记」页会按章节列出全部批注，点一条就能跳回去；在那里还能按「仅看有笔记的」筛选、改色、编辑或删除，并一键<b>导出成 Markdown</b> 或打开<b>阅读总结</b>（累计时长、进度、批注数、逐章摘录，可复制或导出）。</p>' +
+      '<h3>书架与收藏</h3>' +
+      '<p>书架上方一排标签是书架本身：「全部书籍」「★ 收藏」和你自建的书架。点「管理书架」可新建、重命名或解散书架（解散不会删书，书回到「未分组」）。每本书封面右上角的 ☆ 是收藏、⋯ 是菜单（改书名作者、移动书架、批量管理、移除）。批量管理可一次移动或移除多本。</p>' +
+      '<p>「导入文件夹」会把整个目录里的 TXT / EPUB 一次收进来，重复文件自动跳过。</p>' +
       '<h3>朗读</h3><p>点「朗读」从当前屏幕位置开始念。底部条可选语音、语速、上一段 / 下一段、定时停止；正在念的段落会高亮并自动跟随滚动，念完一章自动接下一章。</p>' +
       '<p><b>续听</b>：听到哪会单独记住（与「读到哪」分开记，互不干扰）。回到书架，书本卡片下方会出现「▶ 续听 · 第 N 章」，点一下就从上次听的那一段接着念；想按看书的位置念，点开书再点「朗读」即可。朗读条最左边的下拉可随时换声线，正在念时会用新声线把当前这段重念一遍。</p>' +
       '<p>不装任何东西也能直接朗读（用系统自带语音）。想要接近真人的中文，可看「阅读设置 → 免费神经语音」：随成品附带的开源语音库已经装好（约 53 MB，内含 174 个中文说话人），之后<b>永久离线、免费、无需账号</b>。不用它时，语音下拉按「自然语音 / 在线 / 本地」分组，默认优先选最好的那个。</p>' +
@@ -1455,82 +2110,83 @@
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + AISHELL3 多说话人 VITS 模型）：不联网、不收费、无需账号，模型内含 174 个中文说话人（148 女 + 26 男），精选 11 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
-      '<h3>这一版新加了什么</h3><ul>' +
-      '<li><b>174 个声线全放开</b>：模型里的 174 个中文说话人都能用（148 女 + 26 男），按实测音高分 7 档；切换只换 <code>--sid</code>，一分钱体积都不多占。默认仍只列精选 11 个，设置里点「全部 174 个」就展开。</li>' +
-      '<li><b>分角色朗读</b>：旁白照旧，引号里的对白按人物自动换声，同一人物全书同一个声音；朗读条上「多角色」一键开关，设置里可限定男女混合 / 全女声 / 全男声，还能一键试听效果。</li>' +
-      '<li><b>朗读条直接换声线</b>：离线声线全部放进播放器下拉，正在念时换声线会用新声音重念当前这段。</li>' +
-      '<li><b>书架续听</b>：听到哪单独记，「▶ 续听 · 第 N 章」一键接上，不用再找位置。</li>' +
-      '<li><b>语音引擎更安静</b>：语音服务改为在阅读器进程内运行，不再复制一个自己，也不会再弹出「Failed to remove temporary directory」的警告；浏览器正常断开连接不再刷报错，健康探测不再刷日志。</li>' +
-      '<li><b>许可与署名写全</b>：MIT 正文、第三方组件清单、免责与作者署名都放进了软件内，离线可查。</li></ul>' +
-      '<p class="kv">版本 1.6 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
+      '<h3>1.7 新加了什么</h3><ul>' +
+      '<li><b>全窗口中英双语</b>：书架顶栏一个开关，界面、设置、弹窗、提示与全部说明文档在中文 / 英文之间切换，选择会被记住。</li>' +
+      '<li><b>划线高亮与批注</b>：选中正文四色高亮、随手写笔记；「笔记」页按章节汇总，可跳转、改色、编辑、删除。</li>' +
+      '<li><b>导出与分享</b>：笔记一键导出 Markdown；划线可生成带书名与署名的分享图（PNG），也能只复制文字。</li>' +
+      '<li><b>阅读总结</b>：本书累计时长、进度、批注数、书签数与逐章摘录一页看完，可复制或导出成笔记。</li>' +
+      '<li><b>真正的书架</b>：自建书架、收藏、批量移动 / 移除、改书名作者、整目录导入。</li>' +
+      '<li><b>阅读计时</b>：每次阅读自动记时长，按书与总计累计，全部留在本机。</li></ul>' +
+      '<p class="kv">1.6 起还包含：174 个离线声线全放开、分角色朗读、朗读条直接换声线、书架续听、进程内语音引擎、完整 MIT 许可与署名。</p>' +
+      '<p class="kv">版本 1.7.0 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
   };
   function showDoc(k) {
     var d = DOCS[k] || DOCS.help;
+    var body = (CFG.lang === 'en' && window.MYDOCS_EN && window.MYDOCS_EN[k]) || d[1];
     var nav = '<div class="docnav">' + Object.keys(DOCS).map(function (x) {
-      return '<button data-doc="' + x + '"' + (x === k ? ' class="on"' : '') + '>' + esc(DOCS[x][0]) + '</button>';
+      return '<button data-doc="' + x + '"' + (x === k ? ' class="on"' : '') + '>' + esc(T(DOCS[x][0])) + '</button>';
     }).join('') + '</div>';
-    showModal(d[0], nav + d[1], [{ label: '关闭' }]);
+    showModal(T(d[0]), nav + body, [{ label: T('关闭') }]);
   }
   function showSettings() {
     localProbe();
-    var encOpts = [['auto', '自动识别'], ['utf-8', 'UTF-8'], ['gb18030', 'GB18030 / GBK'], ['big5', 'Big5 繁体'], ['utf-16le', 'UTF-16LE']];
-    var h = '<h3>外观</h3><div class="row"><label>主题</label><div class="seg">' +
-      [['dark', '夜间'], ['light', '明亮'], ['sepia', '羊皮纸']].map(function (x) {
-        return '<button data-set="theme" data-v="' + x[0] + '"' + (CFG.theme === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
-      }).join('') + '</div></div>' +
-      '<div class="row"><label>字号</label><input type="range" data-set="fs" min="13" max="34" step="1" value="' + CFG.fs + '"><span id="cfgFs">' + CFG.fs + 'px</span></div>' +
-      '<div class="row"><label>行距</label><input type="range" data-set="lh" min="1.3" max="2.6" step="0.05" value="' + CFG.lh + '"><span id="cfgLh">' + CFG.lh + '</span></div>' +
-      '<div class="row"><label>页宽</label><input type="range" data-set="pagew" min="420" max="1100" step="20" value="' + CFG.pagew + '"><span id="cfgPw">' + CFG.pagew + 'px</span></div>' +
-      '<div class="row"><label>字体</label><div class="seg">' +
-      [['serif', '宋体'], ['sans', '黑体'], ['kai', '楷体'], ['mono', '等宽']].map(function (x) {
-        return '<button data-set="ff" data-v="' + x[0] + '"' + (CFG.ff === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
-      }).join('') + '</div></div>' +
-      '<div class="row"><label>对齐</label><div class="seg">' +
-      [['justify', '两端'], ['left', '左对齐']].map(function (x) {
-        return '<button data-set="align" data-v="' + x[0] + '"' + (CFG.align === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
-      }).join('') + '</div></div>' +
-      '<h3>朗读</h3><div class="row"><label>默认语速</label><input type="range" data-set="rate" min="0.5" max="2" step="0.1" value="' + CFG.rate + '"><span id="cfgRate">' + Number(CFG.rate).toFixed(1) + '×</span></div>' +
-      '<div class="row"><label>句间停顿</label><input type="range" data-set="pause" min="0" max="600" step="20" value="' + CFG.pause + '"><span id="cfgPause">' + CFG.pause + 'ms</span></div>' +
-      '<div class="row"><label>选项</label><div class="seg">' +
-      [['autoNext', '念完自动下一章'], ['follow', '高亮跟随滚动'], ['whole', '整句朗读（更自然）'],
-        ['voiceAuto', '优先自然语音'], ['motion', '减少动效']].map(function (x) {
+    var seg = function (key, opts) {
+      return '<div class="seg">' + opts.map(function (x) {
+        return '<button data-set="' + key + '" data-v="' + x[0] + '"' +
+          (String(CFG[key]) === String(x[0]) ? ' class="on"' : '') + '>' + x[1] + '</button>';
+      }).join('') + '</div>';
+    };
+    var boolSeg = function (opts) {
+      return '<div class="seg">' + opts.map(function (x) {
         return '<button data-set="bool" data-v="' + x[0] + '"' + (CFG[x[0]] ? ' class="on"' : '') + '>' + x[1] + '</button>';
-      }).join('') + '</div></div>' +
-      '<div class="row"><label>语音</label><button data-doc="voice">语音与朗读说明</button><span class="kv">当前：' +
-      esc(voiceLabel(curVoice() || { name: '系统默认', lang: 'zh-CN', localService: true })) + '</span></div>' +
-      '<h3>免费神经语音 · 离线开源</h3>' +
-      '<p class="kv">本机跑 sherpa-onnx + 开源中文模型（AISHELL3 多说话人 VITS）：接近真人的中文语调，<b>不收费、不联网、不用账号、不用 Key</b>。语音库已随成品装好，听书前双击「VoicePack/启动语音引擎.cmd」即可。</p>' +
-      '<div class="row"><label>引擎状态</label><div class="seg">' +
-      '<span class="kv" style="align-self:center">' + (localReady() ? '● 已连接（免费神经语音）' : '○ 未检测到（当前用系统语音）') + '</span>' +
-      '<button data-act="probe">重新检测</button>' +
-      '<button data-set="bool" data-v="localOn"' + (CFG.localOn ? ' class="on"' : '') + '>' + (CFG.localOn ? '自动连接：开' : '自动连接：关') + '</button>' +
-      '<button data-doc="local">安装与使用说明</button></div></div>' +
-      '<div class="row"><label>音色</label><select data-set="localVoice">' + localVoiceOptions() +
-      '</select><button data-act="tryvoice">试听音色</button></div>' +
-      '<div class="row"><label>声线范围</label><div class="seg">' +
-      [['curated', '精选 ' + voiceStat().curated + ' 个'], ['all', '全部 ' + voiceStat().total + ' 个']].map(function (x) {
-        return '<button data-set="voiceSet" data-v="' + x[0] + '"' + (CFG.voiceSet === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
-      }).join('') + '</div></div>' +
-      '<p class="kv">模型里一共 ' + voiceStat().total + ' 个中文说话人（' + voiceStat().female + ' 女 + ' +
-      voiceStat().male + ' 男），全部共用同一份模型，<b>放开多少个都不增加体积</b>。「精选」是人工挑过、命名过的 ' +
-      voiceStat().curated + ' 个；「全部」按音高分 7 档列出，男低 → 女高任你挑。朗读条最左边的下拉里直接就能换，正在朗读时会从当前这段用新音色重念；也可以在这里选好再点「试听音色」对比。缺模型文件的音色会自动隐藏。</p>' +
-      '<div class="row"><label>分角色朗读</label><div class="seg">' +
-      '<button data-set="bool" data-v="roleOn"' + (CFG.roleOn ? ' class="on"' : '') + '>' + (CFG.roleOn ? '分角色：开' : '分角色：关') + '</button>' +
-      [['mix', '男女混合'], ['female', '全女声'], ['male', '全男声']].map(function (x) {
+      }).join('') + '</div>';
+    };
+    var encOpts = [['auto', T('自动识别')], ['utf-8', 'UTF-8'], ['gb18030', 'GB18030 / GBK'], ['big5', T('Big5 繁体')], ['utf-16le', 'UTF-16LE']];
+    var h = '<h3>' + T('界面语言') + '</h3><div class="row"><label>' + T('界面语言') + '</label><div class="seg">' +
+      [['zh', '中文'], ['en', 'English']].map(function (x) {
+        return '<button data-lang="' + x[0] + '"' + (CFG.lang === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
+      }).join('') + '</div><span class="kv">v' + VER + '</span></div>' +
+      '<h3>' + T('外观') + '</h3>' +
+      '<div class="row"><label>' + T('主题') + '</label>' + seg('theme', [['dark', T('夜间')], ['light', T('明亮')], ['sepia', T('羊皮纸')]]) + '</div>' +
+      '<div class="row"><label>' + T('字号') + '</label><input type="range" data-set="fs" min="13" max="34" step="1" value="' + CFG.fs + '"><span id="cfgFs">' + CFG.fs + 'px</span></div>' +
+      '<div class="row"><label>' + T('行距') + '</label><input type="range" data-set="lh" min="1.3" max="2.6" step="0.05" value="' + CFG.lh + '"><span id="cfgLh">' + CFG.lh + '</span></div>' +
+      '<div class="row"><label>' + T('页宽') + '</label><input type="range" data-set="pagew" min="420" max="1100" step="20" value="' + CFG.pagew + '"><span id="cfgPw">' + CFG.pagew + 'px</span></div>' +
+      '<div class="row"><label>' + T('字体') + '</label>' + seg('ff', [['serif', T('宋体')], ['sans', T('黑体')], ['kai', T('楷体')], ['mono', T('等宽')]]) + '</div>' +
+      '<div class="row"><label>' + T('对齐') + '</label>' + seg('align', [['justify', T('两端')], ['left', T('左对齐')]]) + '</div>' +
+      '<h3>' + T('朗读') + '</h3>' +
+      '<div class="row"><label>' + T('默认语速') + '</label><input type="range" data-set="rate" min="0.5" max="2" step="0.1" value="' + CFG.rate + '"><span id="cfgRate">' + Number(CFG.rate).toFixed(1) + '×</span></div>' +
+      '<div class="row"><label>' + T('句间停顿') + '</label><input type="range" data-set="pause" min="0" max="600" step="20" value="' + CFG.pause + '"><span id="cfgPause">' + CFG.pause + 'ms</span></div>' +
+      '<div class="row"><label>' + T('选项') + '</label>' + boolSeg([
+        ['autoNext', T('念完自动下一章')], ['follow', T('高亮跟随滚动')], ['whole', T('整句朗读（更自然）')],
+        ['voiceAuto', T('优先自然语音')], ['motion', T('减少动效')]]) + '</div>' +
+      '<div class="row"><label>' + T('语音') + '</label><button data-doc="voice">' + T('语音与朗读说明') + '</button><span class="kv">' + T('当前：') +
+      esc(voiceLabel(curVoice() || { name: T('系统默认'), lang: 'zh-CN', localService: true })) + '</span></div>' +
+      '<h3>' + T('免费神经语音 · 离线开源') + '</h3>' +
+      '<p class="kv">' + T('本机跑 sherpa-onnx + 开源中文模型（AISHELL3 多说话人 VITS）：接近真人的中文语调，不收费、不联网、不用账号、不用 Key。语音库已随成品装好，听书前双击「VoicePack/启动语音引擎.cmd」即可。') + '</p>' +
+      '<div class="row"><label>' + T('引擎状态') + '</label><div class="seg">' +
+      '<span class="kv" style="align-self:center">' + (localReady() ? T('● 已连接（免费神经语音）') : T('○ 未检测到（当前用系统语音）')) + '</span>' +
+      '<button data-act="probe">' + T('重新检测') + '</button>' +
+      '<button data-set="bool" data-v="localOn"' + (CFG.localOn ? ' class="on"' : '') + '>' + (CFG.localOn ? T('自动连接：开') : T('自动连接：关')) + '</button>' +
+      '<button data-doc="local">' + T('安装与使用说明') + '</button></div></div>' +
+      '<div class="row"><label>' + T('音色') + '</label><select data-set="localVoice">' + localVoiceOptions() +
+      '</select><button data-act="tryvoice">' + T('试听音色') + '</button></div>' +
+      '<div class="row"><label>' + T('声线范围') + '</label>' + seg('voiceSet', [['curated', T('精选 {n} 个', { n: voiceStat().curated })], ['all', T('全部 {n} 个', { n: voiceStat().total })]]) + '</div>' +
+      '<p class="kv">' + T('模型里一共 {n} 个中文说话人（{f} 女 + {m} 男），全部共用同一份模型，放开多少个都不增加体积。「精选」是人工挑过、命名过的 {c} 个；「全部」按音高分 7 档列出，男低 → 女高任你挑。朗读条最左边的下拉里直接就能换，正在朗读时会从当前这段用新音色重念；也可以在这里选好再点「试听音色」对比。缺模型文件的音色会自动隐藏。',
+        { n: voiceStat().total, f: voiceStat().female, m: voiceStat().male, c: voiceStat().curated }) + '</p>' +
+      '<div class="row"><label>' + T('分角色朗读') + '</label><div class="seg">' +
+      '<button data-set="bool" data-v="roleOn"' + (CFG.roleOn ? ' class="on"' : '') + '>' + (CFG.roleOn ? T('分角色：开') : T('分角色：关')) + '</button>' +
+      [['mix', T('男女混合')], ['female', T('全女声')], ['male', T('全男声')]].map(function (x) {
         return '<button data-set="rolePool" data-v="' + x[0] + '"' + (CFG.rolePool === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
-      }).join('') + '<button data-act="tryrole">试听效果</button></div></div>' +
-      '<p class="kv">开启后，<b>旁白用你选的声线，引号里的对白按人物自动换声</b>——「张三说」和「李四道」是两个不同的声音，同一个人物整本书都是同一个声音。认不出人名时按出场顺序轮换，不会和旁白混成一个声音。只在「免费神经语音」下生效；系统语音不支持分角色。</p>' +
-      '<div class="row"><label>端口</label><input type="number" data-set="localPort" min="1024" max="65535" step="1" value="' + (Number(CFG.localPort) || 8177) + '" style="width:96px"><span class="kv">默认 8177，需与启动器一致</span></div>' +
-      '<p class="kv">朗读文字只发给本机的 127.0.0.1 合成，不产生对外网络请求；引擎没启动时自动用系统语音，不影响看书。</p>' +
-      '<h3>文件与界面</h3><div class="row"><label>TXT 编码</label><select data-set="txtEnc">' +
+      }).join('') + '<button data-act="tryrole">' + T('试听效果') + '</button></div></div>' +
+      '<p class="kv">' + T('开启后，旁白用你选的声线，引号里的对白按人物自动换声——「张三说」和「李四道」是两个不同的声音，同一个人物整本书都是同一个声音。认不出人名时按出场顺序轮换，不会和旁白混成一个声音。只在「免费神经语音」下生效；系统语音不支持分角色。') + '</p>' +
+      '<div class="row"><label>' + T('端口') + '</label><input type="number" data-set="localPort" min="1024" max="65535" step="1" value="' + (Number(CFG.localPort) || 8177) + '" style="width:96px"><span class="kv">' + T('默认 8177，需与启动器一致') + '</span></div>' +
+      '<p class="kv">' + T('朗读文字只发给本机的 127.0.0.1 合成，不产生对外网络请求；引擎没启动时自动用系统语音，不影响看书。') + '</p>' +
+      '<h3>' + T('文件与界面') + '</h3><div class="row"><label>' + T('TXT 编码') + '</label><select data-set="txtEnc">' +
       encOpts.map(function (x) { return '<option value="' + x[0] + '"' + (CFG.txtEnc === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') +
-      '</select><span class="kv">改完重新打开书生效</span></div>' +
-      '<div class="row"><label>版式</label><div class="seg">' +
-      [['auto', '自动'], ['p', '手机版'], ['l', '电脑版']].map(function (x) {
-        return '<button data-set="lay" data-v="' + x[0] + '"' + (CFG.lay === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
-      }).join('') + '</div></div>' +
-      '<p class="kv">设置即时生效并保存在本机。</p>';
-    showModal('阅读设置', h, [{ label: '恢复默认', fn: function () { Object.assign(CFG, DEF); saveCfg(); applyCfg(); fillVoices(); showSettings(); toast('已恢复默认'); } }, { label: '完成', cls: 'pri' }]);
+      '</select><span class="kv">' + T('改完重新打开书生效') + '</span></div>' +
+      '<div class="row"><label>' + T('版式') + '</label>' + seg('lay', [['auto', T('自动')], ['p', T('手机版')], ['l', T('电脑版')]]) + '</div>' +
+      '<p class="kv">' + T('设置即时生效并保存在本机。') + '</p>';
+    showModal(T('阅读设置'), h, [{ label: T('恢复默认'), fn: function () { Object.assign(CFG, DEF); saveCfg(); applyCfg(); fillVoices(); showSettings(); toast(T('已恢复默认')); } }, { label: T('完成'), cls: 'pri' }]);
     $('modalBody').oninput = function (e) {
       var k = e.target.getAttribute('data-set'); if (!k) return;
       CFG[k] = (k === 'fs' || k === 'pagew' || k === 'pause' || k === 'localPort') ? parseInt(e.target.value, 10)
@@ -1541,14 +2197,16 @@
     };
     $('modalBody').onchange = function (e) {
       var k = e.target.getAttribute('data-set');
-      if (k === 'txtEnc') { CFG.txtEnc = e.target.value; saveCfg(); toast('TXT 编码已设为 ' + e.target.value + '，重新打开书生效'); }
+      if (k === 'txtEnc') { CFG.txtEnc = e.target.value; saveCfg(); toast(T('TXT 编码已设为 ') + e.target.value + T('，重新打开书生效')); }
       else if (k === 'localVoice') {
         CFG.localVoice = e.target.value; saveCfg(); resetCast(); voiceBadge(curVoice());
         if (SPK.playing) speakJump(0);
-        toast('已切换到 ' + localVoiceName(CFG.localVoice) + '，点「试听音色」听听看', 3000);
+        toast(T('已切换到 ') + localVoiceName(CFG.localVoice) + T('，点「试听音色」听听看'), 3000);
       }
     };
     $('modalBody').onclick = function (e) {
+      var lang = e.target.closest('[data-lang]');
+      if (lang) { setLang(lang.getAttribute('data-lang')); showSettings(); return; }
       var b = e.target.closest('button[data-set],button[data-act]'); if (!b) return;
       var act = b.getAttribute('data-act');
       if (act === 'tryvoice') { tryVoice(); return; }
@@ -1565,16 +2223,16 @@
     };
   }
   function showFont() {
-    var h = '<div class="row"><label>字号</label><button data-font="fs-">A−</button><span id="fFs">' + CFG.fs + 'px</span><button data-font="fs+">A＋</button>' +
+    var ffSeg = '<div class="seg">' + [['serif', T('宋体')], ['sans', T('黑体')], ['kai', T('楷体')], ['mono', T('等宽')]].map(function (x) {
+      return '<button data-set="ff" data-v="' + x[0] + '"' + (CFG.ff === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
+    }).join('') + '</div>';
+    var h = '<div class="row"><label>' + T('字号') + '</label><button data-font="fs-">A−</button><span id="fFs">' + CFG.fs + 'px</span><button data-font="fs+">A＋</button>' +
       '<input type="range" data-set="fs" min="13" max="34" step="1" value="' + CFG.fs + '" style="flex:1;min-width:120px"></div>' +
-      '<div class="row"><label>行距</label><input type="range" data-set="lh" min="1.3" max="2.6" step="0.05" value="' + CFG.lh + '" style="flex:1"><span id="fLh">' + CFG.lh + '</span></div>' +
-      '<div class="row"><label>页宽</label><input type="range" data-set="pagew" min="420" max="1100" step="20" value="' + CFG.pagew + '" style="flex:1"><span id="fPw">' + CFG.pagew + '</span></div>' +
-      '<div class="row"><label>字体</label><div class="seg">' +
-      [['serif', '宋体'], ['sans', '黑体'], ['kai', '楷体'], ['mono', '等宽']].map(function (x) {
-        return '<button data-set="ff" data-v="' + x[0] + '"' + (CFG.ff === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
-      }).join('') + '</div></div>' +
-      '<p class="kv">点选即时生效，自动保存。</p>';
-    showModal('字体与版心', h, [{ label: '完成', cls: 'pri' }]);
+      '<div class="row"><label>' + T('行距') + '</label><input type="range" data-set="lh" min="1.3" max="2.6" step="0.05" value="' + CFG.lh + '" style="flex:1"><span id="fLh">' + CFG.lh + '</span></div>' +
+      '<div class="row"><label>' + T('页宽') + '</label><input type="range" data-set="pagew" min="420" max="1100" step="20" value="' + CFG.pagew + '" style="flex:1"><span id="fPw">' + CFG.pagew + '</span></div>' +
+      '<div class="row"><label>' + T('字体') + '</label>' + ffSeg + '</div>' +
+      '<p class="kv">' + T('点选即时生效，自动保存。') + '</p>';
+    showModal(T('字体与版心'), h, [{ label: T('完成'), cls: 'pri' }]);
     $('modalBody').oninput = function (e) {
       var k = e.target.getAttribute('data-set'); if (!k) return;
       CFG[k] = (k === 'fs' || k === 'pagew') ? parseInt(e.target.value, 10) : parseFloat(e.target.value);
@@ -1603,18 +2261,18 @@
     }
     var n = new Date(), d = n.getFullYear() + String(n.getMonth() + 1).padStart(2, '0') + String(n.getDate()).padStart(2, '0');
     download('MoYin-backup-' + d + '.json', JSON.stringify(data));
-    toast('备份已导出' + (withFiles ? '（含 ' + Object.keys(data.blobs).length + ' 本书文件）' : '（仅进度与设置）'));
+    toast(T('备份已导出') + (withFiles ? T('（含 {n} 本书文件）', { n: Object.keys(data.blobs).length }) : T('（仅进度与设置）')));
   }
   function askExport() {
-    showModal('导出备份', '<p>把进度、书签、设置导出成一个 JSON 文件。</p>' +
-      '<p><label><input type="checkbox" id="bakFull"> 同时包含书籍原文件（体积较大，可在新设备直接还原整架书）</label></p>' +
-      '<p class="kv">不勾选则只导出元数据，换设备后需要重新导入 TXT / EPUB 原文件。</p>',
-      [{ label: '取消' }, { label: '导出', cls: 'pri', fn: function () { var f = $('bakFull') && $('bakFull').checked; closeModal(); exportBak(!!f); } }]);
+    showModal(T('导出备份'), '<p>' + T('把进度、书签、设置导出成一个 JSON 文件。') + '</p>' +
+      '<p><label><input type="checkbox" id="bakFull"> ' + T('同时包含书籍原文件（体积较大，可在新设备直接还原整架书）') + '</label></p>' +
+      '<p class="kv">' + T('不勾选则只导出元数据，换设备后需要重新导入 TXT / EPUB 原文件。') + '</p>',
+      [{ label: T('取消') }, { label: T('导出'), cls: 'pri', fn: function () { var f = $('bakFull') && $('bakFull').checked; closeModal(); exportBak(!!f); } }]);
   }
   async function importBak(file) {
     try {
       var d = JSON.parse(await file.text());
-      if (d.app !== 'MoYinReader' || !Array.isArray(d.books)) throw new Error('不是墨吟的备份文件');
+      if (d.app !== 'MoYinReader' || !Array.isArray(d.books)) throw new Error(T('不是墨吟的备份文件'));
       if (d.cfg) { Object.keys(DEF).forEach(function (k) { if (d.cfg[k] !== undefined) CFG[k] = d.cfg[k]; }); saveCfg(); applyCfg(); }
       var added = 0;
       for (var i = 0; i < d.books.length; i++) {
@@ -1628,19 +2286,43 @@
       var blobs = d.blobs || {}, keys = Object.keys(blobs);
       for (var j = 0; j < keys.length; j++) await dbPut('blobs', { id: keys[j], buf: unb64(blobs[keys[j]]) });
       renderShelf();
-      toast('已还原 ' + added + ' 条记录' + (keys.length ? '、' + keys.length + ' 本书文件' : '（未含书文件，请重新导入原书）'), 4200);
-    } catch (e) { showModal('导入失败', '<p>' + esc(e.message) + '</p>', [{ label: '关闭' }]); }
+      toast(T('已还原 {n} 条记录', { n: added }) + (keys.length ? T('、{n} 本书文件', { n: keys.length }) : T('（未含书文件，请重新导入原书）')), 4200);
+    } catch (e) { showModal(T('导入失败'), '<p>' + esc(e.message) + '</p>', [{ label: T('关闭') }]); }
   }
 
   /* ---------------- 事件 ---------------- */
   function bind() {
     $('btnImport').onclick = function () { $('fileInput').click(); };
     $('fileInput').onchange = function (e) { if (e.target.files.length) importFiles(Array.prototype.slice.call(e.target.files)); e.target.value = ''; };
+    $('btnImportDir').onclick = function () { $('dirInput').click(); };
+    $('dirInput').onchange = function (e) {
+      var fs = Array.prototype.slice.call(e.target.files || []);
+      e.target.value = '';
+      if (fs.length) importFiles(fs);
+    };
+    $('btnLang').onclick = function () { setLang(CFG.lang === 'en' ? 'zh' : 'en'); };
+    $('btnShelves').onclick = showShelves;
+    $('btnNotes').onclick = function () { openSide('note'); };
+    $('shelfBar').onclick = function (e) {
+      var b = e.target.closest('[data-sv]'); if (!b) return;
+      var v = b.getAttribute('data-sv');
+      if (v === '__new') { showShelves(); return; }
+      CFG.shelfView = v; saveCfg(); renderShelf();
+    };
+    $('selExit').onclick = exitSel;
+    $('selAll').onclick = function () {
+      var list = shelfList(), all = list.length && list.every(function (b) { return SELS[b.id]; });
+      list.forEach(function (b) { SELS[b.id] = !all; });
+      renderShelf();
+    };
+    $('selMove').onclick = askBatchMove;
+    $('selFav').onclick = batchFav;
+    $('selDel').onclick = batchDel;
     $('libSearch').oninput = renderShelf;
     $('btnSort').onclick = function () {
       var a = ['last', 'name', 'added', 'progress'];
       CFG.sort = a[(a.indexOf(CFG.sort) + 1) % a.length]; saveCfg(); renderShelf();
-      toast('排序：' + ({ last: '最近阅读', name: '书名', added: '加入时间', progress: '阅读进度' })[CFG.sort]);
+      toast(T('排序：' + ({ last: '最近阅读', name: '书名', added: '加入时间', progress: '阅读进度' })[CFG.sort]));
     };
     $('btnLayout').onclick = cycleLayout;
     $('btnCfg').onclick = showSettings;
@@ -1650,18 +2332,18 @@
     $('btnImportBak').onclick = function () { $('bakInput').click(); };
     $('bakInput').onchange = function (e) { if (e.target.files[0]) importBak(e.target.files[0]); e.target.value = ''; };
     $('shelf').onclick = function (e) {
-      var d = e.target.closest('[data-del]');
-      if (d) {
-        var id = d.getAttribute('data-del'), b = BOOKS.filter(function (x) { return x.id === id; })[0];
-        confirmModal('把《' + (b ? b.name : '') + '》从书架移除？原文件不会从电脑删除。', async function () {
-          await dbDel('books', id); await dbDel('blobs', id);
-          BOOKS = BOOKS.filter(function (x) { return x.id !== id; }); renderShelf(); toast('已移除');
-        });
-        return;
+      var fav = e.target.closest('[data-fav]');
+      if (fav) { toggleFav(fav.getAttribute('data-fav')); return; }
+      var more = e.target.closest('[data-more]');
+      if (more) { openBookMenu(more.getAttribute('data-more')); return; }
+      var li = e.target.closest('[data-listen]');
+      if (li) { resumeListen(li.getAttribute('data-listen')); return; }
+      var card = e.target.closest('.bk');
+      if (card) {
+        var id = card.getAttribute('data-id');
+        if (document.body.classList.contains('selmode')) { toggleSel(id); return; }
+        openBook(id);
       }
-      var c = e.target.closest('[data-listen]');
-      if (c) { resumeListen(c.getAttribute('data-listen')); return; }
-      var c2 = e.target.closest('.bk'); if (c2) openBook(c2.getAttribute('data-id'));
     };
     $('btnBack').onclick = closeBook;
     $('btnSign').onclick = function () { showDoc('about'); };
@@ -1691,6 +2373,18 @@
         savePos(); renderSide(); return;
       }
       if (e.target.closest('#sideAddMark')) { addMark(); return; }
+      var nf = e.target.closest('[data-nf]');
+      if (nf) { CFG.noteFilter = nf.getAttribute('data-nf'); saveCfg(); renderSide(); return; }
+      if (e.target.closest('#noteExp')) { exportNotes(); return; }
+      if (e.target.closest('#noteSum')) { showSummary(); return; }
+      var he = e.target.closest('[data-hledit]');
+      if (he) { noteEditor(hlById(he.getAttribute('data-hledit'))); return; }
+      var hs = e.target.closest('[data-hlshare]');
+      if (hs) { shareHighlight(hlById(hs.getAttribute('data-hlshare'))); return; }
+      var hd = e.target.closest('[data-hldel]');
+      if (hd) { removeHighlight(hd.getAttribute('data-hldel')); return; }
+      var hg = e.target.closest('[data-hlgo]');
+      if (hg) { gotoHighlight(hlById(hg.getAttribute('data-hlgo'))); return; }
       var m = e.target.closest('[data-mark]');
       if (m) {
         var mk = BK.meta.marks.slice().sort(function (a, c) { return c.ts - a.ts; })[Number(m.getAttribute('data-mark'))];
@@ -1702,6 +2396,8 @@
     };
     $('page').onclick = function (e) {
       var nx = e.target.closest('[data-act="next"]'); if (nx) { nextCh(1); return; }
+      var mk = e.target.closest('mark[data-hlid]');
+      if (mk) { hideSelTools(); hlMenu(mk.getAttribute('data-hlid')); return; }
       var a = e.target.closest('a[data-ch]');
       if (a) { e.preventDefault(); renderChapter(Number(a.getAttribute('data-ch')), { anchor: a.getAttribute('data-anchor') }); return; }
       var p = e.target.closest('.rdp');
@@ -1710,9 +2406,23 @@
         if (i >= 0) { SPK.gen++; clearTimeout(SPK.watch); clearTimeout(SPK.gapT); stopLocalAudio(); SPK.prefetch = null; try { SYN.cancel(); } catch (er) {} setPara(i); highlight(); if (SPK.playing) speakChunk(0); }
       }
     };
+    /* 选中文字 → 浮动工具条（桌面上 mouseup，触屏上 touchend） */
+    $('page').addEventListener('mouseup', onSelUp);
+    $('page').addEventListener('touchend', function () { setTimeout(onSelUp, 60); });
+    $('pageWrap').addEventListener('scroll', hideSelTools);
+    $('selTools').addEventListener('mousedown', function (e) { e.preventDefault(); });
+    $('selTools').onclick = function (e) {
+      var sw = e.target.closest('[data-hl]'), act = e.target.closest('[data-sel]');
+      if (sw) { addHighlight(sw.getAttribute('data-hl')); return; }
+      if (!act) return;
+      var a = act.getAttribute('data-sel');
+      if (a === 'note') { var hl = addHighlight('y'); if (hl) noteEditor(hl); return; }
+      if (a === 'copy') { copyText(SEL.text).then(function (ok) { toast(ok ? T('已复制') : T('复制失败，请手动选择文本')); }); hideSelTools(); return; }
+      if (a === 'share') { shareHighlight({ text: SEL.text, ch: SEL.ch }); hideSelTools(); return; }
+    };
     $('pageWrap').onscroll = function () { updateProgress(); savePos(); };
     $('spPlay').onclick = toggleSpeak;
-    $('spStop').onclick = function () { stopSpeak(false); toast('已停止朗读'); };
+    $('spStop').onclick = function () { stopSpeak(false); toast(T('已停止朗读')); };
     $('spPrev').onclick = function () { speakJump(-1); };
     $('spNext').onclick = function () { speakJump(1); };
     $('spClose').onclick = function () { stopSpeak(true); };
@@ -1726,7 +2436,7 @@
         resetCast();                            // 旁白换了，角色池要重新避开新声线
         voiceBadge(null);
         if (SPK.playing) { speakJump(0); }
-        else { toast('音色已切到 ' + localVoiceName(CFG.localVoice) + '（本机离线合成）', 2600); }
+        else { toast(T('音色已切到 ') + localVoiceName(CFG.localVoice) + T('（本机离线合成）'), 2600); }
         return;
       }
       CFG.voiceURI = v; CFG.voiceAuto = 0; SPK.fb = 0; SPK.seenEnd = false;
@@ -1748,7 +2458,12 @@
     });
     document.addEventListener('keydown', function (e) {
       if ($('modal').classList.contains('on')) { if (e.key === 'Escape') closeModal(); return; }
-      if (e.key === 'Escape') { if ($('side').classList.contains('on')) $('side').classList.remove('on'); else if ($('viewRead').classList.contains('on')) closeBook(); return; }
+      if (e.key === 'Escape') {
+        if ($('selTools').classList.contains('on')) { hideSelTools(); return; }
+        if ($('side').classList.contains('on')) $('side').classList.remove('on');
+        else if ($('viewRead').classList.contains('on')) closeBook();
+        return;
+      }
       if (!$('viewRead').classList.contains('on')) return;
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
       if (e.key === 'ArrowLeft') { nextCh(-1); e.preventDefault(); }
@@ -1761,11 +2476,16 @@
     });
     if (SYN && SYN.addEventListener) SYN.addEventListener('voiceschanged', fillVoices);
     if (SYN && 'onvoiceschanged' in SYN) SYN.onvoiceschanged = fillVoices;
-    window.addEventListener('beforeunload', function () { try { savePos(); } catch (e) {} });
+    window.addEventListener('beforeunload', function () { try { savePos(); rtFlush(); } catch (e) { } });
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') { try { rtFlush(); savePos(); } catch (e) { } }
+      else if (BK) rtStart(BK.id);
+    });
   }
 
   async function init() {
-    loadCfg(); bind(); fillVoices(); syncRoleBtn();
+    loadCfg(); loadStats(); bind(); fillVoices(); syncRoleBtn(); syncLangBtn();
+    if (I18N) I18N.apply();
     // 自动探测本机免费神经语音引擎；没启动时静默用系统语音，不打扰
     localProbe();
     setInterval(function () {
@@ -1775,9 +2495,9 @@
     if (SYN) setTimeout(function () {
       var vs = SYN.getVoices() || [];
       if (!vs.some(function (v) { return isNatural(v) && isZh(v); }) && !/Edg\//.test(navigator.userAgent) && !localReady())
-        toast('当前浏览器没有中文自然语音；装一次免费离线语音包即可听到接近真人的朗读', 6500);
+        toast(T('当前浏览器没有中文自然语音；装一次免费离线语音包即可听到接近真人的朗读'), 6500);
     }, 2400);
-    try { BOOKS = (await dbAll('books')) || []; } catch (e) { BOOKS = []; toast('本机存储不可用，书籍将无法保存', 5000); }
+    try { BOOKS = (await dbAll('books')) || []; } catch (e) { BOOKS = []; toast(T('本机存储不可用，书籍将无法保存'), 5000); }
     renderShelf();
     window.MY = {
       Z: Z, CFG: CFG, get BK() { return BK; }, get SPK() { return SPK; }, get BOOKS() { return BOOKS; },
@@ -1788,7 +2508,8 @@
         await dbPut('blobs', { id: id, buf: buf });
         var m = { id: id, name: name.replace(/\.[^.]+$/, ''), ext: ext || readExt(name), size: buf.byteLength,
           added: Date.now(), last: Date.now(), ch: 0, ratio: 0, progress: 0, cover: b.cover || '',
-          title: b.title, author: b.author || '', marks: [], chapters: b.titles.slice(0, 1000), tocCount: b.toc.length, enc: b.enc || '' };
+          title: b.title, author: b.author || '', marks: [], hl: [], chapters: b.titles.slice(0, 1000),
+          tocCount: b.toc.length, enc: b.enc || '', group: '', fav: 0, rt: 0, sessions: 0, first: 0 };
         await dbPut('books', m); BOOKS.push(m); renderShelf(); return id;
       },
       exportBak: exportBak, importBak: importBak, dbGet: dbGet, dbAll: dbAll,
@@ -1804,7 +2525,13 @@
       resumeListen: resumeListen, renderShelf: renderShelf,
       roleSegments: roleSegments, castVoice: castVoice, rolePool: rolePool, resetCast: resetCast,
       tryRole: tryRole, toggleRole: toggleRole, localBarList: localBarList, voiceStat: voiceStat,
-      buildVoiceList: buildVoiceList, setPara: setPara, speakerOf: speakerOf
+      buildVoiceList: buildVoiceList, setPara: setPara, speakerOf: speakerOf,
+      VER: VER, setLang: setLang, STATS: STATS, loadStats: loadStats, fmtDur: fmtDur, statStreak: statStreak,
+      noteEditor: noteEditor, hlMenu: hlMenu, removeHighlight: removeHighlight, hlList: hlList,
+      notesMarkdown: notesMarkdown, exportNotes: exportNotes, showSummary: showSummary,
+      shareHighlight: shareHighlight, applyHighlights: applyHighlights, persistBook: persistBook,
+      showShelves: showShelves, toggleFav: toggleFav, shelfList: shelfList, enterSelMode: enterSelMode,
+      openBookMenu: openBookMenu, copyText: copyText, rtFlush: rtFlush, saveStats: saveStats
     };
     document.documentElement.setAttribute('data-ready', '1');
     webEditionTip();
