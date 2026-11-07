@@ -65,7 +65,7 @@
 |---|---|
 | 📚 格式 | TXT（自动识别 UTF-8 / GBK / Big5 / UTF-16）、EPUB（内置 ZIP/OPF/NCX/Nav 解析，正文与插图都支持） |
 | 🗣️ 朗读 | 174 个离线中文说话人共用一份 29 MB 模型，按实测音高分 7 档；朗读条随时切换 |
-| 🎭 分角色 | **默认开启**：旁白用所选声线，引号里的对白按人物自动换声（同一人物全书同一声音）。认识「张三说」「他盯我一眼，说」「我说」「他突然问我」，也不会把「我对某人说」的听话人当成说话人 |
+| 🎭 分角色 | **默认开启**：旁白用所选声线，对白按人物换声，同一人物全书同一声音。认识「张三说」「他盯我一眼，说」「我说」「他突然问我」，不会把「我对某人说」的听话人当说话人；人物多时声线池自动从 11 个扩到全部 174 个 |
 | ⏯️ 听书 | 段落高亮自动跟随、念完自动接下一章、定时停止、语速调节、整句朗读保语调 |
 | 🖍️ 划线批注 | 选中正文四色高亮、随手写笔记；「笔记」页按章汇总，可跳转 / 改色 / 编辑 / 删除 |
 | 📤 导出分享 | 笔记一键导出 Markdown；划线生成带书名与署名的分享图（PNG），也可只复制文字 |
@@ -74,8 +74,8 @@
 | 🖧 网络位置 | **桌面版**可直接读局域网共享（SMB）：填 `\\192.168.1.10\Books`、映射盘 `Z:\书` 或本机任意路径，像本地文件夹一样扫描导入，凭据交给 Windows 记住 |
 | 🌐 双语 | 全窗口中英切换（含设置、弹窗、提示与全部说明文档），选择记住 |
 | 🔖 续听 | 「听到哪」与「读到哪」分开记，书架卡片一键「续听 · 第 N 章」接着念 |
-| ✍️ 阅读 | **滚动 / 翻页**两种读法：分栏只有**自动 / 单栏 / 双栏**（够宽自动双栏、手机永远单栏，选双栏自动切翻页）。字号、行距、段间距、字间距、首行缩进、五种字体、两端 / 左对齐、版心宽度、页边距全部可调 |
-| 🎨 主题 | 六套配色（夜间 / 明亮 / 羊皮纸 / 护眼绿 / 雾蓝 / 纯黑），点「主题」弹出卡片一次挑完，可自定义底色字色与亮度 |
+| ✍️ 阅读 | **滚动 / 翻页**两种读法：分栏只有**自动 / 单栏 / 双栏**（够宽自动双栏、手机永远单栏，选双栏自动切翻页）。字号、行距、段间距、字间距、首行缩进、**十种字体**、两端 / 左对齐、版心宽度、页边距全部可调 |
+| 🎨 主题 | 六套配色（夜间 / 明亮 / 羊皮纸 / 护眼绿 / 雾蓝 / 纯黑），点「主题」弹出卡片一次挑完；另有 8 种常用字色 + 8 种底色色板与取色器，选深底会自动配浅字 |
 | 🕐 时钟 | 顶栏显示当前时间与本次已读时长，30 分钟转黄、60 分钟转红；沉浸模式右上角保留淡时钟 |
 | ☕ 护眼 | 连续读满 30 / 45 / 60 / 90 分钟（可关）提醒休息，可「休息一下」重新计时或「稍后再提」 |
 | ▶️ 自动阅读 | 滚动模式匀速下滚，翻页模式按秒自动翻页；一键暂停 / 继续，章末自动接下一章 |
@@ -90,8 +90,8 @@
 |---|---|---|
 | `MoYinReader.exe` | 约 47 MB | **完整版**，语音库打包在 exe 尾部，只拷这一个文件就能听，首次启动自动释放到缓存 |
 | `MoYinReader_Lite.exe` | 约 17 MB | 轻量版，需同目录放 `VoicePack` 文件夹（约 53 MB） |
-| `MoYinReader.html` | 约 331 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
-| `MoYinReader.apk` | 约 173 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
+| `MoYinReader.html` | 约 338 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
+| `MoYinReader.apk` | 约 177 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
 
 不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本；或者用 **[在线版](https://podcatcher962.github.io/moyin-reader/)** 什么都不装。
 
@@ -145,10 +145,10 @@ _pkg_win/build_exe.py              exe 打包 + 验收
 _pkg_apk/TtsBridge.java            安卓 TTS 桥（系统语音）
 _pkg_apk/build_apk.py              apk 打包 + 体检
 _cdp_verify.js                     117 项界面回归（headless Edge，CDP）
-_check_v19.js                      98 项回归（分栏 / 主题面板 / 时钟 / 休息提醒 / 网络位置）
+_check_v19.js                     104 项回归（分栏 / 主题面板 / 时钟 / 休息提醒 / 网络位置）
 _check_v18.js                      95 项版式回归（分栏 / 翻页 / 主题 / 自动阅读 / 全屏）
 _check_v17.js  _check_v171.js      1.7 与 1.7.1 的回归
-_check_voices.js  _check_role.js   声线 / 分角色朗读回归（22 / 45 项）
+_check_voices.js  _check_role.js   声线 / 分角色朗读回归（22 / 48 项）
 _unit_zip.js                       ZIP 解压内核单测（482 项）
 ```
 
@@ -227,8 +227,8 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 |---|---|---|
 | `MoYinReader.exe` | ~47 MB | Full build, voice pack appended inside the exe |
 | `MoYinReader_Lite.exe` | ~17 MB | Needs a `VoicePack` folder (~53 MB) next to it |
-| `MoYinReader.html` | ~331 KB | Standalone web build |
-| `MoYinReader.apk` | ~173 KB | Android shell with the page embedded |
+| `MoYinReader.html` | ~338 KB | Standalone web build |
+| `MoYinReader.apk` | ~177 KB | Android shell with the page embedded |
 
 Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** — or open the **[web version](https://podcatcher962.github.io/moyin-reader/)** and install nothing.
 

@@ -6,15 +6,34 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.9.4';
+  var VER = '1.9.5';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
-    sans: '"Microsoft YaHei","PingFang SC",system-ui,sans-serif',
+    sans: '"SimHei","Heiti SC","STHeiti",sans-serif',
+    yahei: '"Microsoft YaHei","PingFang SC","Noto Sans CJK SC",system-ui,sans-serif',
     kai: '"Kaiti SC","KaiTi","STKaiti",serif',
     fang: '"FangSong","STFangsong","FangSong_GB2312",serif',
+    song2: '"STZhongsong","SimSun","Songti SC",serif',
+    li: '"LiSu","STLiti","Baoli SC",serif',
+    yuan: '"YouYuan","Yuanti SC","Arial Rounded MT Bold",sans-serif',
+    deng: '"DengXian","Microsoft YaHei",sans-serif',
     mono: '"Cascadia Mono","Consolas","Courier New",monospace'
   };
+  /* 字体清单：顺序即界面顺序。'sans' 保留给老配置（那时叫黑体） */
+  var FONT_LIST = [
+    ['serif', '宋体'], ['yahei', '雅黑'], ['sans', '黑体'], ['kai', '楷体'], ['fang', '仿宋'],
+    ['song2', '中宋'], ['li', '隶书'], ['yuan', '幼圆'], ['deng', '等线'], ['mono', '等宽']
+  ];
+  /* 常用字色 / 底色：点一下就用，不想选也能一眼看出区别 */
+  var TX_SW = [
+    ['#1A1A1A', '墨黑'], ['#33322F', '烟灰'], ['#4A3728', '深棕'], ['#5B3A29', '赭石'],
+    ['#2B4162', '藏青'], ['#364A38', '墨绿'], ['#6B2F2F', '暗红'], ['#4B3B5A', '紫棠']
+  ];
+  var BG_SW = [
+    ['#FBFAF7', '纸白'], ['#F6EFDF', '米黄'], ['#EFE4CB', '羊皮'], ['#EDF2E8', '豆绿'],
+    ['#E8EEF4', '浅蓝'], ['#F3EDEA', '藕粉'], ['#E9E6DF', '暖灰'], ['#2A2D33', '深灰']
+  ];
   var THEMES = ['dark', 'light', 'sepia', 'green', 'gray', 'black'];
   /* 分栏档位：auto 自动，其余是每屏固定几栏。
      three / four 只为兼容 1.9 早期配置，一律按双栏算 */
@@ -2434,6 +2453,10 @@
     var cur = (LOCAL.info && LOCAL.info.curated) || [];
     var keys = cur.length ? cur.slice() : all.map(function (x) { return x[0]; });
     EXTRA_MALE.forEach(function (k) { if (band[k] !== undefined && keys.indexOf(k) < 0) keys.push(k); });
+    /* 人物比手头的声线还多时，自动扩到全部声线：
+       书里几十号人也不至于挤在几个声音上（旁白那个声线仍然避开） */
+    var used = Object.keys(SPK.cast || {}).length;
+    if (used >= keys.length && all.length > keys.length) keys = all.map(function (x) { return x[0]; });
     var want = CFG.rolePool || 'mix';
     if (want === 'mix') want = (gender === 'm' ? 'male' : gender === 'f' ? 'female' : 'mix');
     return keys.filter(function (k) {
@@ -2846,6 +2869,10 @@
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + AISHELL3 多说话人 VITS 模型）：不联网、不收费、无需账号，模型内含 174 个中文说话人（148 女 + 26 男），精选 11 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.9.5 改了什么</h3><ul>' +
+      '<li><b>字体 5 种 → 10 种</b>：宋体 / 雅黑 / 黑体 / 楷体 / 仿宋 / 中宋 / 隶书 / 幼圆 / 等线 / 等宽。每个按钮用<strong>它自己的字体</strong>渲染，挑之前就能看出差别。</li>' +
+      '<li><b>颜色丰富了</b>：字色 8 个常用色（墨黑 / 烟灰 / 深棕 / 赭石 / 藏青 / 墨绿 / 暗红 / 紫棠），底色 8 个（纸白 / 米黄 / 羊皮 / 豆绿 / 浅蓝 / 藕粉 / 暖灰 / 深灰），点一下就用，仍可自己取色。选深色底时字色会自动调浅，不会糊成一片。</li>' +
+      '<li><b>书里人多也不怕</b>：以前角色声线池是「精选 11 个」，人一多就撞声。现在人物数超过手头声线时会自动扩到全部 174 个——实测 20 个人物能分到 19 个不同声音。设置里能看到「这本书已认出 N 个人物，用掉 M 个声线」。</li></ul>' +
       '<h3>1.9.4 改了什么</h3><ul>' +
       '<li><b>设置里直接能调字号、行距、字体、颜色</b>：以前「字号 / 字体 / 配色」全在「排版」面板里，设置里只剩一个跳板，找起来绕。现在设置第一屏就有：字号 A−/A+ 与滑块、行距滑块、五种字体（宋体 / 黑体 / 楷体 / 仿宋 / 等宽）、字色与底色两个取色器（配「跟随主题」一键还原）、六套主题一键切换。更细的（段距 / 字距 / 首行缩进 / 分栏 / 翻页动画 / 版心 / 亮度 / 自动阅读）仍在「排版」面板。</li>' +
       '<li><b>分角色朗读默认开启，而且认得准了</b>：以前只有「张三说：」这种紧贴人名的写法才认得出，像「他盯我一眼，说：」「我说：」「他突然问我：」这类最常见的写法全被当成旁白，于是整段一个声音——看起来像没生效。现在能认出这几类主语，也修掉了「我对俞猴子说」把听话人当说话人的错误。分角色从此默认开（有神经语音引擎时生效；没引擎会明确提示，不再让人以为坏了）。</li></ul>' +
@@ -2886,7 +2913,7 @@
       '<li><b>桌面版终于能划线了</b>：桌面外壳默认把网页的文字选择关掉了，导致选中正文没反应、浮动色块也不出来。已放开，Windows 版的划线与批注和其他版本一样。</li>' +
       '<li><b>导入文件夹不再像在上传</b>：桌面版改用系统的「选择文件夹」对话框，不再是浏览器那个「选择要上传的文件夹 … 上传」的选择器。</li>' +
       '<li><b>左侧导航能退出了</b>：标签栏右侧加了 ×，再点同一个按钮也能收起，点正文空白处自动收起（有选区时不收，免得把手选的位置抖掉）。</li></ul>' +
-      '<p class="kv">版本 1.9.4 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
+      '<p class="kv">版本 1.9.5 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
   };
   function showDoc(k) {
     var d = DOCS[k] || DOCS.help;
@@ -2923,11 +2950,11 @@
         '<span id="cfgFs">' + CFG.fs + 'px</span></div>' +
       '<div class="row"><label>' + T('行距') + '</label><input type="range" data-set="lh" min="1.2" max="2.6" step="0.05" value="' + CFG.lh + '">' +
         '<span id="cfgLh">' + Number(CFG.lh).toFixed(2) + '</span></div>' +
-      '<div class="row"><label>' + T('字体') + '</label>' + seg('ff', [
-        ['serif', T('宋体')], ['sans', T('黑体')], ['kai', T('楷体')], ['fang', T('仿宋')], ['mono', T('等宽')]]) + '</div>' +
-      '<div class="row clrRow"><label>' + T('颜色') + '</label>' +
-        '<span class="kv">' + T('字色') + '</span><input type="color" data-set="customTx" value="' + ctx + '">' +
-        '<span class="kv">' + T('底色') + '</span><input type="color" data-set="customBg" value="' + cbg + '">' +
+      '<div class="row"><label>' + T('字体') + '</label>' + fontGrid() + '</div>' +
+      '<div class="row clrRow"><label>' + T('字色') + '</label>' + swRow('tx') +
+        '<input type="color" data-set="customTx" value="' + ctx + '"><span class="kv">' + T('自定义') + '</span></div>' +
+      '<div class="row clrRow"><label>' + T('底色') + '</label>' + swRow('bg') +
+        '<input type="color" data-set="customBg" value="' + cbg + '">' +
         '<button data-act="clrColor">' + T('跟随主题') + '</button></div>' +
       '<div class="row"><label>' + T('主题') + '</label>' + seg('theme', THEMES.map(function (k) { return [k, T(THEME_NAME[k])]; })) + '</div>' +
       '<div class="row"><label>' + T('更多排版') + '</label><button data-act="type">' + T('打开排版面板') + '</button>' +
@@ -2958,7 +2985,9 @@
         return '<button data-set="rolePool" data-v="' + x[0] + '"' + (CFG.rolePool === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
       }).join('') + '<button data-act="tryrole">' + T('试听效果') + '</button></div></div>' +
       '<p class="kv">' + (localReady()
-        ? T('已连接神经语音，分角色默认开启：旁白用你选的声线，引号里的对白按人物自动换声——「我说」「他说」「张三说」都是不同的声音，同一个人物整本书都是同一个声音。')
+        ? T('已连接神经语音，分角色默认开启：旁白用你选的声线，引号里的对白按人物自动换声——「我说」「他说」「张三说」都是不同的声音，同一个人物整本书都是同一个声音。') +
+          T('这本书已认出 {n} 个人物，用掉 {m} 个声线；人物超过声线数时会自动扩到全部 {all} 个。',
+            { n: Object.keys(SPK.cast || {}).length, m: Object.keys(SPK.used || {}).length, all: voiceStat().total })
         : T('⚠ 还没连上神经语音引擎：分角色现在不生效（系统语音只能发出一个声音）。完整版首次启动会自动准备；Lite 版双击「VoicePack/启动语音引擎.cmd」，再回这里点「重新检测」。')) + '</p>' +
       '<div class="row"><label>' + T('端口') + '</label><input type="number" data-set="localPort" min="1024" max="65535" step="1" value="' + (Number(CFG.localPort) || 8177) + '" style="width:96px"><span class="kv">' + T('默认 8177，需与启动器一致') + '</span></div>' +
       '<p class="kv">' + T('朗读文字只发给本机的 127.0.0.1 合成，不产生对外网络请求；引擎没启动时自动用系统语音，不影响看书。') + '</p>' +
@@ -2991,6 +3020,17 @@
     $('modalBody').onclick = function (e) {
       var lang = e.target.closest('[data-lang]');
       if (lang) { setLang(lang.getAttribute('data-lang')); showSettings(); return; }
+      /* 色板圆点是裸 button（没有 data-set），要放在下面那个早退判断之前 */
+      var swT0 = e.target.closest('[data-tx]');
+      if (swT0) { CFG.customTx = swT0.getAttribute('data-tx'); saveCfg(); applyCfg(); showSettings(); return; }
+      var swB0 = e.target.closest('[data-bg]');
+      if (swB0) {
+        var bg0 = swB0.getAttribute('data-bg');
+        var ink0 = inkFor(bg0);
+        CFG.customBg = bg0;
+        if (ink0) { CFG.customTx = ink0; toast(T('底色较深，字色已自动调成浅色')); }
+        saveCfg(); applyCfg(); showSettings(); return;
+      }
       var b = e.target.closest('button[data-set],button[data-act]'); if (!b) return;
       var act = b.getAttribute('data-act');
       if (act === 'type') { showType(); return; }
@@ -3025,6 +3065,37 @@
   var TYPE_NUM = { fs: 'int', pagew: 'int', padw: 'int', autoScrollSpeed: 'int', autoPageSec: 'int', lh: 'float', ps: 'float', ls: 'float', dim: 'float' };
   var TH_SW = { dark: '#1F2125', light: '#FFFFFF', sepia: '#FAF3E3', green: '#F3F8EC', gray: '#252D37', black: '#000000' };
   function hex6(v, alt) { v = String(v || '').trim(); return /^#[0-9a-fA-F]{6}$/.test(v) ? v : alt; }
+  /* 相对亮度：选深色底时自动配浅色字，免得挑完看不清 */
+  function lumOf(hex) {
+    var h = hex6(hex, '#808080');
+    var c = [1, 3, 5].map(function (i) { return parseInt(h.substr(i, 2), 16) / 255; })
+      .map(function (v) { return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  var INK_LIGHT = '#E8E6E2', INK_DARK = '#26262A';
+  /* 底与字反差不够时给出该换的字色；够就返回空 */
+  function inkFor(bg) {
+    var lb = lumOf(bg), lt = lumOf(CFG.customTx || curVar('--paperTx') || INK_DARK);
+    if (Math.abs(lb - lt) >= 0.35) return '';
+    return lb < 0.4 ? INK_LIGHT : INK_DARK;
+  }
+  /* 字体按钮：每个按钮用它自己的字体渲染，挑之前就能看出区别 */
+  function fontGrid() {
+    return '<div class="ffGrid">' + FONT_LIST.map(function (x) {
+      var fam = String(FONTS[x[0]] || '').replace(/"/g, "'");
+      return '<button data-set="ff" data-v="' + x[0] + '"' + (CFG.ff === x[0] ? ' class="on"' : '') +
+        " style=\"font-family:" + fam + '\">' + esc(T(x[1])) + '</button>';
+    }).join('') + '</div>';
+  }
+  /* 常用色板：kind = 'tx' 字色 / 'bg' 底色 */
+  function swRow(kind) {
+    var list = kind === 'tx' ? TX_SW : BG_SW;
+    var cur = String((kind === 'tx' ? CFG.customTx : CFG.customBg) || '').toLowerCase();
+    return '<div class="swRow">' + list.map(function (x) {
+      return '<button class="swDot' + (cur === x[0].toLowerCase() ? ' on' : '') + '" data-' + kind + '="' + x[0] + '"' +
+        ' title="' + esc(T(x[1])) + '" style="background:' + x[0] + '"></button>';
+    }).join('') + '</div>';
+  }
   function curVar(n) { return (getComputedStyle(document.documentElement).getPropertyValue(n) || '').trim(); }
   function typeLabels() {
     var set = function (id, v) { var e = $(id); if (e) e.textContent = v; };
@@ -3071,7 +3142,7 @@
       '<div class="row"><label>' + T('段间距') + '</label>' + rng('ps', 0, 2, 0.05, 'flex:1') + '<span id="fPs">' + CFG.ps + '</span></div>' +
       '<div class="row"><label>' + T('字间距') + '</label>' + rng('ls', -0.02, 0.16, 0.01, 'flex:1') + '<span id="fLs">' + CFG.ls + '</span></div>' +
       '<div class="row"><label>' + T('首行缩进') + '</label>' + seg('indent', [[0, T('无缩进')], [2, T('缩进 2 字')]]) + '</div>' +
-      '<div class="row"><label>' + T('字体') + '</label>' + seg('ff', [['serif', T('宋体')], ['sans', T('黑体')], ['kai', T('楷体')], ['fang', T('仿宋')], ['mono', T('等宽')]]) + '</div>' +
+      '<div class="row"><label>' + T('字体') + '</label>' + fontGrid() + '</div>' +
       '<div class="row"><label>' + T('对齐') + '</label>' + seg('align', [['justify', T('两端')], ['left', T('左对齐')]]) + '</div>';
     h += '<h3>' + T('版心') + '</h3>' +
       '<div class="row"><label>' + T('页宽') + '</label>' + rng('pagew', 380, 1100, 20, 'flex:1') + '<span id="fPw">' + CFG.pagew + 'px</span></div>' +
@@ -3123,6 +3194,16 @@
       if (f) {
         var d = f.getAttribute('data-font') === 'fs+' ? 1 : -1;
         CFG.fs = Math.max(13, Math.min(34, Number(CFG.fs) + d));
+        saveCfg(); applyCfg(); showType(true); return;
+      }
+      var swT2 = e.target.closest('[data-tx]');
+      if (swT2) { CFG.customTx = swT2.getAttribute('data-tx'); saveCfg(); applyCfg(); showType(true); return; }
+      var swB2 = e.target.closest('[data-bg]');
+      if (swB2) {
+        var bg2 = swB2.getAttribute('data-bg');
+        var ink2 = inkFor(bg2);
+        CFG.customBg = bg2;
+        if (ink2) { CFG.customTx = ink2; toast(T('底色较深，字色已自动调成浅色')); }
         saveCfg(); applyCfg(); showType(true); return;
       }
       var act = e.target.closest('[data-act]');
