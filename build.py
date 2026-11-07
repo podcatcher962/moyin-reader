@@ -56,8 +56,10 @@ def narrow_css():
 def main():
     shell = io.open(os.path.join(HERE, 'shell.html'), encoding='utf-8').read()
     core = io.open(os.path.join(HERE, 'zipcore.js'), encoding='utf-8').read()
+    i18n = io.open(os.path.join(HERE, 'i18n.js'), encoding='utf-8').read()
+    docsen = io.open(os.path.join(HERE, 'docs-en.js'), encoding='utf-8').read()
     app = io.open(os.path.join(HERE, 'app.js'), encoding='utf-8').read()
-    js = core + '\n' + app
+    js = core + '\n' + i18n + '\n' + docsen + '\n' + app
     # 脚本内不能直接出现结束标签，统一转义
     js = js.replace('</script', '<\\/script').replace('</SCRIPT', '<\\/SCRIPT')
     if '<!--' in js:

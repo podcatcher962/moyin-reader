@@ -149,6 +149,82 @@ html[data-motion="low"] *{animation:none!important;transition:none!important}
 #toast.on{display:block}
 .docnav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .docnav button{padding:5px 10px;min-height:30px}
+/* ---------- 书架分组条 ---------- */
+#shelfBar{flex:0 0 auto;display:flex;gap:6px;align-items:center;padding:8px 14px;background:var(--card);
+  border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+#shelfBar::-webkit-scrollbar{display:none}
+#shelfBar .chip{flex:0 0 auto;padding:4px 11px;min-height:28px;font-size:.84em;border-radius:14px;background:transparent;color:var(--tx2)}
+#shelfBar .chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+#shelfBar .chip .n{opacity:.6;margin-left:4px;font-size:.9em}
+#shelfBar .add{border-style:dashed}
+/* ---------- 批量操作条 ---------- */
+#selBar{flex:0 0 auto;display:flex;gap:8px;align-items:center;padding:8px 14px;background:var(--card2);
+  border-bottom:1px solid var(--line);font-size:.86em;flex-wrap:wrap}
+#selBar[hidden]{display:none}
+/* ---------- 书架卡片新增控件 ---------- */
+.bk .fav{position:absolute;left:6px;top:6px;width:28px;height:28px;border-radius:8px;padding:0;min-height:28px;
+  background:rgba(0,0,0,.5);border:none;color:#fff;font-size:15px;opacity:0;line-height:1}
+.bk:hover .fav,.bk .fav.on{opacity:1}
+.bk .fav.on{color:#FFC53D;background:rgba(0,0,0,.62)}
+.bk .more{position:absolute;right:6px;top:6px;width:28px;height:28px;border-radius:8px;padding:0;min-height:28px;
+  background:rgba(0,0,0,.55);border:none;color:#fff;font-size:15px;opacity:0;line-height:1}
+.bk:hover .more{opacity:1}
+.bk .del{display:none}
+.bk .kn{position:absolute;left:6px;bottom:6px;font-size:.7em;padding:1px 6px;border-radius:8px;
+  background:rgba(0,0,0,.6);color:#fff;line-height:1.5;pointer-events:none}
+.bk .chk{position:absolute;left:7px;top:7px;width:22px;height:22px;border-radius:6px;border:2px solid #fff;
+  background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;color:#fff;font-size:13px;line-height:1}
+body.selmode .bk .chk{display:flex}
+body.selmode .bk .fav,body.selmode .bk .more{display:none}
+body.selmode .bk.sel{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc) inset}
+body.selmode .bk.sel .chk{background:var(--acc);border-color:var(--acc)}
+body.selmode .bk .resume{pointer-events:none}
+/* ---------- 正文高亮 / 批注 ---------- */
+#page mark{background:rgba(255,214,102,.42);color:inherit;border-radius:2px;padding:0 .06em;cursor:pointer}
+#page mark.hl-g{background:rgba(122,214,140,.36)}
+#page mark.hl-b{background:rgba(122,178,255,.34)}
+#page mark.hl-p{background:rgba(255,150,196,.34)}
+#page mark.hasNote{border-bottom:1.5px solid rgba(255,214,102,.95)}
+#page mark.hl-g.hasNote{border-bottom-color:rgba(122,214,140,.95)}
+#page mark.hl-b.hasNote{border-bottom-color:rgba(122,178,255,.95)}
+#page mark.hl-p.hasNote{border-bottom-color:rgba(255,150,196,.95)}
+html[data-theme="light"] #page mark{background:rgba(255,214,102,.62)}
+html[data-theme="light"] #page mark.hl-g{background:rgba(122,214,140,.55)}
+html[data-theme="light"] #page mark.hl-b{background:rgba(122,178,255,.45)}
+html[data-theme="light"] #page mark.hl-p{background:rgba(255,150,196,.45)}
+/* 选中文字浮动工具条 */
+#selTools{position:fixed;z-index:70;display:none;align-items:center;gap:4px;padding:5px 6px;
+  background:var(--card);border:1px solid var(--line);border-radius:11px;box-shadow:0 8px 30px rgba(0,0,0,.4);font-size:.86em}
+#selTools.on{display:flex}
+#selTools .sw{width:22px;height:22px;min-height:22px;border-radius:50%;padding:0;border:1.5px solid rgba(0,0,0,.15);cursor:pointer}
+#selTools .sw[data-hl="y"]{background:#FFD666}
+#selTools .sw[data-hl="g"]{background:#7AD68C}
+#selTools .sw[data-hl="b"]{background:#7AB2FF}
+#selTools .sw[data-hl="p"]{background:#FF96C4}
+#selTools button.act{padding:4px 9px;min-height:26px;background:transparent;border-color:transparent;color:var(--tx)}
+#selTools button.act:hover{background:var(--card2);color:var(--acc)}
+#selTools .sep{width:1px;height:18px;background:var(--line);margin:0 2px}
+/* 笔记侧栏 */
+.noteIt{background:var(--card2);border-radius:9px;padding:9px 10px;margin-bottom:8px;cursor:pointer}
+.noteIt:hover{outline:1px solid var(--acc)}
+.noteIt .q{color:var(--tx);font-size:.9em;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.noteIt .cm{color:var(--tx2);font-size:.86em;margin-top:5px;padding-left:8px;border-left:2px solid var(--acc)}
+.noteIt .ft{display:flex;gap:6px;align-items:center;margin-top:7px;color:var(--tx2);font-size:.78em}
+.noteIt .ft .spacer{flex:1}
+.noteIt .ft button{min-height:24px;padding:1px 7px;font-size:1em;background:transparent;border-color:transparent}
+.noteIt .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.noteclr-y{background:#FFD666}.noteclr-g{background:#7AD68C}.noteclr-b{background:#7AB2FF}.noteclr-p{background:#FF96C4}
+/* 阅读总结 */
+.sumGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px;margin:10px 0 16px}
+.sumGrid .c{background:var(--card2);border-radius:10px;padding:10px 12px;min-height:66px}
+.sumGrid .c b{display:block;font-size:1.18em;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sumGrid .c span{color:var(--tx2);font-size:.78em;display:block;margin-top:2px}
+.sumEx{max-height:44vh;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:10px}
+.sumEx .e{padding:7px 0;border-bottom:1px dashed var(--line)}
+.sumEx .e:last-child{border-bottom:none}
+.sumEx .e .t{font-size:.9em;line-height:1.6}
+.sumEx .e .n{color:var(--acc);font-size:.85em;margin-top:3px}
+.sumEx .e .h{color:var(--tx2);font-size:.76em;margin-top:3px}
 /*__NARROW_CSS__*/
 </style>
 </head>
@@ -158,39 +234,54 @@ html[data-motion="low"] *{animation:none!important;transition:none!important}
   <!-- ============ 书架 ============ -->
   <section id="viewLib" class="view on">
     <div id="webTip" hidden>
-      <span>这是<b>网页在线版</b>：朗读使用浏览器自带语音（一般只有 1–3 个老式音色）。想要 174 个离线中文声线，装 Windows 版即可。</span>
-      <a href="https://github.com/podcatcher962/moyin-reader/releases/latest" target="_blank" rel="noopener">下载 Windows / 安卓版</a>
+      <span data-i18n-html="这是<b>网页在线版</b>：朗读使用浏览器自带语音（一般只有 1–3 个老式音色）。想要 174 个离线中文声线，装 Windows 版即可。">这是<b>网页在线版</b>：朗读使用浏览器自带语音（一般只有 1–3 个老式音色）。想要 174 个离线中文声线，装 Windows 版即可。</span>
+      <a href="https://github.com/podcatcher962/moyin-reader/releases/latest" target="_blank" rel="noopener" data-i18n="下载 Windows / 安卓版">下载 Windows / 安卓版</a>
       <button id="webTipX" title="不再提示">×</button>
     </div>
     <header class="top" id="libTop">
       <div class="brand">墨吟<small>MoYin Reader</small></div>
-      <input type="search" id="libSearch" placeholder="搜索书名…" style="width:170px">
+      <input type="search" id="libSearch" data-i18n-ph="搜索书名…" placeholder="搜索书名…" style="width:170px">
       <div class="spacer"></div>
       <div class="acts" id="libActs">
-        <button class="pri" id="btnImport">＋ 导入书籍</button>
-        <button id="btnSort">排序</button>
-        <button id="btnLayout">版式</button>
-        <button data-doc="help">使用说明</button>
-        <button data-doc="faq">常见问题</button>
-        <button data-doc="disclaimer">免责声明</button>
-        <button data-doc="about">关于</button>
+        <button class="pri" id="btnImport" data-i18n="＋ 导入书籍">＋ 导入书籍</button>
+        <button id="btnImportDir" data-i18n="导入文件夹" data-i18n-title="导入整个文件夹里的 TXT / EPUB" title="导入整个文件夹里的 TXT / EPUB">导入文件夹</button>
+        <button id="btnSort" data-i18n="排序">排序</button>
+        <button id="btnLayout" data-i18n="版式">版式</button>
+        <button id="btnShelves" data-i18n="管理书架">管理书架</button>
+        <button data-doc="help" data-i18n="使用说明">使用说明</button>
+        <button data-doc="faq" data-i18n="常见问题">常见问题</button>
+        <button data-doc="disclaimer" data-i18n="免责声明">免责声明</button>
+        <button data-doc="about" data-i18n="关于">关于</button>
+        <button id="btnLang" data-i18n-title="切换界面语言" title="切换界面语言">EN</button>
       </div>
       <input type="file" id="fileInput" multiple accept=".txt,.epub,.text,.TXT,.EPUB" hidden>
+      <input type="file" id="dirInput" webkitdirectory directory multiple hidden>
     </header>
+    <div id="shelfBar"></div>
+    <div id="selBar" hidden>
+      <span id="selCount"></span>
+      <div class="spacer"></div>
+      <button id="selAll" data-i18n="全选">全选</button>
+      <button id="selMove" data-i18n="移动到书架">移动到书架</button>
+      <button id="selFav" data-i18n="收藏">收藏</button>
+      <button class="danger" id="selDel" data-i18n="批量移除">批量移除</button>
+      <button id="selExit" data-i18n="退出管理">退出管理</button>
+    </div>
     <div id="libBody">
       <div class="shelf" id="shelf"></div>
       <div class="empty" id="emptyLib">
         <div class="big">墨</div>
-        <div>书案还空着。点「＋ 导入书籍」，把 TXT 或 EPUB 放进来。<br>文件只留在这台设备的浏览器里，不上传任何地方。</div>
+        <div data-i18n-html="书案还空着。点「＋ 导入书籍」，把 TXT 或 EPUB 放进来。<br>文件只留在这台设备的浏览器里，不上传任何地方。">书案还空着。点「＋ 导入书籍」，把 TXT 或 EPUB 放进来。<br>文件只留在这台设备的浏览器里，不上传任何地方。</div>
       </div>
     </div>
     <div class="foot">
       <span id="libStat">书架 0 本</span>
+      <span id="libStats" class="hint"></span>
       <div class="spacer"></div>
-      <button id="btnExport">导出备份</button>
-      <button id="btnImportBak">导入备份</button>
-      <button id="btnCfg">阅读设置</button>
-      <span class="hint">数据仅存本机 · 清浏览器缓存会丢，记得导出备份</span>
+      <button id="btnExport" data-i18n="导出备份">导出备份</button>
+      <button id="btnImportBak" data-i18n="导入备份">导入备份</button>
+      <button id="btnCfg" data-i18n="阅读设置">阅读设置</button>
+      <span class="hint" data-i18n="数据仅存本机 · 清浏览器缓存会丢，记得导出备份">数据仅存本机 · 清浏览器缓存会丢，记得导出备份</span>
       <button class="ghost" id="btnSign" title="作者、许可与开源说明">© 永远的兰兰 · MIT</button>
       <input type="file" id="bakInput" accept=".json,application/json" hidden>
     </div>
@@ -199,25 +290,27 @@ html[data-motion="low"] *{animation:none!important;transition:none!important}
   <!-- ============ 阅读器 ============ -->
   <section id="viewRead" class="view">
     <header class="top" id="readTop">
-      <button id="btnBack">← 书架</button>
+      <button id="btnBack" data-i18n="← 书架">← 书架</button>
       <div id="readTitle">—</div>
       <div class="spacer"></div>
       <div class="acts" id="readActs">
-        <button id="btnToc">目录</button>
-        <button id="btnFind">搜索</button>
-        <button id="btnMarks">书签</button>
-        <button id="btnMarkAdd">＋书签</button>
-        <button id="btnFont">字体</button>
-        <button id="btnTheme">主题</button>
-        <button id="btnSpeak" class="pri">朗读</button>
+        <button id="btnToc" data-i18n="目录">目录</button>
+        <button id="btnFind" data-i18n="搜索">搜索</button>
+        <button id="btnMarks" data-i18n="书签">书签</button>
+        <button id="btnNotes" data-i18n="笔记">笔记</button>
+        <button id="btnMarkAdd" data-i18n="＋书签">＋书签</button>
+        <button id="btnFont" data-i18n="字体">字体</button>
+        <button id="btnTheme" data-i18n="主题">主题</button>
+        <button id="btnSpeak" class="pri" data-i18n="朗读">朗读</button>
       </div>
     </header>
     <div id="readMain">
       <aside class="side" id="side">
         <div class="tabs">
-          <button data-tab="toc" class="on">目录</button>
-          <button data-tab="mark">书签</button>
-          <button data-tab="find">搜索</button>
+          <button data-tab="toc" class="on" data-i18n="目录">目录</button>
+          <button data-tab="mark" data-i18n="书签">书签</button>
+          <button data-tab="note" data-i18n="笔记">笔记</button>
+          <button data-tab="find" data-i18n="搜索">搜索</button>
         </div>
         <div class="body" id="sideBody"></div>
       </aside>
@@ -227,33 +320,44 @@ html[data-motion="low"] *{animation:none!important;transition:none!important}
     </div>
     <div class="speakbar" id="speakBar">
       <div class="grp">
-        <button id="spPrev" title="上一段">⏮</button>
-        <button id="spPlay" class="pri" title="播放 / 暂停">▶</button>
-        <button id="spStop" title="停止">⏹</button>
-        <button id="spNext" title="下一段">⏭</button>
+        <button id="spPrev" data-i18n-title="上一段" title="上一段">⏮</button>
+        <button id="spPlay" class="pri" data-i18n-title="播放 / 暂停" title="播放 / 暂停">▶</button>
+        <button id="spStop" data-i18n-title="停止" title="停止">⏹</button>
+        <button id="spNext" data-i18n-title="下一段" title="下一段">⏭</button>
       </div>
-      <select id="spVoice" title="朗读语音"></select>
-      <span id="spQuality" class="vq" title="点击查看语音说明"></span>
-      <button id="spRole" class="ghost" title="分角色朗读：对话自动换声">单声线</button>
-      <button id="spTry" class="ghost" title="用一句示例试听当前语音，不影响书本">试听</button>
-      <span class="hint spRateLabel">语速</span><input type="range" id="spRate" min="0.5" max="2" step="0.1" value="1" style="width:110px">
+      <select id="spVoice" data-i18n-title="朗读语音" title="朗读语音"></select>
+      <span id="spQuality" class="vq" data-i18n-title="点击查看语音说明" title="点击查看语音说明"></span>
+      <button id="spRole" class="ghost" data-i18n-title="分角色朗读：对话自动换声" title="分角色朗读：对话自动换声">单声线</button>
+      <button id="spTry" class="ghost" data-i18n-title="用一句示例试听当前语音，不影响书本" title="用一句示例试听当前语音，不影响书本" data-i18n="试听">试听</button>
+      <span class="hint spRateLabel" data-i18n="语速">语速</span><input type="range" id="spRate" min="0.5" max="2" step="0.1" value="1" style="width:110px">
       <span id="spRateTx" class="hint">1.0×</span>
       <select id="spTimer" title="朗读定时">
-        <option value="0">不定时</option><option value="10">10 分钟</option>
-        <option value="20">20 分钟</option><option value="30">30 分钟</option>
-        <option value="60">60 分钟</option>
+        <option value="0" data-i18n="不定时">不定时</option><option value="10" data-i18n="10 分钟">10 分钟</option>
+        <option value="20" data-i18n="20 分钟">20 分钟</option><option value="30" data-i18n="30 分钟">30 分钟</option>
+        <option value="60" data-i18n="60 分钟">60 分钟</option>
       </select>
       <span id="spLeft" class="hint"></span>
       <span id="spNow"></span>
-      <button id="spClose" class="ghost" title="收起">×</button>
+      <button id="spClose" class="ghost" data-i18n-title="收起" title="收起">×</button>
     </div>
     <footer id="readFoot">
-      <button id="btnPrevCh">← 上一章</button>
+      <button id="btnPrevCh" data-i18n="← 上一章">← 上一章</button>
       <input type="range" id="progRange" min="0" max="1000" value="0" title="全书进度">
       <span id="progTx" class="hint" style="min-width:104px;text-align:center">0.0%</span>
-      <button id="btnNextCh">下一章 →</button>
+      <button id="btnNextCh" data-i18n="下一章 →">下一章 →</button>
     </footer>
   </section>
+
+  <div id="selTools">
+    <button class="sw" data-hl="y" data-i18n-title="黄色" title="黄色"></button>
+    <button class="sw" data-hl="g" data-i18n-title="绿色" title="绿色"></button>
+    <button class="sw" data-hl="b" data-i18n-title="蓝色" title="蓝色"></button>
+    <button class="sw" data-hl="p" data-i18n-title="粉色" title="粉色"></button>
+    <span class="sep"></span>
+    <button class="act" data-sel="note" data-i18n="写笔记">写笔记</button>
+    <button class="act" data-sel="copy" data-i18n="复制">复制</button>
+    <button class="act" data-sel="share" data-i18n="分享">分享</button>
+  </div>
 
   <div class="modal" id="modal"><div class="mbox">
     <div class="mh"><span id="modalTitle">设置</span><div class="spacer"></div><button class="ghost" id="modalX">×</button></div>
