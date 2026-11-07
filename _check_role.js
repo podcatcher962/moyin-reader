@@ -153,6 +153,25 @@ async function main() {
   ok(real[4].who === '张三', '「张三对俞猴子说」——说话人是张三', real[4]);
   ok(real.every(r => !!r.who), '五行对白全部认出了说话人（不再整段共用旁白声）', real.map(r => r.who));
 
+  console.log('=== 人物很多时的声线分配');
+  const many = await ev(`(function(){
+    MY.resetCast();
+    var names=['张三','李四','王五','赵六','钱七','孙八','周九','吴十','郑一','冯二',
+               '陈三','褚四','卫五','蒋六','沈七','韩八','杨九','朱十','秦甲','尤乙'];
+    var got = names.map(function(n){ return MY.castVoice(n); });
+    var seen = {}; got.forEach(function(x){ seen[x]=1; });
+    return JSON.stringify({people:names.length, voices:Object.keys(seen).length, sample:got.slice(0,8)});
+  })()`).then(JSON.parse);
+  console.log('  20 个人物 →', many.voices, '个不同声线', many.sample.join(','));
+  ok(many.voices >= 15, '二十个人物分到十五个以上不同声线（不够时自动扩到全部声线）', many);
+  const stable = await ev(`(function(){
+    var a = MY.castVoice('张三'), b = MY.castVoice('张三'), c = MY.castVoice('李四');
+    return JSON.stringify({a:a,b:b,c:c});
+  })()`).then(JSON.parse);
+  ok(stable.a === stable.b, '同一人物反复取到的还是同一个声音', stable);
+  ok(stable.a !== stable.c, '两个不同人物声音不撞', stable);
+  await ev('(function(){MY.resetCast();return 1;})()');   // 把分配状态清干净，别影响后面的朗读用例
+
   console.log('=== 声音分配（同一人物同一声音）');
   const cast = await ev(`(function(){
     MY.CFG.voiceSet='all'; MY.CFG.rolePool='mix'; MY.resetCast();
@@ -200,11 +219,14 @@ async function main() {
     MY.CFG.roleOn = 1; MY.CFG.localVoice = 's12'; MY.setPara(1);
     var cv0 = MY.SPK.cv.slice();
     MY.startSpeak(1);
-    await new Promise(r=>setTimeout(r, 1500));
-    var a = MY.SPK.audio;
+    /* 第一段是对白，趁它还在念的时候抓朗读条上的人物名（等到 1.5s 后可能已经跳到旁白段） */
+    await new Promise(r=>setTimeout(r, 260));
     var w = document.querySelector('#spNow .spwho');
+    var whoAtFirst = w ? w.textContent : '';
+    await new Promise(r=>setTimeout(r, 1300));
+    var a = MY.SPK.audio;
     var first = {on:MY.SPK.on, playing:MY.SPK.playing, ci:MY.SPK.ci, v:MY.SPK.cv[0], cv:cv0,
-      src:(a&&a.src||'').slice(0,5), dur:(a&&a.duration)||0, who:w?w.textContent:'', now:(document.getElementById('spNow')||{}).textContent||'',
+      src:(a&&a.src||'').slice(0,5), dur:(a&&a.duration)||0, who:whoAtFirst, now:(document.getElementById('spNow')||{}).textContent||'',
       btn:(document.getElementById('spRole')||{}).textContent||''};
     await new Promise(r=>setTimeout(r, 3000));
     var b = MY.SPK.audio;

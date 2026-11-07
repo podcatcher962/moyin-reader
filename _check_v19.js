@@ -307,8 +307,17 @@ async function main() {
   ok(await ev("!!document.querySelector('#modalBody input[data-set=\"fs\"]')"), '设置里有字号滑块');
   ok(await ev("!!document.querySelector('#modalBody [data-act=\"fsUp\"]')"), '设置里有 A+ / A−');
   ok(await ev("!!document.querySelector('#modalBody input[data-set=\"lh\"]')"), '设置里有行距滑块');
-  ok(await ev("document.querySelectorAll('#modalBody [data-set=\"ff\"]').length") === 5, '设置里有五种字体',
-    await ev("document.querySelectorAll('#modalBody [data-set=\"ff\"]').length"));
+  ok(await ev("document.querySelectorAll('#modalBody .ffGrid button').length") === 10, '设置里有十种字体',
+    await ev("document.querySelectorAll('#modalBody .ffGrid button').length"));
+  const fams = JSON.parse(await ev(`(function(){
+    var out=[];document.querySelectorAll('#modalBody .ffGrid button').forEach(function(b){
+      out.push(b.getAttribute('data-v')+'|'+getComputedStyle(b).fontFamily.slice(0,28));});
+    return JSON.stringify(out);})()`));
+  ok(new Set(fams.map(x => x.split('|')[1])).size >= 9, '每个字体按钮用自己的字体预览（不是一种字形）', fams.slice(0, 3));
+  ok(await ev("document.querySelectorAll('#modalBody .swRow [data-tx]').length") === 8, '字色有 8 个常用色点',
+    await ev("document.querySelectorAll('#modalBody .swRow [data-tx]').length"));
+  ok(await ev("document.querySelectorAll('#modalBody .swRow [data-bg]').length") === 8, '底色有 8 个常用色点',
+    await ev("document.querySelectorAll('#modalBody .swRow [data-bg]').length"));
   ok(await ev("document.querySelectorAll('#modalBody input[type=color]').length") === 2, '设置里有字色 / 底色两个取色器',
     await ev("document.querySelectorAll('#modalBody input[type=color]').length"));
   const fs0 = await ev("Number(MY.CFG.fs)");
@@ -330,6 +339,20 @@ async function main() {
   ok(await ev("MY.CFG.customTx") === '#ff8866', '取色器能改字色', await ev("MY.CFG.customTx"));
   ok(/255,\s*136,\s*102/.test(await ev("getComputedStyle(document.getElementById('page')).color")),
     '字色真的应用到了正文', await ev("getComputedStyle(document.getElementById('page')).color"));
+  /* 点色点：字色与底色各试一个 */
+  await ev("(function(){document.querySelector('#modalBody [data-tx=\"#2B4162\"]').click();return 1;})()");
+  await sleep(420);
+  await ev("(function(){document.querySelector('#modalBody [data-bg=\"#F6EFDF\"]').click();return 1;})()");
+  await sleep(420);
+  ok(await ev("MY.CFG.customTx") === '#2B4162' && await ev("MY.CFG.customBg") === '#F6EFDF', '点色点能直接换字色 / 底色',
+    { tx: await ev("MY.CFG.customTx"), bg: await ev("MY.CFG.customBg") });
+  ok(/246,\s*239,\s*223/.test(await ev("getComputedStyle(document.getElementById('page')).backgroundColor")),
+    '底色真的铺到了正文', await ev("getComputedStyle(document.getElementById('page')).backgroundColor"));
+  /* 选深色底要自动换浅色字，否则看不见 */
+  await ev("(function(){document.querySelector('#modalBody [data-bg=\"#2A2D33\"]').click();return 1;})()");
+  await sleep(500);
+  const dark = JSON.parse(await ev("JSON.stringify({bg:MY.CFG.customBg,tx:MY.CFG.customTx})"));
+  ok(dark.bg === '#2A2D33' && /^#E/i.test(dark.tx), '选深色底时字色自动变浅，不会糊成一团', dark);
   /* 跟随主题：清掉自定义 */
   await ev("(function(){document.querySelector('#modalBody [data-act=\"clrColor\"]').click();return 1;})()");
   await sleep(420);
