@@ -89,6 +89,11 @@ input[type=range]{accent-color:var(--acc);height:var(--tap);min-width:90px}
 .side.on{display:flex}
 .side .tabs{display:flex;gap:4px;padding:9px;border-bottom:1px solid var(--line);flex:0 0 auto}
 .side .tabs button{flex:1;padding:6px 4px;font-size:.86em}
+.side .tabs button.sideX{flex:0 0 auto;width:27px;padding:6px 0;font-size:1.08em;line-height:1;background:transparent;border-color:transparent;color:var(--tx2)}
+.side .tabs button.sideX:hover{color:var(--bad);border-color:var(--line)}
+/* 正文必须能选中：桌面外壳默认把 user-select 关掉，会连带把划线批注一起废掉 */
+#page,#page *{-webkit-user-select:text;user-select:text}
+.side .body,.noteIt{-webkit-user-select:text;user-select:text}
 .side .body{flex:1;min-height:0;overflow-y:auto;padding:8px}
 .side .it{display:block;width:100%;text-align:left;background:transparent;border:none;border-radius:7px;padding:8px 9px;margin-bottom:2px;color:var(--tx);font-size:.9em;white-space:normal;line-height:1.45}
 .side .it:hover{background:var(--card2);color:var(--acc)}
@@ -311,6 +316,7 @@ html[data-theme="light"] #page mark.hl-p{background:rgba(255,150,196,.45)}
           <button data-tab="mark" data-i18n="书签">书签</button>
           <button data-tab="note" data-i18n="笔记">笔记</button>
           <button data-tab="find" data-i18n="搜索">搜索</button>
+          <button id="sideClose" class="sideX" data-i18n-title="关闭侧栏" title="关闭侧栏" aria-label="关闭侧栏">×</button>
         </div>
         <div class="body" id="sideBody"></div>
       </aside>

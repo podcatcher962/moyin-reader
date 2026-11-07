@@ -123,6 +123,10 @@
       '<li><b>Export &amp; summary</b>: export all notes as Markdown or plain text; <b>Reading summary</b> reports time read, streak, progress and a chapter-by-chapter excerpt list you can export.</li>' +
       '<li><b>Real shelves</b>: create, rename and delete shelves, mark favorites, batch move or remove books, edit title and author, and import a whole folder of books at once.</li>' +
       '<li><b>Reading time</b>: every session is timed and accumulated per book and overall, without sending anything anywhere.</li></ul>' +
-      '<p class="kv">Version 1.7.0 · single file · offline by default · data stays on this device<br>Author / copyright © 2026 Lanlan Eternal (永远的兰兰)<br>Feedback and source: see the repository address in the bundled README</p>'
+      '<p class="kv">Fixed in 1.7.1</p><ul>' +
+      '<li><b>Highlighting now works in the desktop app</b> — the Windows shell disabled web text selection by default, so dragging over the text did nothing and the colour toolbar never appeared. Selection is enabled now.</li>' +
+      '<li><b>Folder import no longer looks like an upload</b> — the desktop build opens the native folder picker instead of the browser\'s “select the folder to upload … Upload” dialog.</li>' +
+      '<li><b>The left sidebar can be dismissed</b> — there is a × on the tab strip, clicking the same toolbar button toggles it, and clicking the page closes it (unless you have text selected, so a fresh selection is never disturbed).</li></ul>' +
+      '<p class="kv">Version 1.7.1 · single file · offline by default · data stays on this device<br>Author / copyright © 2026 Lanlan Eternal (永远的兰兰)<br>Feedback and source: see the repository address in the bundled README</p>'
   };
 })(window);

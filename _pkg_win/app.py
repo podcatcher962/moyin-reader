@@ -34,7 +34,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 APP = 'MoYinReader'
 APP_CN = '墨吟阅读器'
-VER = '1.7.0'
+VER = '1.7.1'
 VOICE_PORT = 8177
 PORTS = (38975, 38976, 0)
 CREATE_NO_WINDOW = 0x08000000
@@ -52,6 +52,83 @@ PAGE_CACHE = None
 SERVER = None
 PORT = 0
 BEACON = []
+PICK = {'sid': '', 'files': [], 'ts': 0}      # 上一次「选择文件夹」的授权名单
+
+
+# ---------------------------------------------------------------- 选择文件夹
+NOISE_DIRS = {'.git', '.svn', '.hg', 'node_modules', '__pycache__', 'venv', '.venv', 'env',
+              'dist', 'build', 'site-packages', '.idea', '.vscode', 'voicepack', 'voicepack_lite'}
+
+
+def scan_dir(root, limit=500, min_size=1024, max_size=300 * 1024 * 1024):
+    """只收像样的 txt / epub；太小的是 LICENSE 之类的杂物，跳过并计数。
+
+    返回 (files, skipped, truncated)。上限默认 500 本，超出只取前 500 并置 truncated。
+    """
+    files, skipped, truncated = [], 0, False
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames
+                       if not d.startswith('.') and d.lower() not in NOISE_DIRS]
+        for fn in filenames:
+            if os.path.splitext(fn)[1].lower() not in ('.txt', '.epub'):
+                continue
+            full = os.path.join(dirpath, fn)
+            try:
+                st = os.stat(full)
+            except OSError:
+                continue
+            if st.st_size < min_size or st.st_size > max_size:
+                skipped += 1
+                continue
+            if len(files) >= limit:
+                return files, skipped, True
+            files.append({'name': fn, 'size': st.st_size, 'path': full})
+    return files, skipped, truncated
+
+
+def ask_folder(title):
+    """原生「选择文件夹」对话框（SHBrowseForFolderW），不经过 WebView2 的文件选择器。"""
+    if os.name != 'nt':
+        return ''
+    import ctypes
+    from ctypes import wintypes
+    ole32 = ctypes.windll.ole32
+    shell32 = ctypes.windll.shell32
+    user32 = ctypes.windll.user32
+
+    class BROWSEINFOW(ctypes.Structure):
+        _fields_ = [('hwndOwner', wintypes.HWND), ('pidlRoot', ctypes.c_void_p),
+                    ('pszDisplayName', wintypes.LPWSTR), ('lpszTitle', wintypes.LPCWSTR),
+                    ('ulFlags', wintypes.UINT), ('lpfn', ctypes.c_void_p),
+                    ('lParam', wintypes.LPARAM), ('iImage', ctypes.c_int)]
+
+    try:
+        ole32.CoInitializeEx(None, 0x2)      # STA，BIF_NEWDIALOGSTYLE 需要
+    except Exception:
+        pass
+    try:
+        buf = ctypes.create_unicode_buffer(260)
+        bi = BROWSEINFOW()
+        bi.hwndOwner = user32.GetForegroundWindow()
+        bi.pszDisplayName = ctypes.cast(buf, wintypes.LPWSTR)
+        bi.lpszTitle = title
+        bi.ulFlags = 0x0001 | 0x0010 | 0x0040     # 仅文件系统目录 + 可输入路径 + 新样式
+        shell32.SHBrowseForFolderW.argtypes = [ctypes.POINTER(BROWSEINFOW)]
+        shell32.SHBrowseForFolderW.restype = ctypes.c_void_p
+        pidl = shell32.SHBrowseForFolderW(ctypes.byref(bi))
+        if not pidl:
+            return ''
+        path = ctypes.create_unicode_buffer(1024)
+        shell32.SHGetPathFromIDListW.argtypes = [ctypes.c_void_p, wintypes.LPWSTR]
+        shell32.SHGetPathFromIDListW.restype = wintypes.BOOL
+        ok = shell32.SHGetPathFromIDListW(ctypes.c_void_p(pidl), path)
+        ole32.CoTaskMemFree(ctypes.c_void_p(pidl))
+        return path.value if ok else ''
+    finally:
+        try:
+            ole32.CoUninitialize()
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------- 路径
@@ -78,7 +155,7 @@ def page_file():
 
 
 # ---------------------------------------------------------------- 注入脚本
-MARK = ('<script>window.__MOYIN_DESKTOP__={app:"%s",ver:"%s"}</script>'
+MARK = ('<script>window.__MOYIN_DESKTOP__={app:"%s",ver:"%s",pickDir:1}</script>'
         % (APP, VER)).encode('utf-8')
 
 SAVE_JS = """<script>(function(){
@@ -104,8 +181,33 @@ HTMLAnchorElement.prototype.click=function(){
 };
 })();</script>""" % TOKEN
 
-BEACON_JS = """<script>(function(){
-function p(t){try{
+# 桌面版专用：走 Python 的原生「选择文件夹」对话框，绕开 WebView2 那个
+# 「选择要上传的文件夹 → 上传」的浏览器选择器（看着像要往网上传东西）
+PICK_JS = """<script>(function(){
+if(window.__moyinPickDir)return;
+var TK='%s';
+window.__moyinPickDir=function(){
+  return fetch('/__pickdir?token='+TK+'&lang='+((document.documentElement.lang||'zh').slice(0,2)),{method:'POST'}).then(function(r){return r.json();}).then(function(j){
+    if(!j.ok) throw new Error(j.error||'选择文件夹失败');
+    if(j.cancel) return {cancel:true,files:[],dir:''};
+    var fs=j.files||[],out=[],i=0;
+    function step(){
+      if(i>=fs.length) return Promise.resolve({files:out,dir:j.dir,sid:j.sid});
+      var f=fs[i++];
+      return fetch('/__dirfile?sid='+j.sid+'&i='+f.i).then(function(r){
+        if(!r.ok) throw new Error('读不到 '+f.name);
+        return r.arrayBuffer();
+      }).then(function(b){
+        out.push({name:f.name,size:f.size,arrayBuffer:function(){return Promise.resolve(b);}});
+        return step();
+      });
+    }
+    return step();
+  });
+};
+})();</script>""" % TOKEN
+
+BEACON_JS = """<script>(function(){function p(t){try{
 var d={tag:t,rs:document.readyState,title:document.title,
 ready:(window.MY&&MY.CFG)?1:0,nodes:document.querySelectorAll('*').length,
 body:document.body?document.body.childElementCount:0,st:Math.round(performance.now())};
@@ -120,7 +222,7 @@ def page_bytes(with_beacon=False):
     if PAGE_CACHE is None:
         with open(page_file(), 'rb') as f:
             b = f.read()
-        inject = MARK + SAVE_JS.encode('utf-8')
+        inject = MARK + SAVE_JS.encode('utf-8') + PICK_JS.encode('utf-8')
         if with_beacon:
             inject += BEACON_JS.encode('utf-8')
         i = b.find(b'</head>')
@@ -140,6 +242,42 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, *a):
         pass
+
+    def _q(self):
+        from urllib.parse import unquote
+        query = self.path.split('?', 1)[-1] if '?' in self.path else ''
+        q = {}
+        for kv in query.split('&'):
+            if '=' in kv:
+                k, v = kv.split('=', 1)
+                q[k] = unquote(v)
+        return q
+
+    def _pickdir(self):
+        en = self._q().get('lang') == 'en'
+        try:
+            d = ask_folder('Choose a folder to import (TXT / EPUB only)' if en
+                           else '选择要导入的文件夹（只收 TXT / EPUB）')
+        except Exception as e:
+            self._send(200, 'application/json; charset=utf-8',
+                       json.dumps({'ok': False, 'error': '打开对话框失败：%s' % e}, ensure_ascii=False))
+            return
+        if not d:
+            self._send(200, 'application/json; charset=utf-8', json.dumps({'ok': True, 'cancel': True}))
+            return
+        try:
+            files, skipped, truncated = scan_dir(d)
+        except Exception as e:
+            self._send(200, 'application/json; charset=utf-8',
+                       json.dumps({'ok': False, 'error': '遍历文件夹失败：%s' % e}, ensure_ascii=False))
+            return
+        PICK['sid'] = secrets.token_hex(12)
+        PICK['files'] = [f['path'] for f in files]
+        PICK['ts'] = time.time()
+        self._send(200, 'application/json; charset=utf-8', json.dumps({
+            'ok': True, 'dir': d, 'sid': PICK['sid'], 'skipped': skipped, 'truncated': truncated,
+            'files': [{'i': i, 'name': f['name'], 'size': f['size']} for i, f in enumerate(files)],
+        }, ensure_ascii=False))
 
     def _send(self, code, mime, body, extra=''):
         if isinstance(body, str):
@@ -176,23 +314,38 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 pass
             self._send(200, 'text/plain', 'ok')
+        elif path == '/__dirfile':
+            q = self._q()
+            if not PICK['sid'] or q.get('sid') != PICK['sid']:
+                self._send(403, 'text/plain; charset=utf-8', '会话已失效，请重新选择文件夹')
+                return
+            try:
+                idx = int(q.get('i', '-1'))
+                full = PICK['files'][idx]
+            except (ValueError, IndexError):
+                self._send(404, 'text/plain; charset=utf-8', '没有这个文件')
+                return
+            try:
+                with open(full, 'rb') as f:
+                    data = f.read()
+            except OSError:
+                self._send(500, 'text/plain; charset=utf-8', '读不出来')
+                return
+            self._send(200, 'application/octet-stream', data)
         else:
             self._send(404, 'text/plain; charset=utf-8', '没有这个文件')
 
     def do_POST(self):
         path = self.path.split('?', 1)[0]
-        if path != '/__save':
+        if path not in ('/__save', '/__pickdir'):
             self._send(404, 'text/plain; charset=utf-8', '只读')
             return
-        query = self.path.split('?', 1)[-1] if '?' in self.path else ''
-        from urllib.parse import unquote
-        q = {}
-        for kv in query.split('&'):
-            if '=' in kv:
-                k, v = kv.split('=', 1)
-                q[k] = unquote(v)
+        q = self._q()
         if q.get('token') != TOKEN:
             self._send(403, 'text/plain; charset=utf-8', '令牌不对')
+            return
+        if path == '/__pickdir':
+            self._pickdir()
             return
         try:
             n = int(self.headers.get('Content-Length', '0'))
@@ -574,7 +727,7 @@ def selftest(out=None):
             body = r.read()
         ok &= ck(r.status == 200 and len(body) > len(raw), 'GET / 返回注入后的页面')
         ok &= ck(b'__MOYIN_DESKTOP__' in body and b'__moyinSave' in body, '桌面标记与备份通道已注入')
-        inject = MARK + SAVE_JS.encode('utf-8')
+        inject = MARK + SAVE_JS.encode('utf-8') + PICK_JS.encode('utf-8')
         ok &= ck(body.replace(inject, b'', 1) == raw, '剥掉注入脚本后与源文件逐字节一致')
     except Exception as e:
         ok &= ck(False, 'GET / 失败: %s' % e)
@@ -607,6 +760,19 @@ def selftest(out=None):
         c.request('POST', '/__save?token=bad&name=x.json', b'x')
         r = c.getresponse(); r.read(); c.close()
         ok &= ck(r.status == 403, '错误令牌被拒绝')
+        # 导入文件夹通道：令牌门 + 会话门（不真的弹对话框）
+        c = http.client.HTTPConnection('127.0.0.1', PORT, timeout=8)
+        c.request('POST', '/__pickdir?token=bad', b'')
+        r = c.getresponse(); r.read(); c.close()
+        ok &= ck(r.status == 403, '选文件夹接口拒绝错误令牌')
+        ok &= ck('__moyinPickDir' in PAGE_CACHE.decode('utf-8', 'replace'), '原生选文件夹接口已注入页面')
+        try:
+            urllib.request.urlopen('http://127.0.0.1:%d/__dirfile?sid=x&i=0' % PORT, timeout=5)
+            ok &= ck(False, '无效会话应 403')
+        except urllib.error.HTTPError as e:
+            ok &= ck(e.code == 403, '无效文件夹会话返回 403')
+        s, sk, tr = scan_dir(os.path.dirname(os.path.abspath(__file__)))
+        ok &= ck(isinstance(s, list) and isinstance(sk, int), '目录扫描可用（本目录扫到 %d 个 txt/epub，跳过 %d 个）' % (len(s), sk))
     except Exception as e:
         ok &= ck(False, '/__save 异常: %s' % e)
     # 完整版：不解压，只静态核对尾部语音包索引与压缩包清单
@@ -759,6 +925,8 @@ def domcheck(path):
                 ck(snap.get('local') is True, '已连上本机免费神经语音(8177)')
                 ck(snap.get('db') == 'object', 'IndexedDB 可用')
                 ck(win.evaluate_js('!!window.__moyinSave'), '备份通道已挂载')
+                ck(win.evaluate_js('typeof window.__moyinPickDir==="function"'), '原生选文件夹通道已挂载')
+                ck(win.evaluate_js('getComputedStyle(document.body).userSelect !== "none"'), '页面文本可选中（划线前提）')
             except Exception as e:
                 ck(False, 'evaluate_js 异常: %s' % e)
             with io.open(path, 'w', encoding='utf-8') as f:
@@ -770,7 +938,7 @@ def domcheck(path):
 
         threading.Thread(target=run, daemon=True).start()
 
-    w = webview.create_window(window_title(), url(), width=1180, height=800)
+    w = webview.create_window(window_title(), url(), width=1180, height=800, text_select=True)
     webview.start(after_start, (w,), private_mode=False,
                   storage_path=os.path.join(local_dir(), 'webview'), debug=False)
     return 0
@@ -819,7 +987,7 @@ def main():
     os.makedirs(storage, exist_ok=True)
     w = webview.create_window(window_title(), url(),
                               width=1180, height=800, min_size=(760, 520),
-                              background_color='#F5F2EA')
+                              background_color='#F5F2EA', text_select=True)
     try:
         webview.start(private_mode=False, storage_path=storage, debug=False)
     finally:
