@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.9.0';
+  var VER = '1.9.2';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -36,6 +36,7 @@
     immersive: 0,
     showClock: 1,          // 顶栏显示时间与本次阅读时长
     restMin: 45,           // 连续阅读多久提醒休息（0 = 不提醒）
+    netPath: '',           // 上次用过的网络位置（SMB / 映射盘 / 本地路径）
     rate: 1, pitch: 1, volume: 1, voiceURI: '', voiceAuto: 1, pause: 120, whole: 1,
     autoNext: 1, follow: 1,
     localOn: 1, localPort: 8177, localVoice: 's12',
@@ -353,7 +354,8 @@
     if (last) {
       var rs = last.getClientRects();
       var r = rs.length ? rs[rs.length - 1] : last.getBoundingClientRect();
-      col = Math.max(0, Math.round((r.left - base) / m.step));
+      // 除以「列宽 + 栏距」（单列步距），得到的是第几列；m.step 是一屏宽，别混用
+      col = Math.max(0, Math.round((r.left - base) / (m.cw + m.gap)));
     }
     PG.cols = m.cols; PG.cw = m.cw; PG.gap = m.gap; PG.padL = m.padL; PG.step = m.step;
     PG.count = Math.max(1, Math.ceil((col + 1) / m.cols));
@@ -1273,6 +1275,20 @@
     if (e === 'txt' || e === 'text') return 'txt';
     return '';
   }
+  /* 扫描结果（原生选目录 / 网络位置）统一走这里：报数 → 确认 → 导入 */
+  function applyScan(r) {
+    if (!r || r.cancel) return;
+    if (!r.files || !r.files.length) {
+      toast(r.skipped ? T('这个文件夹里只找到 {k} 个很小的 txt，看着不像书，没有导入', { k: r.skipped })
+                      : T('这个文件夹里没有找到 TXT / EPUB'), 4200);
+      return;
+    }
+    var dn = (r.dir || '').split(/[\\/]/).filter(Boolean).pop() || r.dir;
+    var msg = T('在「{d}」里找到 {n} 个 TXT / EPUB', { d: dn, n: r.files.length });
+    if (r.skipped) msg += '，' + T('跳过 {k} 个太小的文件', { k: r.skipped });
+    if (r.truncated) msg += '，' + T('超过上限，只取前 {n} 个', { n: r.files.length });
+    confirmModal(msg + T('。开始导入？'), function () { importFiles(r.files); });
+  }
   async function importFolder() {
     // 桌面版：用 Python 的原生「选择文件夹」，不走浏览器那个「选择要上传的文件夹」
     if (typeof window.__moyinPickDir === 'function') {
@@ -1283,20 +1299,44 @@
         showModal(T('打开文件夹失败'), '<p>' + esc(e.message || String(e)) + '</p>', [{ label: T('关闭') }]);
         return;
       }
-      if (!r || r.cancel) return;
-      if (!r.files || !r.files.length) {
-        toast(r.skipped ? T('这个文件夹里只找到 {k} 个很小的 txt，看着不像书，没有导入', { k: r.skipped })
-                        : T('这个文件夹里没有找到 TXT / EPUB'), 4200);
-        return;
-      }
-      var dn = (r.dir || '').split(/[\\/]/).filter(Boolean).pop() || r.dir;
-      var msg = T('在「{d}」里找到 {n} 个 TXT / EPUB', { d: dn, n: r.files.length });
-      if (r.skipped) msg += '，' + T('跳过 {k} 个太小的文件', { k: r.skipped });
-      if (r.truncated) msg += '，' + T('超过上限，只取前 {n} 个', { n: r.files.length });
-      confirmModal(msg + T('。开始导入？'), function () { importFiles(r.files); });
+      applyScan(r);
       return;
     }
     $('dirInput').click();
+  }
+
+  /* 网络位置：SMB 共享（\\主机\共享）、映射好的网盘、本机任意绝对路径。
+     走的是系统自己的网络访问，凭据由 Windows 管——资源管理器里能打开就能读。 */
+  function importNet() {
+    var last = CFG.netPath || '';
+    showModal(T('从网络位置导入'),
+      '<p>' + esc(T('填一个文件夹路径，里面的 TXT / EPUB 会像本地文件一样导进来，不复制、不上传。')) + '</p>' +
+      '<p><input id="netPath" type="text" spellcheck="false" autocomplete="off" ' +
+      'style="width:100%;box-sizing:border-box" placeholder="\\\\192.168.1.10\\Books" value="' + (last ? esc(last) : '') + '"></p>' +
+      '<p class="kv">' + esc(T('可以写：\\\\主机\\共享名\\子目录、映射到网络的盘符（Z:\\书）、或用 NAS 的 IP。')) + '<br>' +
+      esc(T('首次访问需要账号密码：先在「资源管理器」里打开一次并勾记住，这里就能直接读。')) + '</p>' +
+      '<p class="kv">' + esc(T('这次导入只读当前选中的目录；原文件仍在原处，删掉书架里的书不会影响它们。')) + '</p>',
+      [
+        { label: T('取消') },
+        {
+          label: T('连接并扫描'), cls: 'pri', fn: function () {
+            var box = $('netPath');
+            var p = (box && box.value || '').trim();
+            if (!p) { toast(T('先填一个路径')); return; }
+            CFG.netPath = p; saveCfg();
+            closeModal();
+            toast(T('正在扫描…'), 1200);
+            window.__moyinScanDir(p).then(function (r) {
+              applyScan(r);
+            }).catch(function (e) {
+              showModal(T('连不上这个位置'), '<p>' + esc(e.message || String(e)) + '</p>' +
+                '<p class="kv">' + esc(T('确认共享已开启、本机已在资源管理器里成功打开过这个目录。')) + '</p>',
+                [{ label: T('关闭') }]);
+            });
+          }
+        }
+      ]);
+    setTimeout(function () { var b = $('netPath'); if (b) { b.focus(); b.select(); } }, 60);
   }
   async function importFiles(files) {
     var okN = 0, skipN = 0, errs = [], total = files.length;
@@ -2659,6 +2699,7 @@
       '<h3>书架与收藏</h3>' +
       '<p>书架上方一排标签是书架本身：「全部书籍」「★ 收藏」和你自建的书架。点「管理书架」可新建、重命名或解散书架（解散不会删书，书回到「未分组」）。每本书封面右上角的 ☆ 是收藏、⋯ 是菜单（改书名作者、移动书架、批量管理、移除）。批量管理可一次移动或移除多本。</p>' +
       '<p>「导入文件夹」会把整个目录里的 TXT / EPUB 一次收进来，重复文件自动跳过。</p>' +
+      '<p><b>网络位置</b>（桌面版）：书架上的「网络位置」可以填局域网共享路径，比如 <code>\\\\192.168.1.10\\Books</code>、映射到网络的盘符 <code>Z:\\书</code>，或本机任意绝对路径。走的是系统自己的网络访问，账号密码由 Windows 记着——只要在资源管理器里能打开，这里就能直接扫、直接读，不用先把书拷过来。手机上不显示这个按钮。</p>' +
       '<h3>朗读</h3><p>点「朗读」从当前屏幕位置开始念。底部条可选语音、语速、上一段 / 下一段、定时停止；正在念的段落会高亮并自动跟随滚动，念完一章自动接下一章。</p>' +
       '<p><b>续听</b>：听到哪会单独记住（与「读到哪」分开记，互不干扰）。回到书架，书本卡片下方会出现「▶ 续听 · 第 N 章」，点一下就从上次听的那一段接着念；想按看书的位置念，点开书再点「朗读」即可。朗读条最左边的下拉可随时换声线，正在念时会用新声线把当前这段重念一遍。</p>' +
       '<p>不装任何东西也能直接朗读（用系统自带语音）。想要接近真人的中文，可看「阅读设置 → 免费神经语音」：随成品附带的开源语音库已经装好（约 53 MB，内含 174 个中文说话人），之后<b>永久离线、免费、无需账号</b>。不用它时，语音下拉按「自然语音 / 在线 / 本地」分组，默认优先选最好的那个。</p>' +
@@ -2753,6 +2794,10 @@
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + AISHELL3 多说话人 VITS 模型）：不联网、不收费、无需账号，模型内含 174 个中文说话人（148 女 + 26 男），精选 11 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.9.2 新加了什么</h3><ul>' +
+      '<li><b>网络位置导入（SMB）</b>：书架多了「网络位置」，填 <code>\\\\192.168.1.10\\Books</code> 这样的局域网共享、映射好的网盘（<code>Z:\\书</code>）或本机任意绝对路径，就能像本地文件夹一样扫描导入。凭据交给 Windows 记着——资源管理器里能打开，这里就能读，不用先把书拷过来。连不上的主机 12 秒内给提示，不会一直转。</li></ul>' +
+      '<h3>1.9.1 修了什么</h3><ul>' +
+      '<li><b>章末最后一页不再「只剩左半边」</b>：双栏翻到一章结尾时，总页数被少算，剩下的列挤在最后一页左半边、后面的内容甚至翻不到。现在按真实列数算页数，末页会把剩下的内容排满，并在右栏显示「本章完 · 下一章」。</li></ul>' +
       '<h3>1.9 新加了什么</h3><ul>' +
       '<li><b>分栏只有两种</b>：单栏和双栏，不做 3 栏 4 栏那种容易读花的东西。排版面板里「分栏」是「自动 / 1 / 2」，自动按屏宽决定（够宽就双栏），也能自己锁定；手机上永远单栏，点双栏会自动切到翻页。</li>' +
       '<li><b>主题按钮改成弹面板</b>：以前按一下换一档，得来回点好几次；现在点「主题」直接列出六套配色，每张卡片就是那套主题的底色和字色，选好即生效，面板不关，可以一张张比。</li>' +
@@ -2783,7 +2828,7 @@
       '<li><b>桌面版终于能划线了</b>：桌面外壳默认把网页的文字选择关掉了，导致选中正文没反应、浮动色块也不出来。已放开，Windows 版的划线与批注和其他版本一样。</li>' +
       '<li><b>导入文件夹不再像在上传</b>：桌面版改用系统的「选择文件夹」对话框，不再是浏览器那个「选择要上传的文件夹 … 上传」的选择器。</li>' +
       '<li><b>左侧导航能退出了</b>：标签栏右侧加了 ×，再点同一个按钮也能收起，点正文空白处自动收起（有选区时不收，免得把手选的位置抖掉）。</li></ul>' +
-      '<p class="kv">版本 1.9.0 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
+      '<p class="kv">版本 1.9.2 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
   };
   function showDoc(k) {
     var d = DOCS[k] || DOCS.help;
@@ -3067,6 +3112,11 @@
     $('btnImport').onclick = function () { $('fileInput').click(); };
     $('fileInput').onchange = function (e) { if (e.target.files.length) importFiles(Array.prototype.slice.call(e.target.files)); e.target.value = ''; };
     $('btnImportDir').onclick = importFolder;
+    // 「网络位置」只在桌面版出现：网页版没有本地文件权限，SMB 更无从谈起
+    if (typeof window.__moyinScanDir === 'function') {
+      $('btnImportNet').hidden = false;
+      $('btnImportNet').onclick = importNet;
+    }
     $('dirInput').onchange = function (e) {
       var fs = Array.prototype.slice.call(e.target.files || []);
       e.target.value = '';
@@ -3390,6 +3440,7 @@
       openBookMenu: openBookMenu, copyText: copyText, rtFlush: rtFlush, saveStats: saveStats,
       /* 1.8：排版 / 分页 / 自动阅读 / 全屏 */
       showType: showType, showTheme: showTheme, showClockPanel: showClockPanel,
+      importNet: importNet, applyScan: applyScan, importFolder: importFolder,
       CLK: CLK, clkStart: clkStart, clkStop: clkStop, clkPaint: clkPaint, clkTick: clkTick,
       showRest: showRest, hideRest: hideRest, LAYN: LAYN,
       clkReset: clkReset, restTake: restTake, restSnooze: restSnooze, fmtRead: fmtRead, PG: PG, pgEnabled: pgEnabled, pgCols: pgCols, pgMeasure: pgMeasure,

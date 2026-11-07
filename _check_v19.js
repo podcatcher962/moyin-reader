@@ -173,6 +173,30 @@ async function main() {
   ok(g.cols === 1, '手机选双栏也强制单栏', g);
   ok(g.pageW <= 390, '手机上正文不超宽', g.pageW);
 
+  console.log('=== 章末页数不多不少');
+  /* 之前 col 除以了「一屏宽」，把页索引当成列索引又除了一次，总页数少算，
+     章末剩下的列显示在最后一页左半边、后面的列甚至翻不到 */
+  await viewsize(1600, 950);
+  for (const ch of [2, 3, 5]) {
+    await ev(`(function(){MY.CFG.mode='page';MY.CFG.lay='two';MY.CFG.pagew=720;MY.saveCfg();
+      MY.PG.ready=0;MY.applyCfg();MY.renderChapter(${ch},{silent:true});return 1;})()`);
+    await sleep(600);
+    const m = JSON.parse(await ev(`(function(){
+      var el=document.getElementById('page'),cs=getComputedStyle(el);
+      var step1=MY.PG.cw+MY.PG.gap;
+      var total=Math.round((el.scrollWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)+MY.PG.gap)/step1);
+      return JSON.stringify({total:total,count:MY.PG.count,cols:MY.PG.cols});})()`));
+    ok(m.count === Math.ceil(m.total / m.cols), `第 ${ch + 1} 章：${m.total} 列 → ${Math.ceil(m.total / m.cols)} 页`, m);
+  }
+  await ev("(function(){MY.PG.ready=0;MY.pgMeasure();MY.pgTo(MY.PG.count-1,{instant:true});return 1;})()");
+  await sleep(400);
+  const tail = JSON.parse(await ev(`(function(){
+    var el=document.getElementById('page'),ch=el.querySelector('#chEnd');
+    var b=ch.getBoundingClientRect();
+    return JSON.stringify({i:MY.PG.i,count:MY.PG.count,vis:(b.right>0&&b.left<innerWidth)});})()`));
+  ok(tail.i === tail.count - 1, '能翻到最后一页', tail);
+  ok(tail.vis, '最后一页能看到「本章完」', tail);
+
   console.log('=== 多栏自动带翻页');
   await viewsize(1440, 900);
   await ev("MY.showType()"); await sleep(350);
@@ -293,6 +317,61 @@ async function main() {
   ok(await ev("Number(MY.CFG.restMin)") === 60, '面板里能直接改提醒间隔', await ev("MY.CFG.restMin"));
   await ev("document.getElementById('modalX').click()");
   await sleep(200);
+
+  console.log('=== 网络位置导入（SMB / 映射盘）');
+  ok(await ev("document.getElementById('btnImportNet').hidden"), '网页版不显示「网络位置」（没有本地文件权限）');
+  /* 装上桌面外壳那套桥，再走一遍真实点击路径 */
+  await ev(`(function(){
+    window.__netCalls=[];
+    window.__moyinScanDir=function(p){
+      window.__netCalls.push(p);
+      var txt=new TextEncoder().encode('网络位置测试\\n\\n' + '墨色在纸上铺开，灯下的字有点发暖。'.repeat(60));
+      return Promise.resolve({dir:p,sid:'s1',net:true,skipped:0,truncated:false,
+        files:[{name:'山中来信.txt',size:txt.length,arrayBuffer:function(){return Promise.resolve(txt.buffer);}}]});
+    };
+    return 1;})()`);
+  const before = await ev("MY.BOOKS.length");
+  await ev("MY.importNet()"); await sleep(400);
+  ok((await ev("document.getElementById('modalTitle').textContent")).indexOf('网络位置') >= 0, '弹出网络位置面板',
+    await ev("document.getElementById('modalTitle').textContent"));
+  ok(await ev("!!document.getElementById('netPath')"), '面板里有路径输入框');
+  const ph = await ev("document.getElementById('netPath').placeholder");
+  ok(/192\.168|\\\\\\\\/.test(ph), '输入框给了 UNC 写法示例', ph);
+  /* 空路径不发起扫描 */
+  await ev("(function(){var b=[].slice.call(document.querySelectorAll('#modalFoot button')).filter(function(x){return /连接/.test(x.textContent);})[0];b.click();return 1;})()");
+  await sleep(250);
+  ok((await ev("window.__netCalls.length")) === 0, '空路径不发请求');
+  ok(await ev("document.getElementById('modal').classList.contains('on')"), '空路径时面板留着让人补');
+  /* 填路径再扫 */
+  await ev(`(function(){
+    var i=document.getElementById('netPath');
+    i.value='\\\\\\\\192.168.1.10\\\\Books';
+    var b=[].slice.call(document.querySelectorAll('#modalFoot button')).filter(function(x){return /连接/.test(x.textContent);})[0];
+    b.click(); return 1;})()`);
+  await sleep(600);
+  const calls = JSON.parse(await ev("JSON.stringify(window.__netCalls)"));
+  ok(calls.length === 1 && calls[0] === '\\\\192.168.1.10\\Books', '按填的路径去扫（原样传给外壳）', calls);
+  ok(await ev("MY.CFG.netPath") === '\\\\192.168.1.10\\Books', '路径记下来了，下次打开还填着', await ev("MY.CFG.netPath"));
+  const cmsg = await ev("document.getElementById('modalBody').textContent");
+  ok(/找到 1 个/.test(cmsg), '扫描结果报数：找到 1 个', cmsg.slice(0, 40));
+  ok(/Books/.test(cmsg), '确认框里带了目录名', cmsg.slice(0, 40));
+  /* 确认 → 真的入库 */
+  await ev("(function(){var b=[].slice.call(document.querySelectorAll('#modalFoot button')).filter(function(x){return /确定|开始|导入/.test(x.textContent);})[0];b.click();return 1;})()");
+  await sleep(1400);
+  ok((await ev("MY.BOOKS.length")) === before + 1, '确认后书进了书架', { before, after: await ev("MY.BOOKS.length") });
+  ok(await ev("MY.BOOKS.some(function(b){return b.name==='山中来信';})"), '书名取的是文件名（书已入库）',
+    await ev("MY.BOOKS.map(function(b){return b.name;}).slice(-4)"));
+  /* 外壳报错时要有人话，不能静默 */
+  await ev(`(function(){window.__moyinScanDir=function(){return Promise.reject(new Error('连接超时：12 秒内没能打开'));};return 1;})()`);
+  await ev("MY.importNet()"); await sleep(350);
+  await ev(`(function(){document.getElementById('netPath').value='\\\\\\\\nas\\\\x';
+    var b=[].slice.call(document.querySelectorAll('#modalFoot button')).filter(function(x){return /连接/.test(x.textContent);})[0];
+    b.click();return 1;})()`);
+  await sleep(600);
+  ok((await ev("document.getElementById('modalTitle').textContent")).indexOf('连不上') >= 0, '连不上时给出可读提示',
+    await ev("document.getElementById('modalTitle').textContent"));
+  await ev("document.getElementById('modalX').click()"); await sleep(200);
+  await ev("(function(){delete window.__moyinScanDir;return 1;})()");
 
   console.log('=== 英文界面');
   await ev("MY.setLang('en')"); await sleep(500);
