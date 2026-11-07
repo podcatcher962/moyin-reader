@@ -233,7 +233,11 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 - **Role reading** — narration keeps your chosen voice while quoted dialogue switches per character, consistently for the whole book.
 - **Listening** — paragraph highlight with auto-scroll, auto-advance to the next chapter, sleep timer, speed control.
 - **Resume** — listening position is tracked separately from reading position; one click on a shelf card resumes "chapter N".
-- **Reading** — continuous scroll, or whole-screen page turns with **one or two columns** (Auto / 1 / 2; wide screens get two, phones always one). Font size, line height, paragraph gap, letter spacing, first-line indent, five families, justified or ragged right, measure width and side margins are all adjustable.
+- **Reading** — continuous scroll, or whole-screen page turns with **one or two columns** (Auto / 1 / 2; wide screens get two, phones always one). Font size, line height, paragraph gap, letter spacing, first-line indent, **ten typefaces** (Song / YaHei / Hei / Kai / FangSong / ZhongSong / LiSu / YouYuan / DengXian / Mono, each button previewed in its own face), four font weights, justified or ragged right, measure width and side margins are all adjustable.
+- **Traditional → Simplified** — a Chinese switch in Settings renders Traditional books in Simplified; body and contents both convert. It is a **same-length substitution** done at display time, so the file is untouched, switching back restores it, and highlight / note / speech positions never drift. Full-text search follows the switch too.
+- **Illustrations** — tap any image in an EPUB for a full-screen view; tap anywhere or press Esc to close.
+- **Touch** — swipe left/right to turn pages, pinch to change text size (saved on release).
+- **Drag & drop** — drop TXT / EPUB (or a whole folder) onto the window to import; dropping while reading does not interrupt you.
 - **Appearance** — dark / light / sepia / green / slate / pure black, picked from a card panel in one go, plus your own paper and text colour and a brightness dimmer for reading in the dark.
 - **Network share (desktop)** — read straight from a LAN share (SMB): type `\\192.168.1.10\Books`, a mapped drive such as `Z:\books`, or any local path, and its TXT / EPUB are imported as if they were on this machine. Credentials are handled by Windows, so anything File Explorer can open, the reader can scan.
 - **Reading clock & breaks** — the toolbar shows the time and how long you have read this session (amber at 30 minutes, red at 60); a reminder offers a break or a ten-minute snooze after your chosen stretch.
@@ -247,6 +251,18 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 - **Data** — everything in local IndexedDB, with export / import backup.
 - **Privacy** — zero network by default; speech is synthesized on `127.0.0.1`, text never leaves the machine.
 
+### Platforms
+
+| Platform | How |
+|---|---|
+| **Windows** | `MoYinReader.exe` — full build with the voice pack inside |
+| **Android** | `MoYinReader.apk` — page embedded, speech via system TTS |
+| **Any system** | Double-click `MoYinReader.html` |
+| **Linux / domestic (UOS, Kylin, openEuler)** | `sudo dpkg -i moyin-reader_*.deb`, or unzip the tarball and run the launcher — a 10 MB standalone binary, **no Python needed** (verified on UOS Desktop 20 Professional, x86_64) |
+| **macOS** | Unzip, then run `build-macos.sh` on your Mac to produce a `.app` |
+
+The Linux binary only needs `libc` / `libz` / `libpthread` / `libdl` (glibc 2.28+). On aarch64 (Phytium / Kunpeng) and loongarch64 (Loongson) it falls back to the Python or web route; `build-linux.sh` builds a native binary on such a machine.
+
 ### Builds
 
 | File | Size | Notes |
@@ -254,7 +270,10 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 | `MoYinReader.exe` | ~47 MB | Full build, voice pack appended inside the exe |
 | `MoYinReader_Lite.exe` | ~17 MB | Needs a `VoicePack` folder (~53 MB) next to it |
 | `MoYinReader.html` | ~372 KB | Standalone web build |
-| `MoYinReader.apk` | ~177 KB | Android shell with the page embedded |
+| `MoYinReader.apk` | ~197 KB | Android shell with the page embedded |
+| `moyin-reader_*_amd64.deb` | ~9.7 MB | UOS / Kylin / openEuler, installs into the app menu |
+| `MoYinReader-Linux-*.tar.gz` | ~9.8 MB | Portable build, same x86_64 binary, unzip and run |
+| `MoYinReader-macOS-*.zip` | ~157 KB | Source + `build-macos.sh`; run it once on your Mac to get a `.app` |
 
 Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** — or open the **[web version](https://podcatcher962.github.io/moyin-reader/)** and install nothing.
 
