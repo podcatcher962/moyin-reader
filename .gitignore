@@ -69,3 +69,10 @@ promo/ffmpeg.exe
 promo/_*.png
 promo/o264.bz2
 _ffmpeg.zip
+
+# ---- 宣传片成品（体积大，走视频号/本地分发，不入库；只留渲染脚本） ----
+promo/*.mp4
+promo/_*.wav
+promo/_*.m4a
+promo/_mid.mp4
+_prev/
