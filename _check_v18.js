@@ -290,11 +290,19 @@ async function main() {
   await sleep(500);
 
   console.log('=== 主题与自定义颜色');
-  await ev("document.getElementById('btnTheme').click()"); await sleep(150);
-  ok(await ev("document.documentElement.getAttribute('data-theme')") === 'light', '主题按钮仍可快速切换', await ev("document.documentElement.getAttribute('data-theme')"));
+  /* 1.9 起主题按钮改为弹出面板选择，不再按一下换一档 */
+  await ev("document.getElementById('btnTheme').click()"); await sleep(250);
+  ok(await ev("document.getElementById('modal').classList.contains('on')"), '主题按钮弹出选择面板');
+  ok(await ev("document.querySelectorAll('#modalBody .thCard').length") === 6, '六套主题都在面板里',
+    await ev("document.querySelectorAll('#modalBody .thCard').length"));
   const all = [];
-  for (let i = 0; i < 6; i++) { await ev("document.getElementById('btnTheme').click()"); await sleep(60); all.push(await ev("document.documentElement.getAttribute('data-theme')")); }
-  ok(all.every(x => ['dark', 'light', 'sepia', 'green', 'gray', 'black'].indexOf(x) >= 0), '六套主题循环', all);
+  for (const k of ['light', 'sepia', 'green', 'gray', 'black', 'dark']) {
+    await ev(`(function(){document.querySelector('#modalBody .thCard[data-th="${k}"]').click();return 1;})()`);
+    await sleep(130);
+    all.push(await ev("document.documentElement.getAttribute('data-theme')"));
+  }
+  ok(all.join() === 'light,sepia,green,gray,black,dark', '六套主题都能点选', all);
+  await ev("document.getElementById('modalX').click()"); await sleep(200);
   await ev("MY.setTheme('green')"); await sleep(120);
   ok((await ev("getComputedStyle(document.documentElement).getPropertyValue('--paper')")).trim().toLowerCase() === '#f3f8ec', '护眼绿主题生效');
   await ev("MY.setTheme('dark')"); await sleep(120);
@@ -369,9 +377,10 @@ async function main() {
   ok(await ev("document.body.classList.contains('imm')") === false, 'Esc 退出沉浸模式');
 
   console.log('=== 快捷键');
-  const th0 = await ev("document.documentElement.getAttribute('data-theme')");
-  await ev("document.dispatchEvent(new KeyboardEvent('keydown',{key:'T',bubbles:true}))"); await sleep(120);
-  ok(await ev("document.documentElement.getAttribute('data-theme')") !== th0, 'T 键换主题');
+  await ev("document.dispatchEvent(new KeyboardEvent('keydown',{key:'T',bubbles:true}))"); await sleep(300);
+  ok(await ev("document.getElementById('modal').classList.contains('on')"), 'T 键打开主题面板');
+  await ev("document.getElementById('modalX').click()"); await sleep(200);
+  ok(!(await ev("document.getElementById('modal').classList.contains('on')")), '关掉面板后继续用快捷键');
   const fs0 = await ev('MY.CFG.fs');
   await ev("document.dispatchEvent(new KeyboardEvent('keydown',{key:'=',ctrlKey:true,bubbles:true}))"); await sleep(150);
   ok(await ev('MY.CFG.fs') === fs0 + 1, 'Ctrl + = 放大字号');

@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.8.1';
+  var VER = '1.9.0';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -16,6 +16,8 @@
     mono: '"Cascadia Mono","Consolas","Courier New",monospace'
   };
   var THEMES = ['dark', 'light', 'sepia', 'green', 'gray', 'black'];
+  /* 分栏档位：auto 自动，其余是每屏固定几栏 */
+  var LAYN = { one: 1, two: 2, three: 3, four: 4 };
   var DEF = {
     theme: 'dark', lay: 'auto', motion: 0, fs: 19, lh: 1.85, pagew: 720,
     ff: 'serif', align: 'justify', sort: 'last', txtEnc: 'auto',
@@ -31,6 +33,8 @@
     autoScrollSpeed: 3,    // 自动滚动速度 1~10
     autoPageSec: 20,       // 自动翻页停留秒数
     immersive: 0,
+    showClock: 1,          // 顶栏显示时间与本次阅读时长
+    restMin: 45,           // 连续阅读多久提醒休息（0 = 不提醒）
     rate: 1, pitch: 1, volume: 1, voiceURI: '', voiceAuto: 1, pause: 120, whole: 1,
     autoNext: 1, follow: 1,
     localOn: 1, localPort: 8177, localVoice: 's12',
@@ -115,7 +119,7 @@
     var h = document.documentElement, s = h.style;
     /* 双栏必须靠翻页成立：一屏高度固定，超出的内容才会向右排成新列。
        滚动模式没有固定屏高，column-count 摆出来是两列同步滚动，读起来会串行，所以强制走翻页。 */
-    if (CFG.lay === 'two' && CFG.mode !== 'page') CFG.mode = 'page';
+    if ((LAYN[CFG.lay] || 0) > 1 && CFG.mode !== 'page') CFG.mode = 'page';
     var nowPage = CFG.mode === 'page', wasPage = h.getAttribute('data-mode') === 'page';
     /* 切换阅读方式时先抓住眼前那段，切完再定位回去，别让人丢位置 */
     var keep = BK ? (wasPage ? pgTopPara() : scrollTopPara()) : null;
@@ -139,7 +143,7 @@
     $('page').style.textAlign = CFG.align;
     if ($('dim')) $('dim').style.opacity = Math.max(0, Math.min(0.6, Number(CFG.dim) || 0));
     var i = $('spRate'); if (i) { i.value = CFG.rate; $('spRateTx').textContent = Number(CFG.rate).toFixed(1) + '×'; }
-    syncAutoBtn(); syncFullBtn();
+    syncAutoBtn(); syncFullBtn(); clkPaint(); applyImm();
     // 排版变化后：翻页模式重新分页（尽量停在原来那段），滚动模式清掉分页残留
     if (!pgEnabled()) {
       pgReset();
@@ -188,10 +192,91 @@
     CFG.theme = k; saveCfg(); applyCfg();
     toast(T('主题：{n}', { n: T(THEME_NAME[k]) }), 1400);
   }
+  /* 每套主题的「纸色 / 字色 / 主色」，只给主题面板画预览用 */
+  var TH_PAL = {
+    dark: { bg: '#1F2125', tx: '#E6E4E1', ac: '#4A9EFF' },
+    light: { bg: '#FFFFFF', tx: '#22252B', ac: '#1668C4' },
+    sepia: { bg: '#FAF3E3', tx: '#3B3226', ac: '#9A5B2C' },
+    green: { bg: '#F3F8EC', tx: '#26301D', ac: '#3E7C4C' },
+    gray: { bg: '#252D37', tx: '#DEE5EE', ac: '#69A8F5' },
+    black: { bg: '#000000', tx: '#C4C4C8', ac: '#5AA9FF' }
+  };
+  /* 主题面板：先看后点、选定即生效 —— 不再「按一次换一档」 */
+  function showTheme() {
+    var cards = THEMES.map(function (k) {
+      var p = TH_PAL[k] || TH_PAL.dark;
+      return '<button class="thCard' + (CFG.theme === k ? ' on' : '') + '" data-th="' + k + '"' +
+        ' style="background:' + p.bg + ';color:' + p.tx + ';border-color:' + p.ac + '">' +
+        '<i class="dot" style="background:' + p.ac + '"></i>' +
+        '<b>' + esc(T(THEME_NAME[k])) + '</b>' +
+        '<span class="demo">春眠不觉晓</span>' +
+        '<span class="tick">✓</span></button>';
+    }).join('');
+    var cbg = hex6(CFG.customBg, hex6(curVar('--paper'), '#1F2125'));
+    var ctx = hex6(CFG.customTx, hex6(curVar('--paperTx'), '#E6E4E1'));
+    var h = '<div class="thGrid">' + cards + '</div>' +
+      '<div class="row clrRow"><label>' + T('自定义颜色') + '</label>' +
+      '<span class="kv">' + T('底色') + '</span><input type="color" data-set="customBg" value="' + cbg + '">' +
+      '<span class="kv">' + T('字色') + '</span><input type="color" data-set="customTx" value="' + ctx + '">' +
+      '<button data-act="clr">' + T('清空') + '</button><span class="kv">' + T('清空后跟随主题') + '</span></div>' +
+      '<div class="row"><label>' + T('亮度') + '</label><input type="range" data-set="dim" min="0" max="0.55" step="0.05" value="' +
+      (Number(CFG.dim) || 0) + '" style="flex:1"><span id="fDim">' + Math.round((Number(CFG.dim) || 0) * 100) + '%</span></div>' +
+      '<p class="kv">' + T('点一下立刻换上，自动记住。字号 / 行距 / 分栏在「更多排版」里。') + '</p>';
+    showModal(T('主题'), h, [
+      { label: T('更多排版…'), fn: function () { showType(); } },
+      { label: T('完成'), cls: 'pri' }]);
+    var mb = $('modalBody');
+    mb.onclick = function (e) {
+      var th = e.target.closest('[data-th]');
+      if (th) { setTheme(th.getAttribute('data-th')); showTheme(); return; }
+      if (e.target.closest('[data-act="clr"]')) {
+        CFG.customBg = ''; CFG.customTx = ''; saveCfg(); applyCfg(); showTheme();
+        toast(T('已跟随主题配色'), 1500);
+      }
+    };
+    mb.oninput = function (e) {
+      var k = e.target.getAttribute('data-set'); if (!k) return;
+      if (k === 'dim') {
+        CFG.dim = parseFloat(e.target.value) || 0;
+        if ($('fDim')) $('fDim').textContent = Math.round(CFG.dim * 100) + '%';
+      } else CFG[k] = e.target.value;
+      saveCfg(); applyCfg();
+    };
+  }
   function cycleLayout() {
-    var a = ['auto', 'one', 'two']; CFG.lay = a[(a.indexOf(CFG.lay) + 1) % a.length]; saveCfg(); applyCfg();
+    var a = ['auto', 'one', 'two', 'three', 'four'];
+    CFG.lay = a[(a.indexOf(CFG.lay) + 1) % a.length]; saveCfg(); applyCfg();
     syncTypeBtn();
-    toast(T('分栏：{n}', { n: T({ auto: '自动分栏', one: '单栏', two: '双栏' }[CFG.lay]) }));
+    toast(T('分栏：{n}', { n: T({ auto: '自动', one: '1 栏', two: '2 栏', three: '3 栏', four: '4 栏' }[CFG.lay]) }));
+  }
+
+  /* 点顶栏时钟：看时长、开关显示、调休息提醒间隔 */
+  function showClockPanel() {
+    var now = new Date();
+    var hm = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    var b = function (key, v, label, on) {
+      return '<button data-ck="' + key + '" data-v="' + v + '"' + (on ? ' class="on"' : '') + '>' + label + '</button>';
+    };
+    var h = '<div class="clkBig"><b>' + hm + '</b><span>' + T('本次已读 {n}', { n: fmtRead(clkTotal()) }) + '</span></div>' +
+      '<div class="row"><label>' + T('顶栏时钟') + '</label><div class="seg">' +
+      b('showClock', 1, T('显示'), !!Number(CFG.showClock)) +
+      b('showClock', 0, T('隐藏'), !Number(CFG.showClock)) + '</div></div>' +
+      '<div class="row"><label>' + T('休息提醒') + '</label><div class="seg">' +
+      b('restMin', 0, T('关闭'), !Number(CFG.restMin)) +
+      [30, 45, 60, 90].map(function (n) {
+        return b('restMin', n, T('{n} 分钟', { n: n }), Number(CFG.restMin) === n);
+      }).join('') + '</div></div>' +
+      '<p class="kv">' + T('时长只算真正在读的时间：回书架、切走窗口都会停表。连续读满设定时长会提醒你休息。') + '</p>';
+    showModal(T('阅读时钟'), h, [
+      { label: T('重新计时'), fn: function () { restTake(); showClockPanel(); } },
+      { label: T('完成'), cls: 'pri' }]);
+    $('modalBody').onclick = function (e) {
+      var x = e.target.closest('[data-ck]'); if (!x) return;
+      var k = x.getAttribute('data-ck'), v = parseInt(x.getAttribute('data-v'), 10) || 0;
+      CFG[k] = v; saveCfg(); applyCfg();
+      if (k === 'restMin') { CLK.mark = clkTotal(); CLK.warned = 0; CLK.snoozeTo = 0; }
+      showClockPanel();
+    };
   }
 
   /* ================= 分页引擎（翻页模式） =================
@@ -200,13 +285,17 @@
   var PG = { i: 0, count: 1, cols: 1, cw: 0, gap: 0, padL: 0, step: 0, ready: 0 };
 
   function pgEnabled() { return CFG.mode === 'page'; }
+  /* 每屏几栏：auto 按可用宽度推（最多 3），手动 1~4；手机一律单栏 */
   function pgCols() {
     if (!pgEnabled()) return 1;
     var w = ($('pageWrap') && $('pageWrap').clientWidth) || 800;
-    if (w < 620) return 1;                       // 手机一律单栏
-    if (CFG.lay === 'one') return 1;
-    if (CFG.lay === 'two') return w >= 700 ? 2 : 1;
-    return w >= 880 ? 2 : 1;                     // 自动：宽屏双栏
+    if (w < 620) return 1;                        // 手机一律单栏
+    var pad = Math.max(10, Number(CFG.padw) || 32);
+    var usable = w - pad * 2 + 60;                // 加上最后一个栏距，便于整除
+    var want = LAYN[CFG.lay] || 0;
+    if (!want) want = Math.max(1, Math.min(3, Math.floor(usable / 520)));   // 自动：每栏够 520 才加一栏
+    var maxFit = Math.max(1, Math.floor(usable / 360));                     // 每栏至少 300px，再多就挤了
+    return Math.max(1, Math.min(want, maxFit, 4));
   }
   function pgGeo() {
     var el = $('page'), cs = getComputedStyle(el);
@@ -224,6 +313,28 @@
     el.classList.remove('pg-slide', 'pg-fade');
     PG.cols = 1; PG.count = 1; PG.i = 0; PG.ready = 0;
   }
+  /* 实测列距：把段落矩形的左缘聚类，相邻簇中位数之差就是「列宽 + 栏距」。
+     比拿容器宽自己除更可靠——浏览器若因取整排出了半列，这里能立刻纠正步长。 */
+  function pgRealStep() {
+    var el = $('page'); if (!el) return 0;
+    var list = el.querySelectorAll('.rdp'), n = Math.min(list.length, 160), lefts = [];
+    for (var i = 0; i < n; i++) {
+      var rs = list[i].getClientRects();
+      for (var j = 0; j < rs.length; j++) if (rs[j].width > 40 && rs[j].height > 2) lefts.push(Math.round(rs[j].left));
+    }
+    if (lefts.length < 2) return 0;
+    lefts.sort(function (a, b) { return a - b; });
+    var groups = [[lefts[0]]];
+    for (var k = 1; k < lefts.length; k++) {
+      var g = groups[groups.length - 1];
+      if (lefts[k] - g[g.length - 1] > 46) groups.push([lefts[k]]); else g.push(lefts[k]);
+    }
+    if (groups.length < 2) return 0;
+    var med = function (a) { return a[a.length >> 1]; }, d = [];
+    for (var m = 1; m < groups.length; m++) d.push(med(groups[m]) - med(groups[m - 1]));
+    d.sort(function (a, b) { return a - b; });
+    return d[d.length >> 1];
+  }
   function pgMeasure() {
     var el = $('page');
     if (!el) return PG;
@@ -233,13 +344,15 @@
     el.style.columnCount = cols;
     el.style.transform = 'translateX(0px)';
     var m = pgGeo();
+    var real = pgRealStep();                    // 实测「列宽 + 栏距」
+    if (real > 80) { m.cw = Math.max(60, real - m.gap); m.step = m.cols * real; }
     var base = el.getBoundingClientRect().left + m.padL;
     var last = el.querySelector('#chEnd') || el.lastElementChild;
     var col = 0;
     if (last) {
       var rs = last.getClientRects();
       var r = rs.length ? rs[rs.length - 1] : last.getBoundingClientRect();
-      col = Math.max(0, Math.round((r.left - base) / (m.cw + m.gap)));
+      col = Math.max(0, Math.round((r.left - base) / m.step));
     }
     PG.cols = m.cols; PG.cw = m.cw; PG.gap = m.gap; PG.padL = m.padL; PG.step = m.step;
     PG.count = Math.max(1, Math.ceil((col + 1) / m.cols));
@@ -393,6 +506,79 @@
     p.classList.add('on');
   }
   function hidePill() { var p = $('autoPill'); if (p) p.classList.remove('on'); }
+
+  /* ================= 阅读时钟 / 本次时长 / 休息提醒 =================
+     时长按「真正在读」累计：离开阅读界面、页面被切到后台都停表，
+     回来接着算；隔了 10 分钟以上没读则重新起算。 */
+  var CLK = { t0: 0, acc: 0, mark: 0, last: 0, timer: 0, snoozeTo: 0, warned: 0 };
+  function clkTotal() { return CLK.acc + (CLK.t0 ? Date.now() - CLK.t0 : 0); }
+  function fmtRead(ms) {
+    var m = Math.floor(ms / 60000);
+    if (m < 60) return T('{n} 分钟', { n: m });
+    return T('{a} 小时 {b} 分', { a: Math.floor(m / 60), b: m % 60 });
+  }
+  function clkPaint() {
+    var el = $('clock'); if (!el) return;
+    if (!Number(CFG.showClock)) { el.classList.add('off'); return; }
+    el.classList.remove('off');
+    var d = new Date();
+    var hm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    var ms = clkTotal(), m = Math.floor(ms / 60000);
+    // 窄屏标题要让位，时长用短写法
+    var narrow = (window.innerWidth || 0) < 900;
+    el.textContent = hm + ' · ' + (narrow ? T('{n} 分', { n: m }) : T('已读 {n}', { n: fmtRead(ms) }));
+    el.title = T('当前时间 {t} · 本次已读 {n}', { t: hm, n: fmtRead(ms) });
+    el.classList.toggle('warn', m >= 30 && m < 60);
+    el.classList.toggle('tired', m >= 60);
+    var fl = $('clockFloat');
+    if (fl) { fl.textContent = hm + ' · ' + T('已读 {n}', { n: fmtRead(ms) }); fl.style.opacity = ''; }
+  }
+  function clkTick() {
+    clkPaint();
+    var rest = Number(CFG.restMin) || 0;
+    if (!rest || !CLK.t0 || CLK.warned) return;
+    if (Date.now() < CLK.snoozeTo) return;
+    if (clkTotal() - CLK.mark < rest * 60000) return;
+    CLK.warned = 1;
+    showRest(rest);
+  }
+  function clkStart() {
+    if (CLK.t0) return;
+    // 上次读得太久以前（>10 分钟），这次重新起算
+    if (CLK.last && Date.now() - CLK.last > 600000) { CLK.acc = 0; CLK.mark = 0; }
+    CLK.t0 = Date.now();
+    if (!CLK.timer) CLK.timer = setInterval(clkTick, 20000);
+    clkPaint();
+  }
+  function clkStop(save) {
+    if (CLK.t0) { CLK.acc += Date.now() - CLK.t0; CLK.t0 = 0; }
+    CLK.last = Date.now();
+    if (save !== false) clkPaint();
+  }
+  function clkReset() {
+    CLK.acc = 0; CLK.mark = 0; CLK.snoozeTo = 0; CLK.warned = 0;
+    hideRest(); clkPaint();
+  }
+  function showRest(min) {
+    var t = $('restTip'); if (!t) return;
+    if ($('restTipTx')) $('restTipTx').innerHTML = '<span class="ic">☕</span>' +
+      esc(T('已连续阅读 {n}，抬头看看远处，喝口水吧。', { n: fmtRead(min * 60000) }));
+    t.classList.add('on');
+  }
+  function hideRest() { var t = $('restTip'); if (t) t.classList.remove('on'); }
+  function restTake() {
+    autoStop(true); hideRest();
+    CLK.warned = 0; CLK.mark = 0; CLK.acc = 0; CLK.snoozeTo = 0; CLK.last = 0;
+    if (CLK.t0) CLK.t0 = Date.now();
+    clkPaint();
+    toast(T('已重新计时，读累了就歇会儿'), 2600);
+  }
+  function restSnooze() {
+    hideRest();
+    CLK.warned = 0; CLK.snoozeTo = Date.now() + 10 * 60000;
+    CLK.mark = clkTotal();
+    toast(T('10 分钟后再提醒'), 1800);
+  }
   function autoStepPage() {
     if (!AUTO.on || AUTO.paused || document.hidden) return;
     if ($('modal').classList.contains('on') || $('side').classList.contains('on')) return;
@@ -1150,7 +1336,8 @@
   function showView(v) {
     $('viewLib').classList.toggle('on', v === 'lib');
     $('viewRead').classList.toggle('on', v === 'read');
-    if (v === 'lib') { autoStop(true); renderShelf(); }
+    if (v === 'lib') { autoStop(true); hideRest(); clkStop(); renderShelf(); }
+    else clkStart();
     applyImm();
   }
   async function openBook(id) {
@@ -1192,7 +1379,7 @@
   function closeBook() {
     rtFlush();
     stopSpeak(true); savePos(); BK = null;
-    CFG.immersive = 0; saveCfg();                          // 回书架时退出全屏阅读
+    CFG.immersive = 0; saveCfg(); clkStop();               // 回书架时退出全屏阅读，计时停表
     try { if (isFull()) { var ex = document.exitFullscreen || document.webkitExitFullscreen; if (ex) { var r = ex.call(document); if (r && r.catch) r.catch(function () { }); } } } catch (e) { }
     showView('lib');
     $('side').classList.remove('on'); $('speakBar').classList.remove('on');
@@ -2565,6 +2752,13 @@
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + AISHELL3 多说话人 VITS 模型）：不联网、不收费、无需账号，模型内含 174 个中文说话人（148 女 + 26 男），精选 11 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.9 新加了什么</h3><ul>' +
+      '<li><b>分栏可选 1~4 栏</b>：大屏不再只有两栏。排版面板里「分栏」现在有「自动 / 1 / 2 / 3 / 4」，自动按屏宽定（最多 3 栏），也可以自己指定；每栏不少于 300px，放不下会自动降档，手机上永远单栏。选 2 栏以上会自动切到翻页。</li>' +
+      '<li><b>主题按钮改成弹面板</b>：以前按一下换一档，得来回点好几次；现在点「主题」直接列出六套配色，每张卡片就是那套主题的底色和字色，选好即生效，面板不关，可以一张张比。</li>' +
+      '<li><b>「设置」常驻顶栏</b>：阅读界面的按钮组最后多了「设置」，任何时候都能打开完整设置；手机上按钮排成两行，不会被挤掉。</li>' +
+      '<li><b>阅读时钟</b>：顶栏显示当前时间与本次已读时长，读满 30 分钟转黄、60 分钟转红；沉浸模式下右上角留一个淡时钟。点一下可以开关、也可以重新计时。</li>' +
+      '<li><b>休息提醒</b>：连续读满设定时长（默认 45 分钟，可设 30 / 45 / 60 / 90 或关闭）会浮出一条提示，选「休息一下」重新计时，或「稍后再提」十分钟后再来。时长只算真正在读的时间，回书架、切走窗口都会停表。</li>' +
+      '<li><b>翻页不再出「半列」</b>：一屏的步长改成按实测列距计算，浏览器万一多排了半列也会被立刻纠正。</li></ul>' +
       '<h3>1.8 新加了什么：把版式做到能和成熟阅读软件掰手腕</h3><ul>' +
       '<li><b>翻页阅读</b>：除了一直有的滚动，新增整屏翻页。宽屏 / 平板自动左右<b>双栏</b>，手机<b>单栏</b>；点屏幕左右两侧、滚轮、空格、← → 、手机上左右滑都能翻，翻页动画可选滑动 / 淡入 / 无。</li>' +
       '<li><b>排版面板</b>：顶栏「排版」一处集中管理——字号（A− / A+ / 滑块）、行距、段间距、字间距、首行缩进、五种字体（宋体 / 黑体 / 楷体 / 仿宋 / 等宽）、两端或左对齐、版心宽度与左右页边距，底部一键恢复默认。</li>' +
@@ -2588,7 +2782,7 @@
       '<li><b>桌面版终于能划线了</b>：桌面外壳默认把网页的文字选择关掉了，导致选中正文没反应、浮动色块也不出来。已放开，Windows 版的划线与批注和其他版本一样。</li>' +
       '<li><b>导入文件夹不再像在上传</b>：桌面版改用系统的「选择文件夹」对话框，不再是浏览器那个「选择要上传的文件夹 … 上传」的选择器。</li>' +
       '<li><b>左侧导航能退出了</b>：标签栏右侧加了 ×，再点同一个按钮也能收起，点正文空白处自动收起（有选区时不收，免得把手选的位置抖掉）。</li></ul>' +
-      '<p class="kv">版本 1.8.1 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
+      '<p class="kv">版本 1.9.0 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
   };
   function showDoc(k) {
     var d = DOCS[k] || DOCS.help;
@@ -2651,7 +2845,8 @@
       '<h3>' + T('文件与界面') + '</h3><div class="row"><label>' + T('TXT 编码') + '</label><select data-set="txtEnc">' +
       encOpts.map(function (x) { return '<option value="' + x[0] + '"' + (CFG.txtEnc === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') +
       '</select><span class="kv">' + T('改完重新打开书生效') + '</span></div>' +
-      '<div class="row"><label>' + T('分栏') + '</label>' + seg('lay', [['auto', T('自动分栏')], ['one', T('单栏')], ['two', T('双栏')]]) + '</div>' +
+      '<div class="row"><label>' + T('分栏') + '</label>' + seg('lay', [['auto', T('自动')], ['one', '1'], ['two', '2'], ['three', '3'], ['four', '4']]) +
+      '<span class="kv">' + T('自动按屏宽定，也可手动 1~4 栏（手机始终单栏）') + '</span></div>' +
       '<div class="row"><label>' + T('阅读模式') + '</label>' + seg('mode', [['scroll', T('滚动')], ['page', T('翻页')]]) + '</div>' +
       '<p class="kv">' + T('设置即时生效并保存在本机。') + '</p>';
     showModal(T('阅读设置'), h, [{ label: T('恢复默认'), fn: function () { Object.assign(CFG, DEF); saveCfg(); applyCfg(); fillVoices(); showSettings(); toast(T('已恢复默认')); } }, { label: T('完成'), cls: 'pri' }]);
@@ -2683,9 +2878,9 @@
       if (act === 'probe') { LOCAL.miss = 0; localProbe(true).then(function () { showSettings(); }); return; }
       var k = b.getAttribute('data-set'), v = b.getAttribute('data-v');
       if (k === 'bool') CFG[v] = CFG[v] ? 0 : 1; else CFG[k] = v;
-      /* 双栏与翻页联动，两个入口（设置 / 排版面板）行为保持一致 */
-      if (k === 'lay' && v === 'two') CFG.mode = 'page';
-      if (k === 'mode' && v === 'scroll' && CFG.lay === 'two') CFG.lay = 'auto';
+      /* 多栏与翻页联动，两个入口（设置 / 排版面板）行为保持一致 */
+      if (k === 'lay' && (LAYN[v] || 0) > 1) CFG.mode = 'page';
+      if (k === 'mode' && v === 'scroll' && (LAYN[CFG.lay] || 0) > 1) CFG.lay = 'auto';
       if (k === 'mode') PG.ready = 0;
       saveCfg(); applyCfg();
       if (v === 'voiceAuto' && CFG.voiceAuto) fillVoices();
@@ -2696,7 +2891,7 @@
     };
   }
   /* ---------------- 排版面板（1.8） ---------------- */
-  var TYPE_KEYS = ['theme', 'mode', 'lay', 'pageAnim', 'fs', 'lh', 'ps', 'ls', 'indent', 'padw', 'pagew', 'ff', 'align', 'dim', 'customBg', 'customTx', 'autoScrollSpeed', 'autoPageSec'];
+  var TYPE_KEYS = ['theme', 'mode', 'lay', 'pageAnim', 'fs', 'lh', 'ps', 'ls', 'indent', 'padw', 'pagew', 'ff', 'align', 'dim', 'customBg', 'customTx', 'autoScrollSpeed', 'autoPageSec', 'showClock', 'restMin'];
   var TYPE_NUM = { fs: 'int', pagew: 'int', padw: 'int', autoScrollSpeed: 'int', autoPageSec: 'int', lh: 'float', ps: 'float', ls: 'float', dim: 'float' };
   var TH_SW = { dark: '#1F2125', light: '#FFFFFF', sepia: '#FAF3E3', green: '#F3F8EC', gray: '#252D37', black: '#000000' };
   function hex6(v, alt) { v = String(v || '').trim(); return /^#[0-9a-fA-F]{6}$/.test(v) ? v : alt; }
@@ -2736,9 +2931,9 @@
     var h = '';
     h += '<h3>' + T('阅读方式') + '</h3><div class="tpGrid">' +
       cell('模式', seg('mode', [['scroll', T('滚动')], ['page', T('翻页')]])) +
-      cell('分栏', seg('lay', [['auto', T('自动分栏')], ['one', T('单栏')], ['two', T('双栏')]])) +
+      cell('分栏', seg('lay', [['auto', T('自动')], ['one', '1'], ['two', '2'], ['three', '3'], ['four', '4']])) +
       cell('翻页动画', seg('pageAnim', [['slide', T('滑动')], ['fade', T('淡入')], ['none', T('无')]])) +
-      '</div><p class="kv">' + T('「翻页」是一页一页左右翻。双栏靠翻页成立：宽屏自动两列、手机始终单列；点「双栏」会自动切到翻页，切回滚动就是单栏。') + '</p>';
+      '</div><p class="kv">' + T('「翻页」是一页一页左右翻。多栏靠翻页成立：自动按屏宽定，也可手动选 1~4 栏（手机始终单栏）；点 2 栏以上会自动切到翻页。') + '</p>';
     h += '<h3>' + T('文字') + '</h3>' +
       '<div class="row"><label>' + T('字号') + '</label><button data-font="fs-">A−</button><span id="fFs">' + CFG.fs + 'px</span><button data-font="fs+">A＋</button>' +
       rng('fs', 13, 34, 1, 'flex:1;min-width:110px') + '</div>' +
@@ -2762,6 +2957,12 @@
       '<div class="row"><label>' + T('翻页停留') + '</label>' + rng('autoPageSec', 4, 60, 2, 'flex:1') + '<span id="fAp">20s</span></div>' +
       '<div class="row"><label>' + T('开始 / 停止') + '</label><button data-act="auto">' + T('自动阅读：开 / 关') + '</button>' +
       '<span class="kv">' + T('空格也能暂停 / 继续；翻页模式下用停留秒数，滚动模式下用滚动速度') + '</span></div>';
+    h += '<h3>' + T('阅读时钟') + '</h3>' +
+      '<div class="row"><label>' + T('顶栏时钟') + '</label>' + seg('showClock', [[1, T('显示')], [0, T('隐藏')]]) +
+      '<span class="kv">' + T('显示当前时间与本次已读时长，点顶栏那个时间块也能改') + '</span></div>' +
+      '<div class="row"><label>' + T('休息提醒') + '</label>' + seg('restMin',
+        [[0, T('关闭')], [30, '30'], [45, '45'], [60, '60'], [90, '90']]) +
+      '<span class="kv">' + T('连续读到设定时长提醒休息，可稍后再提') + '</span></div>';
     h += '<h3>' + T('快捷键') + '</h3><p class="kv kbdline">' +
       '<span class="kbd">←</span> <span class="kbd">→</span> ' + T('翻页 / 翻屏') + ' · ' +
       '<span class="kbd">空格</span> ' + T('下一屏（朗读中为暂停）') + ' · ' +
@@ -2804,11 +3005,11 @@
       var b = e.target.closest('button[data-set]'); if (!b) return;
       var k2 = b.getAttribute('data-set'), v2 = b.getAttribute('data-v');
       var tip = '';
-      if (k2 === 'lay' && v2 === 'two' && CFG.mode !== 'page') {
-        /* 双栏要配合翻页才有意义，点了就直接带过去，别让人以为没反应 */
-        CFG.mode = 'page'; tip = T('双栏需配合翻页，已切到翻页模式');
-      } else if (k2 === 'mode' && v2 === 'scroll' && CFG.lay === 'two') {
-        CFG.lay = 'auto'; tip = T('滚动模式只有单栏，双栏请留在翻页');
+      if (k2 === 'lay' && (LAYN[v2] || 0) > 1 && CFG.mode !== 'page') {
+        /* 多栏要配合翻页才有意义，点了就直接带过去，别让人以为没反应 */
+        CFG.mode = 'page'; tip = T('多栏需配合翻页，已切到翻页模式');
+      } else if (k2 === 'mode' && v2 === 'scroll' && (LAYN[CFG.lay] || 0) > 1) {
+        CFG.lay = 'auto'; tip = T('滚动模式只有单栏，多栏请留在翻页');
       }
       CFG[k2] = v2;
       saveCfg(); applyCfg(); showType(true);
@@ -2896,7 +3097,7 @@
     };
     $('btnLayout').onclick = function () { showType(); };
     $('btnCfg').onclick = showSettings;
-    $('btnTheme').onclick = cycleTheme;
+    $('btnTheme').onclick = function () { showTheme(); };
     $('btnExport').onclick = askExport;
     $('btnImportBak').onclick = function () { $('bakInput').click(); };
     $('bakInput').onchange = function (e) { if (e.target.files[0]) importBak(e.target.files[0]); e.target.value = ''; };
@@ -2930,6 +3131,10 @@
     $('btnType').onclick = function () { showType(); };
     $('btnAuto').onclick = function () { autoToggle(); };
     $('btnFull').onclick = toggleFull;
+    $('btnSet').onclick = function () { showSettings(); };
+    $('clock').onclick = function () { showClockPanel(); };
+    $('restTipOk').onclick = restTake;
+    $('restTipSnooze').onclick = restSnooze;
     $('autoPillGo').onclick = function () { autoResume(); };
     $('autoPillX').onclick = function () { autoStop(); };
     document.addEventListener('fullscreenchange', function () { syncFullBtn(); if (BK && pgEnabled()) setTimeout(pgReflow, 120); });
@@ -3104,7 +3309,7 @@
         CFG.fs = Math.max(13, Math.min(34, Number(CFG.fs) + (up ? 1 : -1)));
         saveCfg(); applyCfg(); toast(T('字号') + ' ' + CFG.fs + 'px', 1200); e.preventDefault();
       }
-      else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 't') { cycleTheme(); e.preventDefault(); }
+      else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 't') { showTheme(); e.preventDefault(); }
       else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'a') { autoToggle(); e.preventDefault(); }
     });
     /* 沉浸模式：鼠标移到上下边缘唤出工具栏 */
@@ -3127,8 +3332,8 @@
     if (SYN && 'onvoiceschanged' in SYN) SYN.onvoiceschanged = fillVoices;
     window.addEventListener('beforeunload', function () { try { savePos(); rtFlush(); } catch (e) { } });
     document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'hidden') { try { rtFlush(); savePos(); } catch (e) { } }
-      else if (BK) rtStart(BK.id);
+      if (document.visibilityState === 'hidden') { try { rtFlush(); savePos(); } catch (e) { } clkStop(); }
+      else if (BK) { rtStart(BK.id); if ($('viewRead').classList.contains('on')) clkStart(); }
     });
   }
 
@@ -3183,7 +3388,10 @@
       showShelves: showShelves, toggleFav: toggleFav, shelfList: shelfList, enterSelMode: enterSelMode,
       openBookMenu: openBookMenu, copyText: copyText, rtFlush: rtFlush, saveStats: saveStats,
       /* 1.8：排版 / 分页 / 自动阅读 / 全屏 */
-      showType: showType, PG: PG, pgEnabled: pgEnabled, pgCols: pgCols, pgMeasure: pgMeasure,
+      showType: showType, showTheme: showTheme, showClockPanel: showClockPanel,
+      CLK: CLK, clkStart: clkStart, clkStop: clkStop, clkPaint: clkPaint, clkTick: clkTick,
+      showRest: showRest, hideRest: hideRest, LAYN: LAYN,
+      clkReset: clkReset, restTake: restTake, restSnooze: restSnooze, fmtRead: fmtRead, PG: PG, pgEnabled: pgEnabled, pgCols: pgCols, pgMeasure: pgMeasure,
       applyCfg: applyCfg, scrollTopPara: scrollTopPara,
       pgTo: pgTo, pgReflow: pgReflow, paraPage: paraPage, readNext: readNext, readPrev: readPrev,
       autoToggle: autoToggle, autoStart: autoStart, autoStop: autoStop, autoPause: autoPause,

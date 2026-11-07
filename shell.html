@@ -310,6 +310,44 @@ body.imm #readMain{padding:0}
 .kbd{display:inline-block;min-width:22px;text-align:center;background:var(--card2);border:1px solid var(--line);
   border-bottom-width:2px;border-radius:5px;padding:0 5px;font-size:.86em;font-family:var(--ff)}
 p.kv.kbdline{line-height:2.1}
+/* ---------- 主题面板（卡片式预览） ---------- */
+.thGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px;margin:4px 0 14px}
+.thCard{position:relative;display:flex;flex-direction:column;gap:5px;align-items:flex-start;
+  padding:9px 10px;border-radius:11px;border:1px solid var(--line);cursor:pointer;
+  text-align:left;font-size:.8em;line-height:1.3;overflow:hidden;min-height:74px}
+.thCard b{font-size:.94em;opacity:.9}
+.thCard .demo{font-size:.86em;opacity:.72;letter-spacing:.03em}
+.thCard .dot{position:absolute;top:8px;right:9px;width:9px;height:9px;border-radius:50%}
+.thCard .tick{position:absolute;right:8px;bottom:6px;font-size:.9em;font-weight:700;opacity:0}
+.thCard.on{box-shadow:0 0 0 2px var(--acc);border-color:var(--acc)}
+.thCard.on .tick{opacity:1}
+/* ---------- 阅读时钟 ---------- */
+.clkBig{display:flex;align-items:baseline;gap:14px;padding:11px 15px;margin:2px 0 14px;border-radius:12px;
+  background:var(--card2);border:1px solid var(--line)}
+.clkBig b{font-size:1.7em;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.clkBig span{font-size:.86em;color:var(--tx2)}
+#clock{font-size:.76em;color:var(--tx2);white-space:nowrap;font-variant-numeric:tabular-nums;
+  padding:3px 9px;border-radius:11px;background:var(--card2);border:1px solid var(--line);cursor:pointer;
+  transition:color .2s,border-color .2s}
+#clock:hover{color:var(--tx)}
+#clock.warn{color:var(--warn);border-color:var(--warn)}
+#clock.tired{color:var(--bad);border-color:var(--bad)}
+#clock.off{display:none}
+/* 沉浸模式顶栏收起，留一个淡时钟在右上角 */
+#clockFloat{display:none;position:absolute;top:10px;right:14px;z-index:31;pointer-events:none;
+  font-size:.74em;color:var(--tx2);font-variant-numeric:tabular-nums;padding:3px 9px;border-radius:11px;
+  background:rgba(0,0,0,.28);border:1px solid rgba(128,128,128,.28);opacity:.62}
+body.imm #clockFloat{display:block}
+/* ---------- 休息提醒 ---------- */
+#restTip{position:fixed;left:50%;bottom:104px;transform:translateX(-50%) translateY(14px);z-index:60;
+  display:none;align-items:center;gap:10px;padding:11px 13px 11px 16px;border-radius:14px;font-size:.86em;
+  background:var(--card2);border:1px solid var(--warn);box-shadow:0 18px 46px rgba(0,0,0,.62);max-width:min(92vw,560px)}
+#restTip .rtTx{color:var(--tx);font-weight:500}
+#restTip .ic{font-size:1.15em;margin-right:2px}
+#restTip.on{display:flex;animation:restIn .24s ease forwards}
+@keyframes restIn{from{opacity:0;transform:translateX(-50%) translateY(14px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+#restTip .rtTx{line-height:1.5}
+#restTip button{min-height:30px;padding:4px 11px;border-radius:14px;white-space:nowrap}
 /*__NARROW_CSS__*/
 
 </style>
@@ -378,6 +416,7 @@ p.kv.kbdline{line-height:2.1}
     <header class="top" id="readTop">
       <button id="btnBack" data-i18n="← 书架">← 书架</button>
       <div id="readTitle">—</div>
+      <span id="clock" data-i18n-title="当前时间 · 本次已读时长（点一下可换样式）" title="当前时间 · 本次已读时长（点一下可换样式）"></span>
       <div class="spacer"></div>
       <div class="acts" id="readActs">
         <button id="btnToc" data-i18n="目录">目录</button>
@@ -389,9 +428,11 @@ p.kv.kbdline{line-height:2.1}
         <button id="btnTheme" data-i18n="主题" data-i18n-title="切换主题" title="切换主题">主题</button>
         <button id="btnAuto" data-i18n="自动" data-i18n-title="自动阅读：自动滚动 / 自动翻页" title="自动阅读：自动滚动 / 自动翻页">自动</button>
         <button id="btnFull" data-i18n="全屏" data-i18n-title="全屏 / 沉浸模式" title="全屏 / 沉浸模式">全屏</button>
+        <button id="btnSet" data-i18n="设置" data-i18n-title="阅读设置：外观、朗读、语音、时钟与提醒" title="阅读设置：外观、朗读、语音、时钟与提醒">设置</button>
         <button id="btnSpeak" class="pri" data-i18n="朗读">朗读</button>
       </div>
     </header>
+    <div id="clockFloat" aria-hidden="true"></div>
     <div id="readMain">
       <aside class="side" id="side">
         <div class="tabs">
@@ -460,6 +501,11 @@ p.kv.kbdline{line-height:2.1}
     <span><i class="dot"></i><span id="autoPillTx">自动阅读已暂停</span></span>
     <button id="autoPillGo" data-i18n="继续">继续</button>
     <button id="autoPillX" data-i18n="退出">退出</button>
+  </div>
+  <div id="restTip">
+    <span class="rtTx" id="restTipTx">已连续阅读 45 分钟，抬头看看远处吧。</span>
+    <button id="restTipOk" class="pri" data-i18n="休息一下">休息一下</button>
+    <button id="restTipSnooze" data-i18n="稍后再提">稍后再提</button>
   </div>
   <div id="toast"></div>
 </div>

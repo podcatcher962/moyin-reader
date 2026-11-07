@@ -19,21 +19,29 @@
 
 ### 截图
 
+| 翻页 · 四栏 · 1920 宽 | 翻页 · 三栏 · 羊皮纸 |
+|---|---|
+| ![四栏](docs/screenshots/read-4col.png) | ![三栏](docs/screenshots/read-3col-sepia.png) |
+
 | 翻页 · 双栏 · 夜间 | 翻页 · 双栏 · 明亮 |
 |---|---|
 | ![翻页双栏夜间](docs/screenshots/read-paged-dark.png) | ![翻页双栏明亮](docs/screenshots/read-paged-light.png) |
 
-| 羊皮纸 · 首行缩进 | 护眼绿 |
+| 主题一处挑完（点卡片即生效） | 护眼绿 |
 |---|---|
-| ![羊皮纸](docs/screenshots/read-sepia.png) | ![护眼绿](docs/screenshots/theme-green.png) |
+| ![主题面板](docs/screenshots/theme-panel.png) | ![护眼绿](docs/screenshots/theme-panel-green.png) |
 
-| 排版与外观（一处调完） | 六套主题与自定义配色 |
+| 阅读时钟与休息提醒 | 沉浸模式 · 右上角淡时钟 |
 |---|---|
-| ![排版面板](docs/screenshots/type-panel.png) | ![配色](docs/screenshots/type-colors.png) |
+| ![时钟面板](docs/screenshots/clock-panel.png) | ![沉浸](docs/screenshots/immersive-clock.png) |
 
-| 沉浸全屏 | 手机 · 单栏翻页 |
+| 排版与外观（一处调完） | 休息提醒 |
 |---|---|
-| ![沉浸](docs/screenshots/immersive.png) | ![手机翻页](docs/screenshots/phone-paged.png) |
+| ![排版面板](docs/screenshots/type-panel.png) | ![休息提醒](docs/screenshots/rest-tip.png) |
+
+| 手机 · 顶栏两行 | 手机 · 选 4 栏也单列 |
+|---|---|
+| ![手机顶栏](docs/screenshots/phone-toolbar.png) | ![手机四栏](docs/screenshots/phone-4col.png) |
 
 | 分角色朗读 | 书架 · 一键续听 |
 |---|---|
@@ -61,8 +69,10 @@
 | 🗂️ 书架 | 自建书架分组、★收藏、批量移动 / 移除、改书名作者、整目录导入、阅读计时 |
 | 🌐 双语 | 全窗口中英切换（含设置、弹窗、提示与全部说明文档），选择记住 |
 | 🔖 续听 | 「听到哪」与「读到哪」分开记，书架卡片一键「续听 · 第 N 章」接着念 |
-| ✍️ 阅读 | **滚动 / 翻页**两种读法：宽屏与平板自动双栏，手机单栏（点「双栏」会自动切到翻页）。字号、行距、段间距、字间距、首行缩进、五种字体、两端 / 左对齐、版心宽度、页边距全部可调 |
-| 🎨 外观 | 夜间 / 明亮 / 羊皮纸 / 护眼绿 / 雾蓝 / 纯黑六套主题，可自定底色与字色；另有亮度压暗，黑灯下不刺眼 |
+| ✍️ 阅读 | **滚动 / 翻页**两种读法：分栏可选**自动 / 1 / 2 / 3 / 4 栏**（宽屏平板多栏、手机永远单列，选 2 栏以上自动切翻页）。字号、行距、段间距、字间距、首行缩进、五种字体、两端 / 左对齐、版心宽度、页边距全部可调 |
+| 🎨 主题 | 六套配色（夜间 / 明亮 / 羊皮纸 / 护眼绿 / 雾蓝 / 纯黑），点「主题」弹出卡片一次挑完，可自定义底色字色与亮度 |
+| 🕐 时钟 | 顶栏显示当前时间与本次已读时长，30 分钟转黄、60 分钟转红；沉浸模式右上角保留淡时钟 |
+| ☕ 护眼 | 连续读满 30 / 45 / 60 / 90 分钟（可关）提醒休息，可「休息一下」重新计时或「稍后再提」 |
 | ▶️ 自动阅读 | 滚动模式匀速下滚，翻页模式按秒自动翻页；一键暂停 / 继续，章末自动接下一章 |
 | 🖥️ 沉浸全屏 | 上下工具栏自动收起，鼠标移到屏幕边缘唤出；F11 / Esc 快捷键 |
 | 🔍 导航 | 目录跳章、全文搜索、书签、章节内跳转；翻页模式下点两侧、滚轮、空格、← →、手机左右滑都能翻页 |
@@ -75,8 +85,8 @@
 |---|---|---|
 | `MoYinReader.exe` | 约 47 MB | **完整版**，语音库打包在 exe 尾部，只拷这一个文件就能听，首次启动自动释放到缓存 |
 | `MoYinReader_Lite.exe` | 约 17 MB | 轻量版，需同目录放 `VoicePack` 文件夹（约 53 MB） |
-| `MoYinReader.html` | 约 293 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
-| `MoYinReader.apk` | 约 161 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
+| `MoYinReader.html` | 约 313 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
+| `MoYinReader.apk` | 约 165 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
 
 不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本；或者用 **[在线版](https://podcatcher962.github.io/moyin-reader/)** 什么都不装。
 
@@ -130,7 +140,8 @@ _pkg_win/build_exe.py              exe 打包 + 验收
 _pkg_apk/TtsBridge.java            安卓 TTS 桥（系统语音）
 _pkg_apk/build_apk.py              apk 打包 + 体检
 _cdp_verify.js                     117 项界面回归（headless Edge，CDP）
-_check_v18.js                      93 项版式回归（分栏 / 翻页 / 主题 / 自动阅读 / 全屏）
+_check_v19.js                      64 项回归（多栏档位 / 主题面板 / 时钟 / 休息提醒 / 常驻设置）
+_check_v18.js                      95 项版式回归（分栏 / 翻页 / 主题 / 自动阅读 / 全屏）
 _check_v17.js  _check_v171.js      1.7 与 1.7.1 的回归
 _check_voices.js  _check_role.js   声线 / 分角色朗读回归
 _unit_zip.js                       ZIP 解压内核单测（482 项）
@@ -191,8 +202,9 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 - **Role reading** — narration keeps your chosen voice while quoted dialogue switches per character, consistently for the whole book.
 - **Listening** — paragraph highlight with auto-scroll, auto-advance to the next chapter, sleep timer, speed control.
 - **Resume** — listening position is tracked separately from reading position; one click on a shelf card resumes "chapter N".
-- **Reading** — two ways to read: continuous scroll, or whole-screen page turns with **two columns** on wide screens and tablets and **one column** on phones. Font size, line height, paragraph gap, letter spacing, first-line indent, five families, justified or ragged right, measure width and side margins are all adjustable.
-- **Appearance** — dark / light / sepia / green / slate / pure black, plus your own paper and text colour and a brightness dimmer for reading in the dark.
+- **Reading** — continuous scroll, or whole-screen page turns with **1 to 4 columns** (Auto / 1 / 2 / 3 / 4; wide screens and tablets get several, phones always one). Font size, line height, paragraph gap, letter spacing, first-line indent, five families, justified or ragged right, measure width and side margins are all adjustable.
+- **Appearance** — dark / light / sepia / green / slate / pure black, picked from a card panel in one go, plus your own paper and text colour and a brightness dimmer for reading in the dark.
+- **Reading clock & breaks** — the toolbar shows the time and how long you have read this session (amber at 30 minutes, red at 60); a reminder offers a break or a ten-minute snooze after your chosen stretch.
 - **Auto read** — continuous scrolling, or timed page turns; pause and resume from a pill, and the next chapter starts by itself.
 - **Immersive full screen** — both bars slide away and come back when the pointer reaches an edge; F11 and Esc work too.
 - **Highlights & notes** — select text for four highlight colours, a note, copy or a share card; the Notes panel lists every annotation by chapter with jump / recolour / edit / delete.
@@ -209,8 +221,8 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 |---|---|---|
 | `MoYinReader.exe` | ~47 MB | Full build, voice pack appended inside the exe |
 | `MoYinReader_Lite.exe` | ~17 MB | Needs a `VoicePack` folder (~53 MB) next to it |
-| `MoYinReader.html` | ~293 KB | Standalone web build |
-| `MoYinReader.apk` | ~161 KB | Android shell with the page embedded |
+| `MoYinReader.html` | ~313 KB | Standalone web build |
+| `MoYinReader.apk` | ~165 KB | Android shell with the page embedded |
 
 Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** — or open the **[web version](https://podcatcher962.github.io/moyin-reader/)** and install nothing.
 
