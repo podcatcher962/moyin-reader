@@ -71,16 +71,18 @@ function get(port, p, method) {
   };
 
   await ev("(function(){MY.setTheme('dark');return 1;})()"); await sleep(300);
-  await setPage('four');
-  P('4col', await ev("JSON.stringify({cols:MY.PG.cols,cw:Math.round(MY.PG.cw),count:MY.PG.count})"));
-  await shot('01_paged_4col_dark');
-
-  await setPage('three');
-  P('3col', await ev("JSON.stringify({cols:MY.PG.cols,cw:Math.round(MY.PG.cw),count:MY.PG.count})"));
-  await shot('02_paged_3col_dark');
+  await setPage('two');
+  P('2col-1920', await ev(`(function(){var el=document.getElementById('page'),r=el.getBoundingClientRect(),cs=getComputedStyle(el);
+    return JSON.stringify({vw:innerWidth,pageW:Math.round(r.width),pageL:Math.round(r.left),maxw:cs.maxWidth,
+      ov:cs.overflow,cols:MY.PG.cols,cw:Math.round(MY.PG.cw),count:MY.PG.count});})()`));
+  await shot('01_paged_2col_1920');
 
   await ev("(function(){MY.setTheme('sepia');return 1;})()"); await sleep(400);
-  await shot('03_paged_3col_sepia');
+  await shot('02_paged_2col_sepia');
+
+  await setPage('one');
+  P('1col', await ev("JSON.stringify({cols:MY.PG.cols,cw:Math.round(MY.PG.cw),count:MY.PG.count})"));
+  await shot('03_paged_1col_sepia');
 
   await size(1440, 900);
   await ev("(function(){MY.setTheme('dark');return 1;})()"); await sleep(300);
@@ -118,10 +120,10 @@ function get(port, p, method) {
   await ev("(function(){MY.CFG.lay='auto';MY.CFG.mode='scroll';MY.saveCfg();MY.applyCfg();MY.renderChapter(3,{silent:true});return 1;})()");
   await sleep(800);
   await shot('11_phone_toolbar');
-  await ev("(function(){MY.CFG.lay='four';MY.CFG.mode='page';MY.saveCfg();MY.PG.ready=0;MY.applyCfg();return 1;})()");
+  await ev("(function(){MY.CFG.lay='two';MY.CFG.mode='page';MY.saveCfg();MY.PG.ready=0;MY.applyCfg();return 1;})()");
   await sleep(800);
   P('phone', await ev("JSON.stringify({cols:MY.PG.cols,pageW:Math.round(document.getElementById('page').getBoundingClientRect().width)})"));
-  await shot('12_phone_4col');
+  await shot('12_phone_2col');
 
   P('done');
   ws.close(); edge.kill(); server.close();

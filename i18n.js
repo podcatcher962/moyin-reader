@@ -563,8 +563,10 @@
     '2 栏': '2 columns',
     '3 栏': '3 columns',
     '4 栏': '4 columns',
-    '「翻页」是一页一页左右翻。多栏靠翻页成立：自动按屏宽定，也可手动选 1~4 栏（手机始终单栏）；点 2 栏以上会自动切到翻页。':
-      'Pages turns one screen at a time. Multiple columns need paging: Auto picks by screen width, or pick 1–4 columns yourself (phones stay single). Choosing 2 or more switches to Pages.',
+    '「翻页」是一页一页左右翻。双栏靠翻页成立：自动按屏宽定，也可手动选单栏 / 双栏（手机始终单栏）；点双栏会自动切到翻页。':
+      'Pages turns one screen at a time. Two columns need paging: Auto decides from screen width, or pick one / two yourself (phones stay single). Choosing two columns switches to Pages.',
+    '自动按屏宽定；也可手动单栏 / 双栏（手机始终单栏）':
+      'Auto decides from screen width; one or two columns can also be set by hand (phones stay single).',
     '更多排版…': 'More type…',
     '点一下立刻换上，自动记住。字号 / 行距 / 分栏在「更多排版」里。':
       'Tap to apply — remembered next time. Size, spacing and columns live under More type.',

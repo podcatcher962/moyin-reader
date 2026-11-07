@@ -16,8 +16,9 @@
     mono: '"Cascadia Mono","Consolas","Courier New",monospace'
   };
   var THEMES = ['dark', 'light', 'sepia', 'green', 'gray', 'black'];
-  /* 分栏档位：auto 自动，其余是每屏固定几栏 */
-  var LAYN = { one: 1, two: 2, three: 3, four: 4 };
+  /* 分栏档位：auto 自动，其余是每屏固定几栏。
+     three / four 只为兼容 1.9 早期配置，一律按双栏算 */
+  var LAYN = { one: 1, two: 2, three: 2, four: 2 };
   var DEF = {
     theme: 'dark', lay: 'auto', motion: 0, fs: 19, lh: 1.85, pagew: 720,
     ff: 'serif', align: 'justify', sort: 'last', txtEnc: 'auto',
@@ -244,10 +245,10 @@
     };
   }
   function cycleLayout() {
-    var a = ['auto', 'one', 'two', 'three', 'four'];
+    var a = ['auto', 'one', 'two'];
     CFG.lay = a[(a.indexOf(CFG.lay) + 1) % a.length]; saveCfg(); applyCfg();
     syncTypeBtn();
-    toast(T('分栏：{n}', { n: T({ auto: '自动', one: '1 栏', two: '2 栏', three: '3 栏', four: '4 栏' }[CFG.lay]) }));
+    toast(T('分栏：{n}', { n: T({ auto: '自动', one: '单栏', two: '双栏' }[CFG.lay] || '自动') }));
   }
 
   /* 点顶栏时钟：看时长、开关显示、调休息提醒间隔 */
@@ -285,7 +286,7 @@
   var PG = { i: 0, count: 1, cols: 1, cw: 0, gap: 0, padL: 0, step: 0, ready: 0 };
 
   function pgEnabled() { return CFG.mode === 'page'; }
-  /* 每屏几栏：auto 按可用宽度推（最多 3），手动 1~4；手机一律单栏 */
+  /* 每屏几栏：只有单栏和双栏。auto 够宽就双栏，手机一律单栏 */
   function pgCols() {
     if (!pgEnabled()) return 1;
     var w = ($('pageWrap') && $('pageWrap').clientWidth) || 800;
@@ -293,9 +294,9 @@
     var pad = Math.max(10, Number(CFG.padw) || 32);
     var usable = w - pad * 2 + 60;                // 加上最后一个栏距，便于整除
     var want = LAYN[CFG.lay] || 0;
-    if (!want) want = Math.max(1, Math.min(3, Math.floor(usable / 520)));   // 自动：每栏够 520 才加一栏
-    var maxFit = Math.max(1, Math.floor(usable / 360));                     // 每栏至少 300px，再多就挤了
-    return Math.max(1, Math.min(want, maxFit, 4));
+    if (!want) want = usable >= 880 ? 2 : 1;                                // 自动：够宽才双栏
+    var maxFit = Math.max(1, Math.floor(usable / 360));                     // 双栏每栏至少 300px
+    return Math.max(1, Math.min(want, maxFit, 2));
   }
   function pgGeo() {
     var el = $('page'), cs = getComputedStyle(el);
@@ -2753,7 +2754,7 @@
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + AISHELL3 多说话人 VITS 模型）：不联网、不收费、无需账号，模型内含 174 个中文说话人（148 女 + 26 男），精选 11 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
       '<h3>1.9 新加了什么</h3><ul>' +
-      '<li><b>分栏可选 1~4 栏</b>：大屏不再只有两栏。排版面板里「分栏」现在有「自动 / 1 / 2 / 3 / 4」，自动按屏宽定（最多 3 栏），也可以自己指定；每栏不少于 300px，放不下会自动降档，手机上永远单栏。选 2 栏以上会自动切到翻页。</li>' +
+      '<li><b>分栏只有两种</b>：单栏和双栏，不做 3 栏 4 栏那种容易读花的东西。排版面板里「分栏」是「自动 / 1 / 2」，自动按屏宽决定（够宽就双栏），也能自己锁定；手机上永远单栏，点双栏会自动切到翻页。</li>' +
       '<li><b>主题按钮改成弹面板</b>：以前按一下换一档，得来回点好几次；现在点「主题」直接列出六套配色，每张卡片就是那套主题的底色和字色，选好即生效，面板不关，可以一张张比。</li>' +
       '<li><b>「设置」常驻顶栏</b>：阅读界面的按钮组最后多了「设置」，任何时候都能打开完整设置；手机上按钮排成两行，不会被挤掉。</li>' +
       '<li><b>阅读时钟</b>：顶栏显示当前时间与本次已读时长，读满 30 分钟转黄、60 分钟转红；沉浸模式下右上角留一个淡时钟。点一下可以开关、也可以重新计时。</li>' +
@@ -2845,8 +2846,8 @@
       '<h3>' + T('文件与界面') + '</h3><div class="row"><label>' + T('TXT 编码') + '</label><select data-set="txtEnc">' +
       encOpts.map(function (x) { return '<option value="' + x[0] + '"' + (CFG.txtEnc === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') +
       '</select><span class="kv">' + T('改完重新打开书生效') + '</span></div>' +
-      '<div class="row"><label>' + T('分栏') + '</label>' + seg('lay', [['auto', T('自动')], ['one', '1'], ['two', '2'], ['three', '3'], ['four', '4']]) +
-      '<span class="kv">' + T('自动按屏宽定，也可手动 1~4 栏（手机始终单栏）') + '</span></div>' +
+      '<div class="row"><label>' + T('分栏') + '</label>' + seg('lay', [['auto', T('自动')], ['one', '1'], ['two', '2']]) +
+      '<span class="kv">' + T('自动按屏宽定；也可手动单栏 / 双栏（手机始终单栏）') + '</span></div>' +
       '<div class="row"><label>' + T('阅读模式') + '</label>' + seg('mode', [['scroll', T('滚动')], ['page', T('翻页')]]) + '</div>' +
       '<p class="kv">' + T('设置即时生效并保存在本机。') + '</p>';
     showModal(T('阅读设置'), h, [{ label: T('恢复默认'), fn: function () { Object.assign(CFG, DEF); saveCfg(); applyCfg(); fillVoices(); showSettings(); toast(T('已恢复默认')); } }, { label: T('完成'), cls: 'pri' }]);
@@ -2931,9 +2932,9 @@
     var h = '';
     h += '<h3>' + T('阅读方式') + '</h3><div class="tpGrid">' +
       cell('模式', seg('mode', [['scroll', T('滚动')], ['page', T('翻页')]])) +
-      cell('分栏', seg('lay', [['auto', T('自动')], ['one', '1'], ['two', '2'], ['three', '3'], ['four', '4']])) +
+      cell('分栏', seg('lay', [['auto', T('自动')], ['one', '1'], ['two', '2']])) +
       cell('翻页动画', seg('pageAnim', [['slide', T('滑动')], ['fade', T('淡入')], ['none', T('无')]])) +
-      '</div><p class="kv">' + T('「翻页」是一页一页左右翻。多栏靠翻页成立：自动按屏宽定，也可手动选 1~4 栏（手机始终单栏）；点 2 栏以上会自动切到翻页。') + '</p>';
+      '</div><p class="kv">' + T('「翻页」是一页一页左右翻。双栏靠翻页成立：自动按屏宽定，也可手动选单栏 / 双栏（手机始终单栏）；点双栏会自动切到翻页。') + '</p>';
     h += '<h3>' + T('文字') + '</h3>' +
       '<div class="row"><label>' + T('字号') + '</label><button data-font="fs-">A−</button><span id="fFs">' + CFG.fs + 'px</span><button data-font="fs+">A＋</button>' +
       rng('fs', 13, 34, 1, 'flex:1;min-width:110px') + '</div>' +

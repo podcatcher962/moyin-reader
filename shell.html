@@ -255,6 +255,9 @@ html[data-theme="light"] #page mark.hl-p{background:rgba(255,150,196,.45)}
 html[data-mode="page"] #pageWrap{overflow:hidden}
 html[data-mode="page"] #page{
   height:100%;min-height:0;margin:0 auto;
+  /* 大屏上正文盒居中、两侧留白：多栏溢出的后续列会露到盒外，
+     看上去就是「两列半」。这里裁掉，翻页只走 translateX。 */
+  overflow:hidden;
   max-width:min(100%,calc(var(--pagew) * var(--pcols,1) + 60px * (var(--pcols,1) - 1)));
   column-fill:auto;column-gap:60px;
   column-rule:1px solid rgba(128,128,128,.20);
