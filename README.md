@@ -78,7 +78,7 @@
 | 🎨 主题 | 六套配色（夜间 / 明亮 / 羊皮纸 / 护眼绿 / 雾蓝 / 纯黑），点「主题」弹出卡片一次挑完；另有 8 种常用字色 + 8 种底色色板与取色器，选深底会自动配浅字 |
 | 🕐 时钟 | 顶栏显示当前时间与本次已读时长，30 分钟转黄、60 分钟转红；沉浸模式右上角保留淡时钟 |
 | ☕ 护眼 | 连续读满 30 / 45 / 60 / 90 分钟（可关）提醒休息，可「休息一下」重新计时或「稍后再提」 |
-| ▶️ 自动阅读 | 滚动模式匀速下滚，翻页模式按秒自动翻页；一键暂停 / 继续，章末自动接下一章 |
+| ▶️ 自动阅读 | 滚动模式匀速下滚（速度 1–10），翻页模式按秒自动翻页（**停留 3–180 秒可调**）；一键暂停 / 继续，章末自动接下一章 |
 | 🖥️ 沉浸全屏 | 上下工具栏自动收起，鼠标移到屏幕边缘唤出；F11 / Esc 快捷键 |
 | 🔍 导航 | 目录跳章、全文搜索、书签、章节内跳转；翻页模式下点两侧、滚轮、空格、← →、手机左右滑都能翻页 |
 | 💾 数据 | IndexedDB 本机存储，可导出/导入备份（含书籍文件），换设备不丢 |
@@ -90,7 +90,7 @@
 |---|---|---|
 | `MoYinReader.exe` | 约 47 MB | **完整版**，语音库打包在 exe 尾部，只拷这一个文件就能听，首次启动自动释放到缓存 |
 | `MoYinReader_Lite.exe` | 约 17 MB | 轻量版，需同目录放 `VoicePack` 文件夹（约 53 MB） |
-| `MoYinReader.html` | 约 338 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
+| `MoYinReader.html` | 约 341 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
 | `MoYinReader.apk` | 约 177 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
 
 不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本；或者用 **[在线版](https://podcatcher962.github.io/moyin-reader/)** 什么都不装。
@@ -145,7 +145,7 @@ _pkg_win/build_exe.py              exe 打包 + 验收
 _pkg_apk/TtsBridge.java            安卓 TTS 桥（系统语音）
 _pkg_apk/build_apk.py              apk 打包 + 体检
 _cdp_verify.js                     117 项界面回归（headless Edge，CDP）
-_check_v19.js                     104 项回归（分栏 / 主题面板 / 时钟 / 休息提醒 / 网络位置）
+_check_v19.js                     112 项回归（分栏 / 主题面板 / 时钟 / 休息提醒 / 网络位置）
 _check_v18.js                      95 项版式回归（分栏 / 翻页 / 主题 / 自动阅读 / 全屏）
 _check_v17.js  _check_v171.js      1.7 与 1.7.1 的回归
 _check_voices.js  _check_role.js   声线 / 分角色朗读回归（22 / 48 项）
@@ -227,7 +227,7 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 |---|---|---|
 | `MoYinReader.exe` | ~47 MB | Full build, voice pack appended inside the exe |
 | `MoYinReader_Lite.exe` | ~17 MB | Needs a `VoicePack` folder (~53 MB) next to it |
-| `MoYinReader.html` | ~338 KB | Standalone web build |
+| `MoYinReader.html` | ~341 KB | Standalone web build |
 | `MoYinReader.apk` | ~177 KB | Android shell with the page embedded |
 
 Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** — or open the **[web version](https://podcatcher962.github.io/moyin-reader/)** and install nothing.

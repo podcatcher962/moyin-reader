@@ -556,6 +556,11 @@
     '{a}/{b} 页': 'p. {a}/{b}',
     '点选即时生效，自动保存。': 'Changes apply instantly and are saved.',
     '网络位置': 'Network',
+    '秒/页': 's/page',
+    '现在开始': 'Start now',
+    '停止自动阅读': 'Stop auto-read',
+    '翻页模式下按「停留秒数」自动翻页（3–180 秒）；滚动模式下按「滚动速度」匀速下滚。读到章末会自动接下一章。':
+      'In page mode it turns a page every N seconds (3–180); in scroll mode it crawls at the chosen speed. Reaching the end of a chapter continues into the next.',
     '底色较深，字色已自动调成浅色': 'The page colour is dark, so the text colour was switched to a light ink.',
     '雅黑': 'YaHei',
     '中宋': 'ZhongSong',

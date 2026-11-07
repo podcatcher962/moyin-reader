@@ -357,6 +357,33 @@ async function main() {
   await ev("(function(){document.querySelector('#modalBody [data-act=\"clrColor\"]').click();return 1;})()");
   await sleep(420);
   ok(await ev("MY.CFG.customTx") === '' && await ev("MY.CFG.customBg") === '', '「跟随主题」能清掉自定义色');
+
+  /* 自动翻页停留秒数：以前只能在小面板里 4–60 步长 2，默认 20 秒，用户以为写死了 */
+  ok(await ev("!!document.querySelector('#modalBody input[data-set=\"autoPageSec\"]')"), '设置里有「翻页停留」滑块');
+  const ap = JSON.parse(await ev(`(function(){var i=document.querySelector('#modalBody input[data-set="autoPageSec"]');
+    return JSON.stringify({min:i.min,max:i.max,step:i.step,v:i.value});})()`));
+  ok(ap.min === '3' && ap.max === '180' && ap.step === '1', '停留秒数可调 3–180 秒、步长 1', ap);
+  await ev(`(function(){var i=document.querySelector('#modalBody input[data-set="autoPageSec"]');
+    i.value=75;i.dispatchEvent(new Event('input',{bubbles:true}));return 1;})()`);
+  await sleep(450);
+  ok(await ev("Number(MY.CFG.autoPageSec)") === 75, '拖到 75 秒真的存下来', await ev("MY.CFG.autoPageSec"));
+  ok(/75/.test(await ev("document.getElementById('cfgAp').textContent")), '标签同步显示 75 秒/页',
+    await ev("document.getElementById('cfgAp').textContent"));
+  ok(await ev("MY.autoPageSec()") === 75, '实际用的间隔跟着变', await ev("MY.autoPageSec()"));
+  ok(await ev("!!document.querySelector('#modalBody [data-act=\"autoNow\"]')"), '设置里能直接起自动阅读');
+  await ev("(function(){document.querySelector('#modalBody [data-act=\"autoNow\"]').click();return 1;})()");
+  await sleep(700);
+  ok(await ev("MY.AUTO.on") === 1, '点「现在开始」就进入自动阅读', await ev("MY.AUTO.on"));
+  /* 自动翻页进行中改秒数，计时器要立刻换新间隔 */
+  await ev("(function(){MY.CFG.autoPageSec=6;MY.saveCfg();MY.autoRetime();return 1;})()");
+  await sleep(400);
+  ok(await ev("MY.AUTO.on") === 1 && await ev("MY.autoPageSec()") === 6, '自动翻页中改秒数不用重开，立刻按新间隔走',
+    { on: await ev("MY.AUTO.on"), sec: await ev("MY.autoPageSec()") });
+  await ev("(function(){MY.autoStop(true);MY.CFG.autoPageSec=20;MY.saveCfg();return 1;})()");
+  await sleep(250);
+  if (!(await ev("document.getElementById('modal').classList.contains('on')"))) {
+    await ev("document.getElementById('btnSet').click()"); await sleep(400);
+  }
   await ev("(function(){MY.CFG.fs=19;MY.CFG.ff='serif';MY.CFG.customTx='';MY.CFG.customBg='';MY.saveCfg();MY.applyCfg();return 1;})()");
   await sleep(300);
   await ev("document.getElementById('modalX').click()");

@@ -220,13 +220,17 @@ async function main() {
     var cv0 = MY.SPK.cv.slice();
     MY.startSpeak(1);
     /* 第一段是对白，趁它还在念的时候抓朗读条上的人物名（等到 1.5s 后可能已经跳到旁白段） */
-    await new Promise(r=>setTimeout(r, 260));
+    await new Promise(r=>setTimeout(r, 300));
     var w = document.querySelector('#spNow .spwho');
     var whoAtFirst = w ? w.textContent : '';
-    await new Promise(r=>setTimeout(r, 1300));
+    /* 音频元素也是此刻的才对得上（等 1.5s 后可能已经换段、src 还是空） */
+    var a0 = MY.SPK.audio, dur0 = (a0 && a0.duration) || 0, src0 = (a0 && a0.src || '').slice(0, 5);
+    await new Promise(r=>setTimeout(r, 1200));
     var a = MY.SPK.audio;
+    if (dur0 <= 0.3 && a) { dur0 = a.duration || 0; src0 = (a.src || '').slice(0, 5); }
+    var a2 = { duration: dur0, src: src0 };
     var first = {on:MY.SPK.on, playing:MY.SPK.playing, ci:MY.SPK.ci, v:MY.SPK.cv[0], cv:cv0,
-      src:(a&&a.src||'').slice(0,5), dur:(a&&a.duration)||0, who:whoAtFirst, now:(document.getElementById('spNow')||{}).textContent||'',
+      src:(a2&&a2.src||'').slice(0,5), dur:(a2&&a2.duration)||0, who:whoAtFirst, now:(document.getElementById('spNow')||{}).textContent||'',
       btn:(document.getElementById('spRole')||{}).textContent||''};
     await new Promise(r=>setTimeout(r, 3000));
     var b = MY.SPK.audio;
