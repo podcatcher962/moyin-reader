@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.7.0';
+  var VER = '1.7.1';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -737,6 +737,31 @@
     if (e === 'txt' || e === 'text') return 'txt';
     return '';
   }
+  async function importFolder() {
+    // 桌面版：用 Python 的原生「选择文件夹」，不走浏览器那个「选择要上传的文件夹」
+    if (typeof window.__moyinPickDir === 'function') {
+      var r;
+      try {
+        r = await window.__moyinPickDir();
+      } catch (e) {
+        showModal(T('打开文件夹失败'), '<p>' + esc(e.message || String(e)) + '</p>', [{ label: T('关闭') }]);
+        return;
+      }
+      if (!r || r.cancel) return;
+      if (!r.files || !r.files.length) {
+        toast(r.skipped ? T('这个文件夹里只找到 {k} 个很小的 txt，看着不像书，没有导入', { k: r.skipped })
+                        : T('这个文件夹里没有找到 TXT / EPUB'), 4200);
+        return;
+      }
+      var dn = (r.dir || '').split(/[\\/]/).filter(Boolean).pop() || r.dir;
+      var msg = T('在「{d}」里找到 {n} 个 TXT / EPUB', { d: dn, n: r.files.length });
+      if (r.skipped) msg += '，' + T('跳过 {k} 个太小的文件', { k: r.skipped });
+      if (r.truncated) msg += '，' + T('超过上限，只取前 {n} 个', { n: r.files.length });
+      confirmModal(msg + T('。开始导入？'), function () { importFiles(r.files); });
+      return;
+    }
+    $('dirInput').click();
+  }
   async function importFiles(files) {
     var okN = 0, skipN = 0, errs = [], total = files.length;
     for (var i = 0; i < files.length; i++) {
@@ -878,9 +903,16 @@
 
   /* ---------------- 侧栏：目录 / 书签 / 笔记 / 搜索 ---------------- */
   function openSide(tab) {
+    var same = tab && tab === SIDE && $('side').classList.contains('on');
+    if (same) { closeSide(); return; }        // 再点同一个按钮 = 收起
     SIDE = tab || SIDE; $('side').classList.add('on');
     $('side').querySelectorAll('.tabs button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === SIDE); });
     renderSide();
+  }
+  function closeSide() {
+    if (!$('side').classList.contains('on')) return;
+    $('side').classList.remove('on');
+    hideSelTools();
   }
   function hlChapterLabel(h) { return T('第 {n} 章', { n: (h.ch | 0) + 1 }) + ' · ' + chapterTitle(h.ch); }
   function renderSide() {
@@ -2118,7 +2150,11 @@
       '<li><b>真正的书架</b>：自建书架、收藏、批量移动 / 移除、改书名作者、整目录导入。</li>' +
       '<li><b>阅读计时</b>：每次阅读自动记时长，按书与总计累计，全部留在本机。</li></ul>' +
       '<p class="kv">1.6 起还包含：174 个离线声线全放开、分角色朗读、朗读条直接换声线、书架续听、进程内语音引擎、完整 MIT 许可与署名。</p>' +
-      '<p class="kv">版本 1.7.0 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
+      '<h3>1.7.1 修了什么</h3><ul>' +
+      '<li><b>桌面版终于能划线了</b>：桌面外壳默认把网页的文字选择关掉了，导致选中正文没反应、浮动色块也不出来。已放开，Windows 版的划线与批注和其他版本一样。</li>' +
+      '<li><b>导入文件夹不再像在上传</b>：桌面版改用系统的「选择文件夹」对话框，不再是浏览器那个「选择要上传的文件夹 … 上传」的选择器。</li>' +
+      '<li><b>左侧导航能退出了</b>：标签栏右侧加了 ×，再点同一个按钮也能收起，点正文空白处自动收起（有选区时不收，免得把手选的位置抖掉）。</li></ul>' +
+      '<p class="kv">版本 1.7.1 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
   };
   function showDoc(k) {
     var d = DOCS[k] || DOCS.help;
@@ -2294,7 +2330,7 @@
   function bind() {
     $('btnImport').onclick = function () { $('fileInput').click(); };
     $('fileInput').onchange = function (e) { if (e.target.files.length) importFiles(Array.prototype.slice.call(e.target.files)); e.target.value = ''; };
-    $('btnImportDir').onclick = function () { $('dirInput').click(); };
+    $('btnImportDir').onclick = importFolder;
     $('dirInput').onchange = function (e) {
       var fs = Array.prototype.slice.call(e.target.files || []);
       e.target.value = '';
@@ -2362,9 +2398,10 @@
       if (!SPK.on || !$('speakBar').classList.contains('on')) startSpeak(currentPara());
       else toggleSpeak();
     };
-    $('side').querySelectorAll('.tabs button').forEach(function (b) {
+    $('side').querySelectorAll('.tabs button[data-tab]').forEach(function (b) {
       b.onclick = function () { openSide(b.getAttribute('data-tab')); };
     });
+    $('sideClose').onclick = closeSide;
     $('sideBody').onclick = function (e) {
       var dm = e.target.closest('[data-delmark]');
       if (dm) {
@@ -2409,6 +2446,14 @@
     /* 选中文字 → 浮动工具条（桌面上 mouseup，触屏上 touchend） */
     $('page').addEventListener('mouseup', onSelUp);
     $('page').addEventListener('touchend', function () { setTimeout(onSelUp, 60); });
+    /* 点正文空白处收起左侧导航（有选区时不收，否则重排会把刚选的位置抖掉） */
+    $('pageWrap').addEventListener('click', function (e) {
+      if (!$('side').classList.contains('on')) return;
+      if (e.target.closest('#selTools')) return;
+      var s = window.getSelection();
+      if (s && !s.isCollapsed) return;
+      closeSide();
+    });
     $('pageWrap').addEventListener('scroll', hideSelTools);
     $('selTools').addEventListener('mousedown', function (e) { e.preventDefault(); });
     $('selTools').onclick = function (e) {
@@ -2502,6 +2547,7 @@
     window.MY = {
       Z: Z, CFG: CFG, get BK() { return BK; }, get SPK() { return SPK; }, get BOOKS() { return BOOKS; },
       parseBook: parseBook, openBook: openBook, renderChapter: renderChapter, importFiles: importFiles,
+      importFolder: importFolder, openSide: openSide, closeSide: closeSide,
       importBuffer: async function (buf, name, ext) {
         var b = await parseBook(buf, name, ext || readExt(name));
         var id = 'b' + Date.now() + Math.random().toString(36).slice(2, 7);

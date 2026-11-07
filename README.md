@@ -60,7 +60,7 @@
 |---|---|---|
 | `MoYinReader.exe` | 约 47 MB | **完整版**，语音库打包在 exe 尾部，只拷这一个文件就能听，首次启动自动释放到缓存 |
 | `MoYinReader_Lite.exe` | 约 17 MB | 轻量版，需同目录放 `VoicePack` 文件夹（约 53 MB） |
-| `MoYinReader.html` | 约 244 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
+| `MoYinReader.html` | 约 248 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
 | `MoYinReader.apk` | 约 141 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
 
 不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本；或者用 **[在线版](https://podcatcher962.github.io/moyin-reader/)** 什么都不装。
@@ -176,7 +176,7 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 |---|---|---|
 | `MoYinReader.exe` | ~47 MB | Full build, voice pack appended inside the exe |
 | `MoYinReader_Lite.exe` | ~17 MB | Needs a `VoicePack` folder (~53 MB) next to it |
-| `MoYinReader.html` | ~244 KB | Standalone web build |
+| `MoYinReader.html` | ~248 KB | Standalone web build |
 | `MoYinReader.apk` | ~141 KB | Android shell with the page embedded |
 
 Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** — or open the **[web version](https://podcatcher962.github.io/moyin-reader/)** and install nothing.
