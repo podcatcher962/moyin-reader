@@ -2,6 +2,9 @@
 
 **[中文](#中文) | [English](#english)**
 
+🌐 **[在线使用（免安装）](https://podcatcher962.github.io/moyin-reader/)** — 浏览器直接打开，导入的书与进度存在本机，不上传任何服务器。
+
+
 一个单文件、默认离线的中文 TXT / EPUB 阅读器，带朗读。174 个离线中文说话人（148 女 26 男，精选 11 个直接可选），支持分角色朗读，Windows 一个 exe 直接跑，安卓一个 apk，浏览器双击 HTML 也能用。
 
 > 名字取「以墨为文、吟而出声」：把纸上的字念出来。与任何同名公司、配音平台、有声主播无关。
@@ -47,7 +50,7 @@
 | `MoYinReader.html` | 约 120 KB | 单文件网页版，双击即用；朗读走系统语音，点击可连接本机语音引擎 |
 | `MoYinReader.apk` | 约 100 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
 
-不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本。
+不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本；或者用 **[在线版](https://podcatcher962.github.io/moyin-reader/)** 什么都不装。
 
 ### 使用
 
@@ -86,7 +89,8 @@ python _pkg_apk/build_apk.py          # → MoYinReader.apk
 
 ```
 app.js  shell.html  zipcore.js     前端（无框架，build.py 内联成一个 HTML）
-build.py                           单文件 HTML 打包器
+build.py                           单文件 HTML 打包器（同时输出 docs/index.html 供 Pages）
+docs/index.html                    GitHub Pages 在线版入口
 VoicePack/tts_server.py            本机语音服务（127.0.0.1:8177，174 声线）
 VoicePack/install.py               引擎与模型下载器
 VoicePack/voice_table.json         174 个说话人的实测音高表
@@ -114,6 +118,8 @@ _unit_zip.js                       ZIP 解压内核单测（482 项）
 ## English
 
 A single-file, offline-first Chinese TXT / EPUB reader with text-to-speech. 174 offline Chinese speakers (148 female, 26 male; 11 curated by default), with role-based reading that switches voices per character in dialogue. One portable exe on Windows, one apk on Android, or just double-click the HTML.
+
+Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 
 ### Screenshots
 
@@ -146,7 +152,7 @@ A single-file, offline-first Chinese TXT / EPUB reader with text-to-speech. 174 
 | `MoYinReader.html` | ~120 KB | Standalone web build |
 | `MoYinReader.apk` | ~100 KB | Android shell with the page embedded |
 
-Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/releases)**.
+Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** — or open the **[web version](https://podcatcher962.github.io/moyin-reader/)** and install nothing.
 
 ### Build from source
 

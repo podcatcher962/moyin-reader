@@ -5,6 +5,8 @@ import io, os, re, sys, datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, 'MoYinReader.html')
+# GitHub Pages 入口（站点从 main 的 /docs 发布），与 OUT 内容完全相同
+PAGES = os.path.join(HERE, 'docs', 'index.html')
 
 # 窄屏版式只写一份，构建时生成「自动（媒体查询）」与「强制手机版」两份
 NARROW = r'''
@@ -80,6 +82,9 @@ def main():
     io.open(OUT, 'w', encoding='utf-8', newline='\n').write(html)
     size = os.path.getsize(OUT)
     print('\n输出 %s  %d 字节 (%.1f KB)' % (OUT, size, size / 1024))
+    os.makedirs(os.path.dirname(PAGES), exist_ok=True)
+    io.open(PAGES, 'w', encoding='utf-8', newline='\n').write(html)
+    print('输出 %s  %d 字节 (%.1f KB)  ← GitHub Pages 入口' % (PAGES, size, size / 1024))
     print('构建时间', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     return 0
 
