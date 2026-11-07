@@ -556,6 +556,16 @@
     '{a}/{b} 页': 'p. {a}/{b}',
     '点选即时生效，自动保存。': 'Changes apply instantly and are saved.',
     '网络位置': 'Network',
+    '颜色': 'Colour',
+    '跟随主题': 'Use theme',
+    '更多排版': 'More type',
+    '需语音引擎': 'Needs engine',
+    '已连接神经语音，分角色默认开启：旁白用你选的声线，引号里的对白按人物自动换声——「我说」「他说」「张三说」都是不同的声音，同一个人物整本书都是同一个声音。':
+      'The neural engine is connected, so role-based reading is on by default: narration uses your chosen voice, and each quoted line switches voice per character — "I said", "he said" and "Zhang San said" all sound different, while one character keeps one voice for the whole book.',
+    '⚠ 还没连上神经语音引擎：分角色现在不生效（系统语音只能发出一个声音）。完整版首次启动会自动准备；Lite 版双击「VoicePack/启动语音引擎.cmd」，再回这里点「重新检测」。':
+      '⚠ The neural voice engine is not connected yet, so role-based reading has no effect (system voices can only produce one sound). The full build prepares it on first launch; for the Lite build, run VoicePack/启动语音引擎.cmd and press "Check again".',
+    '分角色朗读需要本机神经语音引擎：完整版首次启动会自动准备；Lite 版双击「VoicePack/启动语音引擎.cmd」。系统语音只能发出一个声音。':
+      'Role-based reading needs the local neural engine: the full build sets it up on first launch, the Lite build needs VoicePack/启动语音引擎.cmd. System voices can only produce one sound.',
     '从局域网共享（SMB）或本机任意路径导入': 'Import from a LAN share (SMB) or any local path',
     '从网络位置导入': 'Import from a network location',
     '填一个文件夹路径，里面的 TXT / EPUB 会像本地文件一样导进来，不复制、不上传。':

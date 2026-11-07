@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.9.3';
+  var VER = '1.9.4';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -40,7 +40,7 @@
     rate: 1, pitch: 1, volume: 1, voiceURI: '', voiceAuto: 1, pause: 120, whole: 1,
     autoNext: 1, follow: 1,
     localOn: 1, localPort: 8177, localVoice: 's12',
-    voiceSet: 'curated', roleOn: 0, rolePool: 'mix',
+    voiceSet: 'curated', roleOn: 1, rolePool: 'mix', roleTouched: 0,
     lang: 'zh', noteFilter: 'all'
   };
   var CFG = Object.assign({}, DEF), BOOKS = [], BK = null, URLCACHE = {}, ACTIVE_ZIP = null, ZIPSEQ = 0;
@@ -113,6 +113,8 @@
     catch (e) { /* 用默认值 */ }
     // 1.7 及以前：lay 是「界面密度」(auto/p/l)，1.8 起改成「分栏」(auto/one/two)
     if (CFG.lay === 'p' || CFG.lay === 'l') CFG.lay = 'auto';
+    // 分角色朗读 1.9.4 起默认开：从没手动关过的老配置也跟着开一次（有引擎才生效，没引擎自动回落）
+    if (!CFG.roleTouched) CFG.roleOn = 1;
     if (I18N) I18N.set(CFG.lang);
     applyCfg();
   }
@@ -2369,18 +2371,24 @@
   var EXTRA_MALE = ['s72', 's124', 's69', 's58', 's21', 's52'];
 
   function speakerOf(full, at, after) {
-    var pre = full.slice(Math.max(0, at - 22), at).replace(/[\s\n]+/g, '');
-    // ① 引号前：「某某说道：」
+    var pre = full.slice(Math.max(0, at - 26), at).replace(/[\s\n]+/g, '');
+    var V = '(' + SPEAK_VERB + ')';
+    // ① 「张三对俞猴子说」：先认「对 / 跟 / 向 / 朝」，这类里紧贴动词的那个人是听话人，不是说话人
+    var toM = pre.match(new RegExp('([\\u4e00-\\u9fa5]{2,4})(?:对|跟|向|朝)([\\u4e00-\\u9fa5]{2,4})(?:' + SPEAK_VERB + ')'));
+    if (toM && !NAME_STOP.test(toM[1])) return toM[1].slice(-3);
+    // ② 主语在句子里（允许中间隔逗号和动作）：「他盯我一眼，说：」「我气喘吁吁跑进去…说：」
+    var subj = '';
+    var sm = pre.match(new RegExp('(我|他|她)(?![们])[^。！？]{0,16}?' + V));
+    if (sm) subj = sm[1];
+    if (subj) return subj;
+    // ③ 人名紧贴动词：「俞猴子说：」
     var m = pre.match(new RegExp('([\\u4e00-\\u9fa5]{2,4})(?:' + SPEAK_VERB + ')(?:道|说)?[：:，,]?$'));
     if (m && !NAME_STOP.test(m[1])) return m[1].slice(-3);
-    // ② 引号前是「他/她 + 动作 + 说」
-    if (new RegExp('(^|[^他])他[^，。！？]{0,8}(?:' + SPEAK_VERB + ')').test(pre)) return '他';
-    if (new RegExp('(^|[^她])她[^，。！？]{0,8}(?:' + SPEAK_VERB + ')').test(pre)) return '她';
-    // ③ 引号后紧跟「她/他」：中文小说里最常见的主语后置
+    // ④ 引号后紧跟「她/他」：中文小说里最常见的主语后置
     var post = String(after || '').replace(/^[\s\u3000]+/, '').slice(0, 24);
     var pm = post.match(/^([他她])(?![们])/);
     if (pm) return pm[1];
-    // ④ 引号后是「某某放下报纸，慢慢问道」：名字锚在开头，动词可隔几个字
+    // ⑤ 引号后是「某某放下报纸，慢慢问道」：名字锚在开头，动词可隔几个字
     //    3 字只在「名字紧贴动词」时采用，避免把「老人放下」当成名字
     var cand = [];
     [2, 3].forEach(function (L) {
@@ -2569,18 +2577,22 @@
   }
   function syncRoleBtn() {
     var b = $('spRole'); if (!b) return;
-    b.classList.toggle('on', !!CFG.roleOn);
-    b.textContent = CFG.roleOn ? T('多角色') : T('单声线');
-    b.title = CFG.roleOn
-      ? T('分角色朗读已开启：旁白用当前声线，引号里的对白按人物换声。点击关闭')
-      : T('分角色朗读：对话自动换声（旁白保持当前声线）。点击开启');
+    var ready = localReady();
+    b.classList.toggle('on', !!CFG.roleOn && ready);
+    // 引擎没连上时要一眼看出「为什么没换声」，别让人以为功能坏了
+    b.textContent = CFG.roleOn ? (ready ? T('多角色') : T('需语音引擎')) : T('单声线');
+    b.title = !ready
+      ? T('分角色朗读需要本机神经语音引擎：完整版首次启动会自动准备；Lite 版双击「VoicePack/启动语音引擎.cmd」。系统语音只能发出一个声音。')
+      : CFG.roleOn
+        ? T('分角色朗读已开启：旁白用当前声线，引号里的对白按人物换声。点击关闭')
+        : T('分角色朗读：对话自动换声（旁白保持当前声线）。点击开启');
   }
   function toggleRole() {
-    if (!CFG.roleOn && !localReady()) {
+    if (!localReady()) {
       toast(T('分角色朗读需要本机神经语音（系统语音只能出一个声音）：先双击「VoicePack/启动语音引擎.cmd」'), 6200);
       return;
     }
-    CFG.roleOn = CFG.roleOn ? 0 : 1; saveCfg(); syncRoleBtn(); resetCast();
+    CFG.roleOn = CFG.roleOn ? 0 : 1; CFG.roleTouched = 1; saveCfg(); syncRoleBtn(); resetCast();
     if (SPK.playing) speakJump(0);
     else if (SPK.on) setPara(SPK.pi);
     toast(CFG.roleOn ? T('分角色朗读已开启：旁白照旧，对白按人物换声') : T('已回到单一声音'), 3000);
@@ -2834,6 +2846,9 @@
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + AISHELL3 多说话人 VITS 模型）：不联网、不收费、无需账号，模型内含 174 个中文说话人（148 女 + 26 男），精选 11 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.9.4 改了什么</h3><ul>' +
+      '<li><b>设置里直接能调字号、行距、字体、颜色</b>：以前「字号 / 字体 / 配色」全在「排版」面板里，设置里只剩一个跳板，找起来绕。现在设置第一屏就有：字号 A−/A+ 与滑块、行距滑块、五种字体（宋体 / 黑体 / 楷体 / 仿宋 / 等宽）、字色与底色两个取色器（配「跟随主题」一键还原）、六套主题一键切换。更细的（段距 / 字距 / 首行缩进 / 分栏 / 翻页动画 / 版心 / 亮度 / 自动阅读）仍在「排版」面板。</li>' +
+      '<li><b>分角色朗读默认开启，而且认得准了</b>：以前只有「张三说：」这种紧贴人名的写法才认得出，像「他盯我一眼，说：」「我说：」「他突然问我：」这类最常见的写法全被当成旁白，于是整段一个声音——看起来像没生效。现在能认出这几类主语，也修掉了「我对俞猴子说」把听话人当说话人的错误。分角色从此默认开（有神经语音引擎时生效；没引擎会明确提示，不再让人以为坏了）。</li></ul>' +
       '<h3>1.9.3 修了什么</h3><ul>' +
       '<li><b>翻页不再「只剩一条窄栏 + 右边一片黑」</b>：翻页时正文盒自己带了裁切，平移过去的内容被自己剪掉，第 2 页起容易整页空白；同时开合侧栏后没有重新分页，还按旧列宽平移，一翻页就停在半截列上。现在裁切交给外层容器，正文盒只负责排版；侧栏开合、进入沉浸、窗口缩放都会自动重新量一次列宽与页数。</li>' +
       '<li><b>版心宽度在翻页时也生效</b>：宽度限制从正文盒挪到了外层容器，双栏在 1920 宽的屏上是两栏各 688px、整体居中，不再把溢出的第三列露在留白里。</li></ul>' +
@@ -2871,7 +2886,7 @@
       '<li><b>桌面版终于能划线了</b>：桌面外壳默认把网页的文字选择关掉了，导致选中正文没反应、浮动色块也不出来。已放开，Windows 版的划线与批注和其他版本一样。</li>' +
       '<li><b>导入文件夹不再像在上传</b>：桌面版改用系统的「选择文件夹」对话框，不再是浏览器那个「选择要上传的文件夹 … 上传」的选择器。</li>' +
       '<li><b>左侧导航能退出了</b>：标签栏右侧加了 ×，再点同一个按钮也能收起，点正文空白处自动收起（有选区时不收，免得把手选的位置抖掉）。</li></ul>' +
-      '<p class="kv">版本 1.9.3 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
+      '<p class="kv">版本 1.9.4 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
   };
   function showDoc(k) {
     var d = DOCS[k] || DOCS.help;
@@ -2895,14 +2910,28 @@
       }).join('') + '</div>';
     };
     var encOpts = [['auto', T('自动识别')], ['utf-8', 'UTF-8'], ['gb18030', 'GB18030 / GBK'], ['big5', T('Big5 繁体')], ['utf-16le', 'UTF-16LE']];
+    var cbg = hex6(CFG.customBg, hex6(curVar('--paper'), '#1F2125'));
+    var ctx = hex6(CFG.customTx, hex6(curVar('--paperTx'), '#E6E4E1'));
     var h = '<h3>' + T('界面语言') + '</h3><div class="row"><label>' + T('界面语言') + '</label><div class="seg">' +
       [['zh', '中文'], ['en', 'English']].map(function (x) {
         return '<button data-lang="' + x[0] + '"' + (CFG.lang === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
       }).join('') + '</div><span class="kv">v' + VER + '</span></div>' +
       '<h3>' + T('外观与版式') + '</h3>' +
+      '<div class="row"><label>' + T('字号') + '</label><div class="seg">' +
+        '<button data-act="fsDown">A−</button><button data-act="fsUp">A+</button></div>' +
+        '<input type="range" data-set="fs" min="13" max="40" step="1" value="' + CFG.fs + '">' +
+        '<span id="cfgFs">' + CFG.fs + 'px</span></div>' +
+      '<div class="row"><label>' + T('行距') + '</label><input type="range" data-set="lh" min="1.2" max="2.6" step="0.05" value="' + CFG.lh + '">' +
+        '<span id="cfgLh">' + Number(CFG.lh).toFixed(2) + '</span></div>' +
+      '<div class="row"><label>' + T('字体') + '</label>' + seg('ff', [
+        ['serif', T('宋体')], ['sans', T('黑体')], ['kai', T('楷体')], ['fang', T('仿宋')], ['mono', T('等宽')]]) + '</div>' +
+      '<div class="row clrRow"><label>' + T('颜色') + '</label>' +
+        '<span class="kv">' + T('字色') + '</span><input type="color" data-set="customTx" value="' + ctx + '">' +
+        '<span class="kv">' + T('底色') + '</span><input type="color" data-set="customBg" value="' + cbg + '">' +
+        '<button data-act="clrColor">' + T('跟随主题') + '</button></div>' +
       '<div class="row"><label>' + T('主题') + '</label>' + seg('theme', THEMES.map(function (k) { return [k, T(THEME_NAME[k])]; })) + '</div>' +
-      '<div class="row"><label>' + T('排版') + '</label><button data-act="type">' + T('打开排版面板') + '</button>' +
-      '<span class="kv">' + T('字号 / 行距 / 段距 / 分栏 / 翻页 / 配色 / 自动阅读 / 快捷键') + '</span></div>' +
+      '<div class="row"><label>' + T('更多排版') + '</label><button data-act="type">' + T('打开排版面板') + '</button>' +
+      '<span class="kv">' + T('段距 / 字距 / 首行缩进 / 分栏 / 翻页 / 版心 / 亮度 / 自动阅读') + '</span></div>' +
       '<h3>' + T('朗读') + '</h3>' +
       '<div class="row"><label>' + T('默认语速') + '</label><input type="range" data-set="rate" min="0.5" max="2" step="0.1" value="' + CFG.rate + '"><span id="cfgRate">' + Number(CFG.rate).toFixed(1) + '×</span></div>' +
       '<div class="row"><label>' + T('句间停顿') + '</label><input type="range" data-set="pause" min="0" max="600" step="20" value="' + CFG.pause + '"><span id="cfgPause">' + CFG.pause + 'ms</span></div>' +
@@ -2928,7 +2957,9 @@
       [['mix', T('男女混合')], ['female', T('全女声')], ['male', T('全男声')]].map(function (x) {
         return '<button data-set="rolePool" data-v="' + x[0] + '"' + (CFG.rolePool === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
       }).join('') + '<button data-act="tryrole">' + T('试听效果') + '</button></div></div>' +
-      '<p class="kv">' + T('开启后，旁白用你选的声线，引号里的对白按人物自动换声——「张三说」和「李四道」是两个不同的声音，同一个人物整本书都是同一个声音。认不出人名时按出场顺序轮换，不会和旁白混成一个声音。只在「免费神经语音」下生效；系统语音不支持分角色。') + '</p>' +
+      '<p class="kv">' + (localReady()
+        ? T('已连接神经语音，分角色默认开启：旁白用你选的声线，引号里的对白按人物自动换声——「我说」「他说」「张三说」都是不同的声音，同一个人物整本书都是同一个声音。')
+        : T('⚠ 还没连上神经语音引擎：分角色现在不生效（系统语音只能发出一个声音）。完整版首次启动会自动准备；Lite 版双击「VoicePack/启动语音引擎.cmd」，再回这里点「重新检测」。')) + '</p>' +
       '<div class="row"><label>' + T('端口') + '</label><input type="number" data-set="localPort" min="1024" max="65535" step="1" value="' + (Number(CFG.localPort) || 8177) + '" style="width:96px"><span class="kv">' + T('默认 8177，需与启动器一致') + '</span></div>' +
       '<p class="kv">' + T('朗读文字只发给本机的 127.0.0.1 合成，不产生对外网络请求；引擎没启动时自动用系统语音，不影响看书。') + '</p>' +
       '<h3>' + T('文件与界面') + '</h3><div class="row"><label>' + T('TXT 编码') + '</label><select data-set="txtEnc">' +
@@ -2944,7 +2975,8 @@
       CFG[k] = (k === 'fs' || k === 'pagew' || k === 'pause' || k === 'localPort') ? parseInt(e.target.value, 10)
         : (k === 'lh' || k === 'rate') ? parseFloat(e.target.value) : e.target.value;
       var lab = { fs: 'cfgFs', lh: 'cfgLh', pagew: 'cfgPw', rate: 'cfgRate', pause: 'cfgPause' }[k];
-      if (lab) $(lab).textContent = e.target.value + ({ fs: 'px', pagew: 'px', rate: '×', pause: 'ms' }[k] || '');
+      if (lab) $(lab).textContent = (k === 'lh' ? Number(e.target.value).toFixed(2) : e.target.value) +
+        ({ fs: 'px', pagew: 'px', rate: '×', pause: 'ms' }[k] || '');
       saveCfg(); applyCfg();
     };
     $('modalBody').onchange = function (e) {
@@ -2962,6 +2994,14 @@
       var b = e.target.closest('button[data-set],button[data-act]'); if (!b) return;
       var act = b.getAttribute('data-act');
       if (act === 'type') { showType(); return; }
+      if (act === 'fsDown' || act === 'fsUp') {
+        CFG.fs = Math.max(13, Math.min(40, (Number(CFG.fs) || 19) + (act === 'fsUp' ? 1 : -1)));
+        saveCfg(); applyCfg(); showSettings(); return;
+      }
+      if (act === 'clrColor') {
+        CFG.customBg = ''; CFG.customTx = ''; saveCfg(); applyCfg(); showSettings();
+        toast(T('已跟随主题配色')); return;
+      }
       if (act === 'tryvoice') { tryVoice(); return; }
       if (act === 'tryrole') { tryRole(); return; }
       if (act === 'probe') { LOCAL.miss = 0; localProbe(true).then(function () { showSettings(); }); return; }
@@ -2975,6 +3015,7 @@
       if (v === 'voiceAuto' && CFG.voiceAuto) fillVoices();
       if (v === 'localOn') { LOCAL.ready = false; if (CFG.localOn) localProbe(); voiceBadge(curVoice()); }
       if (v === 'voiceSet') fillVoices();
+      if (v === 'roleOn') CFG.roleTouched = 1;
       if (v === 'voiceSet' || v === 'roleOn' || k === 'rolePool') { if (SPK.playing) speakJump(0); }
       showSettings();
     };

@@ -130,6 +130,29 @@ async function main() {
   ok(/张三/.test(seg[2].segs[0]) && /李四/.test(seg[2].segs[2]), '同一段两个人物各自认名', seg[2].segs);
   ok(seg[3].n === 1 && seg[3].segs[0].indexOf('narr') === 0, '没有对白时全是旁白', seg[3].segs);
 
+  /* 真实小说里最常见的三种写法：主语隔逗号、第一人称、以及「对某某说」（听话人别当说话人） */
+  const real = await ev(`(function(){
+    var cases = [
+      '他盯我一眼，说：“坐下。”',
+      '我说：“我在家门口洗头，你看，这头发都还没干呢。”',
+      '他怪怪地看着我，突然问我：“刚才金处长给你家打电话，你没在家，在哪里？”',
+      '门开着，我气喘吁吁跑进去，对俞猴子说：“对不起，局长。”',
+      '张三对俞猴子说：“走吧。”'
+    ];
+    return cases.map(function(t){
+      var s = MY.roleSegments(t);
+      var say = s.filter(function(x){return x.role==='say';})[0] || {};
+      return {src:t, who: say.who || ''};
+    });
+  })()`);
+  real.forEach(r => console.log('  ' + r.src.slice(0, 26) + '  →  who=' + (r.who || '（空）')));
+  ok(real[0].who === '他', '「他盯我一眼，说：」——逗号隔开的主语能认出', real[0]);
+  ok(real[1].who === '我', '「我说：」——第一人称能认出', real[1]);
+  ok(real[2].who === '他', '「他突然问我：」能认出', real[2]);
+  ok(real[3].who === '我', '「我对俞猴子说」——说话人是「我」，不是听话人', real[3]);
+  ok(real[4].who === '张三', '「张三对俞猴子说」——说话人是张三', real[4]);
+  ok(real.every(r => !!r.who), '五行对白全部认出了说话人（不再整段共用旁白声）', real.map(r => r.who));
+
   console.log('=== 声音分配（同一人物同一声音）');
   const cast = await ev(`(function(){
     MY.CFG.voiceSet='all'; MY.CFG.rolePool='mix'; MY.resetCast();
