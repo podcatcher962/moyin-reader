@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.9.5';
+  var VER = '1.9.6';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -515,7 +515,7 @@
   /* ================= 自动阅读 ================= */
   var AUTO = { on: 0, paused: 0, raf: 0, timer: 0, t0: 0, y: 0 };
   function autoSpeedPx() { return Math.max(1, Number(CFG.autoScrollSpeed) || 3) * 7; }
-  function autoPageSec() { return Math.max(4, Number(CFG.autoPageSec) || 20); }
+  function autoPageSec() { return Math.max(3, Number(CFG.autoPageSec) || 20); }
   function syncAutoBtn() {
     var b = $('btnAuto'); if (!b) return;
     b.classList.toggle('on', !!AUTO.on && !AUTO.paused);
@@ -524,6 +524,12 @@
     b.setAttribute('aria-label', b.title);
   }
   function autoStopTimers() { if (AUTO.raf) cancelAnimationFrame(AUTO.raf); if (AUTO.timer) clearInterval(AUTO.timer); AUTO.raf = 0; AUTO.timer = 0; }
+  /* 停留秒数改了：正在自动翻页的话立刻按新间隔重新计时，不用等这一页走完 */
+  function autoRetime() {
+    if (!AUTO.on || AUTO.paused || !pgEnabled()) return;
+    if (AUTO.timer) clearInterval(AUTO.timer);
+    AUTO.timer = setInterval(autoStepPage, autoPageSec() * 1000);
+  }
   function autoStart() {
     if (!BK) return;
     autoStopTimers();
@@ -2869,6 +2875,8 @@
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + AISHELL3 多说话人 VITS 模型）：不联网、不收费、无需账号，模型内含 174 个中文说话人（148 女 + 26 男），精选 11 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.9.6 改了什么</h3><ul>' +
+      '<li><b>自动翻页的停留时间可以自己定了</b>：以前默认写死 20 秒，滑杆藏在「排版」面板里、范围只有 4–60 秒还得两秒一跳。现在「设置」第一屏就有「自动阅读」一段：<strong>翻页停留 3–180 秒</strong>（步长 1 秒）、滚动速度 1–10，旁边还有「现在开始」按钮。正在自动翻页时拖动秒数，会立刻按新间隔重新计时，不用关掉重开。</li></ul>' +
       '<h3>1.9.5 改了什么</h3><ul>' +
       '<li><b>字体 5 种 → 10 种</b>：宋体 / 雅黑 / 黑体 / 楷体 / 仿宋 / 中宋 / 隶书 / 幼圆 / 等线 / 等宽。每个按钮用<strong>它自己的字体</strong>渲染，挑之前就能看出差别。</li>' +
       '<li><b>颜色丰富了</b>：字色 8 个常用色（墨黑 / 烟灰 / 深棕 / 赭石 / 藏青 / 墨绿 / 暗红 / 紫棠），底色 8 个（纸白 / 米黄 / 羊皮 / 豆绿 / 浅蓝 / 藕粉 / 暖灰 / 深灰），点一下就用，仍可自己取色。选深色底时字色会自动调浅，不会糊成一片。</li>' +
@@ -2913,7 +2921,7 @@
       '<li><b>桌面版终于能划线了</b>：桌面外壳默认把网页的文字选择关掉了，导致选中正文没反应、浮动色块也不出来。已放开，Windows 版的划线与批注和其他版本一样。</li>' +
       '<li><b>导入文件夹不再像在上传</b>：桌面版改用系统的「选择文件夹」对话框，不再是浏览器那个「选择要上传的文件夹 … 上传」的选择器。</li>' +
       '<li><b>左侧导航能退出了</b>：标签栏右侧加了 ×，再点同一个按钮也能收起，点正文空白处自动收起（有选区时不收，免得把手选的位置抖掉）。</li></ul>' +
-      '<p class="kv">版本 1.9.5 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
+      '<p class="kv">版本 1.9.6 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
   };
   function showDoc(k) {
     var d = DOCS[k] || DOCS.help;
@@ -2959,6 +2967,15 @@
       '<div class="row"><label>' + T('主题') + '</label>' + seg('theme', THEMES.map(function (k) { return [k, T(THEME_NAME[k])]; })) + '</div>' +
       '<div class="row"><label>' + T('更多排版') + '</label><button data-act="type">' + T('打开排版面板') + '</button>' +
       '<span class="kv">' + T('段距 / 字距 / 首行缩进 / 分栏 / 翻页 / 版心 / 亮度 / 自动阅读') + '</span></div>' +
+      '<h3>' + T('自动阅读') + '</h3>' +
+      '<div class="row"><label>' + T('翻页停留') + '</label>' +
+        '<input type="range" data-set="autoPageSec" min="3" max="180" step="1" value="' + Number(CFG.autoPageSec) + '">' +
+        '<span id="cfgAp">' + Math.round(Number(CFG.autoPageSec)) + ' ' + T('秒/页') + '</span></div>' +
+      '<div class="row"><label>' + T('滚动速度') + '</label>' +
+        '<input type="range" data-set="autoScrollSpeed" min="1" max="10" step="1" value="' + Number(CFG.autoScrollSpeed) + '">' +
+        '<span id="cfgAs">' + Number(CFG.autoScrollSpeed) + '</span>' +
+        '<button data-act="autoNow">' + (AUTO.on ? T('停止自动阅读') : T('现在开始')) + '</button></div>' +
+      '<p class="kv">' + T('翻页模式下按「停留秒数」自动翻页（3–180 秒）；滚动模式下按「滚动速度」匀速下滚。读到章末会自动接下一章。') + '</p>' +
       '<h3>' + T('朗读') + '</h3>' +
       '<div class="row"><label>' + T('默认语速') + '</label><input type="range" data-set="rate" min="0.5" max="2" step="0.1" value="' + CFG.rate + '"><span id="cfgRate">' + Number(CFG.rate).toFixed(1) + '×</span></div>' +
       '<div class="row"><label>' + T('句间停顿') + '</label><input type="range" data-set="pause" min="0" max="600" step="20" value="' + CFG.pause + '"><span id="cfgPause">' + CFG.pause + 'ms</span></div>' +
@@ -3001,12 +3018,15 @@
     showModal(T('阅读设置'), h, [{ label: T('恢复默认'), fn: function () { Object.assign(CFG, DEF); saveCfg(); applyCfg(); fillVoices(); showSettings(); toast(T('已恢复默认')); } }, { label: T('完成'), cls: 'pri' }]);
     $('modalBody').oninput = function (e) {
       var k = e.target.getAttribute('data-set'); if (!k) return;
-      CFG[k] = (k === 'fs' || k === 'pagew' || k === 'pause' || k === 'localPort') ? parseInt(e.target.value, 10)
+      CFG[k] = (k === 'fs' || k === 'pagew' || k === 'pause' || k === 'localPort' ||
+        k === 'autoPageSec' || k === 'autoScrollSpeed' || k === 'restMin') ? parseInt(e.target.value, 10)
         : (k === 'lh' || k === 'rate') ? parseFloat(e.target.value) : e.target.value;
-      var lab = { fs: 'cfgFs', lh: 'cfgLh', pagew: 'cfgPw', rate: 'cfgRate', pause: 'cfgPause' }[k];
+      var lab = { fs: 'cfgFs', lh: 'cfgLh', pagew: 'cfgPw', rate: 'cfgRate', pause: 'cfgPause',
+        autoPageSec: 'cfgAp', autoScrollSpeed: 'cfgAs' }[k];
       if (lab) $(lab).textContent = (k === 'lh' ? Number(e.target.value).toFixed(2) : e.target.value) +
-        ({ fs: 'px', pagew: 'px', rate: '×', pause: 'ms' }[k] || '');
+        ({ fs: 'px', pagew: 'px', rate: '×', pause: 'ms', autoPageSec: ' ' + T('秒/页') }[k] || '');
       saveCfg(); applyCfg();
+      if (k === 'autoPageSec') autoRetime();
     };
     $('modalBody').onchange = function (e) {
       var k = e.target.getAttribute('data-set');
@@ -3037,6 +3057,12 @@
       if (act === 'fsDown' || act === 'fsUp') {
         CFG.fs = Math.max(13, Math.min(40, (Number(CFG.fs) || 19) + (act === 'fsUp' ? 1 : -1)));
         saveCfg(); applyCfg(); showSettings(); return;
+      }
+      if (act === 'autoNow') {
+        if (!BK) { toast(T('先打开一本书')); return; }
+        if (AUTO.on) autoStop(); else { closeModal(); autoStart(); }
+        if (BK) showSettings();
+        return;
       }
       if (act === 'clrColor') {
         CFG.customBg = ''; CFG.customTx = ''; saveCfg(); applyCfg(); showSettings();
@@ -3155,7 +3181,7 @@
       '<div class="row"><label>' + T('亮度') + '</label>' + rng('dim', 0, 0.55, 0.05, 'flex:1') + '<span id="fDim">0%</span></div>';
     h += '<h3>' + T('自动阅读') + '</h3>' +
       '<div class="row"><label>' + T('滚动速度') + '</label>' + rng('autoScrollSpeed', 1, 10, 1, 'flex:1') + '<span id="fAs">3</span><span class="kv" id="fAsHint"></span></div>' +
-      '<div class="row"><label>' + T('翻页停留') + '</label>' + rng('autoPageSec', 4, 60, 2, 'flex:1') + '<span id="fAp">20s</span></div>' +
+      '<div class="row"><label>' + T('翻页停留') + '</label>' + rng('autoPageSec', 3, 180, 1, 'flex:1') + '<span id="fAp">20s</span></div>' +
       '<div class="row"><label>' + T('开始 / 停止') + '</label><button data-act="auto">' + T('自动阅读：开 / 关') + '</button>' +
       '<span class="kv">' + T('空格也能暂停 / 继续；翻页模式下用停留秒数，滚动模式下用滚动速度') + '</span></div>';
     h += '<h3>' + T('阅读时钟') + '</h3>' +
@@ -3186,6 +3212,7 @@
       if (TYPE_NUM[k] === 'int') v = parseInt(v, 10) || 0;
       else if (TYPE_NUM[k] === 'float') v = parseFloat(v) || 0;
       CFG[k] = v; saveCfg(); applyCfg(); typeLabels();
+      if (k === 'autoPageSec') autoRetime();
     };
     mb.onclick = function (e) {
       var thb = e.target.closest('[data-th]');
@@ -3598,6 +3625,7 @@
       resumeListen: resumeListen, renderShelf: renderShelf,
       roleSegments: roleSegments, castVoice: castVoice, rolePool: rolePool, resetCast: resetCast,
       tryRole: tryRole, toggleRole: toggleRole, localBarList: localBarList, voiceStat: voiceStat,
+      autoRetime: autoRetime, autoPageSec: autoPageSec,
       buildVoiceList: buildVoiceList, setPara: setPara, speakerOf: speakerOf,
       VER: VER, setLang: setLang, STATS: STATS, loadStats: loadStats, fmtDur: fmtDur, statStreak: statStreak,
       noteEditor: noteEditor, hlMenu: hlMenu, removeHighlight: removeHighlight, hlList: hlList,
