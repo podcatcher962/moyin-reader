@@ -62,3 +62,10 @@ _vm_shot*.png
 _vm_relay.py
 get-pip.py
 _uos_*.png
+
+# 宣传素材的中间产物
+promo/_mid.mp4
+promo/ffmpeg.exe
+promo/_*.png
+promo/o264.bz2
+_ffmpeg.zip
