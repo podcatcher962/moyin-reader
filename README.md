@@ -70,7 +70,7 @@
 | **Windows** | 下载 `MoYinReader.exe` 双击 | 完整版，174 个离线语音与分角色朗读都在这一版 |
 | **安卓** | 下载 `MoYinReader.apk` 安装 | 页面内嵌，朗读走系统 TTS |
 | **任意系统** | 双击 `MoYinReader.html` | 单文件网页版，功能与桌面版一致 |
-| **Linux / 信创**（统信 UOS、麒麟、openEuler、Deepin） | 解压 `MoYinReader-Linux-*.tar.gz`，双击「墨吟阅读器.sh」 | **x86_64 带 10 MB 独立程序，双击就跑、不用装 Python**（已在统信 UOS 20 专业版实测）；飞腾 / 鲲鹏 / 龙芯会自动走 Python 或网页方式 |
+| **Linux / 信创**（统信 UOS、麒麟、openEuler、Deepin） | `sudo dpkg -i moyin-reader_*.deb` 装进应用菜单；或用 `MoYinReader-Linux-*.tar.gz` 解压后双击「墨吟阅读器.sh」 | **x86_64 是 10 MB 独立程序，不用装 Python**（已在统信 UOS 20 专业版实测安装与启动）；飞腾 / 鲲鹏 / 龙芯会自动走 Python 或网页方式 |
 | **macOS**（Intel / Apple Silicon） | 解压 `MoYinReader-macOS-*.zip`，双击「墨吟阅读器.command」 | 免安装 Python |
 
 Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF，只依赖系统自带的 libc / libz / libpthread / libdl（glibc 2.28+），UOS 20、银河麒麟 V10、openEuler 20.03 及更新版本都能直接运行。窗口用系统浏览器内核的「应用模式」打开——没有地址栏和标签页，是个独立窗口，关掉即退出。
@@ -96,6 +96,8 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 | 🌐 双语 | 全窗口中英切换（含设置、弹窗、提示与全部说明文档），选择记住 |
 | 🔖 续听 | 「听到哪」与「读到哪」分开记，书架卡片一键「续听 · 第 N 章」接着念 |
 | ✍️ 阅读 | **滚动 / 翻页**两种读法：分栏只有**自动 / 单栏 / 双栏**（够宽自动双栏、手机永远单栏，选双栏自动切翻页）。字号、行距、段间距、字间距、首行缩进、**十种字体**、两端 / 左对齐、版心宽度、页边距全部可调 |
+| 🈵 繁简 | 设置里一键把繁体书显示成简体（OpenCC 对照表，2965 个常用字）；**只改显示、不动原文**，关掉即还原，划线笔记位置不受影响 |
+| 🖼️ 插图 | EPUB 里的地图、人物关系表、插图页点一下全屏看，点任意处或 Esc 关闭 |
 | 🎨 主题 | 六套配色（夜间 / 明亮 / 羊皮纸 / 护眼绿 / 雾蓝 / 纯黑），点「主题」弹出卡片一次挑完；另有 8 种常用字色 + 8 种底色色板与取色器，选深底会自动配浅字 |
 | 🕐 时钟 | 顶栏显示当前时间与本次已读时长，30 分钟转黄、60 分钟转红；沉浸模式右上角保留淡时钟 |
 | ☕ 护眼 | 连续读满 30 / 45 / 60 / 90 分钟（可关）提醒休息，可「休息一下」重新计时或「稍后再提」 |
@@ -111,10 +113,11 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 |---|---|---|
 | `MoYinReader.exe` | 约 47 MB | **Windows 完整版**，语音库打包在 exe 尾部，只拷这一个文件就能听，首次启动自动释放到缓存 |
 | `MoYinReader_Lite.exe` | 约 17 MB | Windows 轻量版，需同目录放 `VoicePack` 文件夹（约 53 MB） |
-| `MoYinReader.apk` | 约 177 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
-| `MoYinReader.html` | 约 348 KB | 单文件网页版，双击即用，任何系统都能跑 |
-| `MoYinReader-Linux-*.tar.gz` | 约 9.8 MB | 统信 / 麒麟 / openEuler 等，**含 x86_64 独立程序**，解压双击「墨吟阅读器.sh」 |
-| `MoYinReader-macOS-*.zip` | 约 139 KB | macOS 源码 + 打包脚本，在本机跑一次 `build-macos.sh` 出 `.app` |
+| `MoYinReader.apk` | 约 197 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
+| `MoYinReader.html` | 约 372 KB | 单文件网页版，双击即用，任何系统都能跑 |
+| `moyin-reader_*_amd64.deb` | 约 9.7 MB | 统信 / 麒麟 / openEuler，**双击安装即进应用菜单**，卸载走系统正常流程 |
+| `MoYinReader-Linux-*.tar.gz` | 约 9.8 MB | 免安装版：解压双击「墨吟阅读器.sh」，U 盘带走也能用 |
+| `MoYinReader-macOS-*.zip` | 约 157 KB | macOS 源码 + 打包脚本，在本机跑一次 `build-macos.sh` 出 `.app` |
 
 不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本；或者用 **[在线版](https://podcatcher962.github.io/moyin-reader/)** 什么都不装。
 
@@ -168,7 +171,7 @@ _pkg_win/build_exe.py              exe 打包 + 验收
 _pkg_apk/TtsBridge.java            安卓 TTS 桥（系统语音）
 _pkg_apk/build_apk.py              apk 打包 + 体检
 _cdp_verify.js                     117 项界面回归（headless Edge，CDP）
-_check_v19.js                     124 项回归（分栏 / 主题面板 / 时钟 / 休息提醒 / 网络位置）
+_check_v19.js                     131 项回归（分栏 / 主题面板 / 时钟 / 休息提醒 / 网络位置）
 _check_v18.js                      95 项版式回归（分栏 / 翻页 / 主题 / 自动阅读 / 全屏）
 _check_v17.js  _check_v171.js      1.7 与 1.7.1 的回归
 _check_voices.js  _check_role.js   声线 / 分角色朗读回归（22 / 48 项）
@@ -250,7 +253,7 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 |---|---|---|
 | `MoYinReader.exe` | ~47 MB | Full build, voice pack appended inside the exe |
 | `MoYinReader_Lite.exe` | ~17 MB | Needs a `VoicePack` folder (~53 MB) next to it |
-| `MoYinReader.html` | ~348 KB | Standalone web build |
+| `MoYinReader.html` | ~372 KB | Standalone web build |
 | `MoYinReader.apk` | ~177 KB | Android shell with the page embedded |
 
 Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** — or open the **[web version](https://podcatcher962.github.io/moyin-reader/)** and install nothing.

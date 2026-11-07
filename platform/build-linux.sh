@@ -10,8 +10,10 @@
 #   * PyInstaller 只能打「本机架构 + 本机 glibc」的包，交叉打包基本不可行。
 #     所以这个脚本必须在目标机器（或同架构同发行版的构建机）上跑。
 #   * 不想打包也完全能用：直接 bash start-linux.sh，靠系统 python3 跑源码。
-#   * 离线机器：先把 pyinstaller / pywebview 的轮子拷过来，
-#     pip install --no-index --find-links=./wheels pyinstaller pywebview
+#   * 离线机器：先把 pyinstaller 的轮子拷过来，
+#     pip install --no-index --find-links=./wheels pyinstaller
+#   * 不需要 pywebview：Linux 上它依赖 WebKit2 的 typelib（很多信创机器没装），
+#     程序会改用系统浏览器的 --app 模式开窗口。
 
 set -eu
 

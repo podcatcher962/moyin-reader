@@ -128,6 +128,15 @@ body.autoscroll #pageWrap{scroll-behavior:auto}
 html[data-mode] #page p,html[data-mode] #page .rdp{margin:0 0 var(--ps);text-align:justify;text-indent:var(--ind)}
 #page .rdh{font-weight:700;font-size:1.16em;margin:1.3em 0 .7em;text-align:left}
 #page img,#page svg{max-width:100%;height:auto;display:block;margin:12px auto}
+/* 点插图看大图 */
+#page img{cursor:zoom-in}
+#imgView{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.86);cursor:zoom-out;padding:16px}
+#imgView.on{display:flex}
+#imgView img{max-width:100%;max-height:calc(100% - 40px);object-fit:contain;
+  box-shadow:0 18px 60px rgba(0,0,0,.6);border-radius:4px}
+#imgView .ivTip{position:absolute;bottom:14px;left:0;right:0;text-align:center;
+  color:#C9C9C9;font-size:.8em;pointer-events:none}
 #page blockquote{border-left:3px solid var(--acc);padding-left:14px;margin:1em 0;color:var(--paperTx2)}
 #page a{color:var(--acc);cursor:pointer;text-decoration:underline}
 #page .rdp{border-left:3px solid transparent;margin-left:-15px;padding-left:12px;border-radius:3px}
@@ -535,6 +544,7 @@ body.imm #clockFloat{display:block}
     <button id="restTipOk" class="pri" data-i18n="休息一下">休息一下</button>
     <button id="restTipSnooze" data-i18n="稍后再提">稍后再提</button>
   </div>
+  <div id="imgView"><img alt=""><div class="ivTip">点任意处关闭</div></div>
   <div id="dropHint"><div class="dh"><b>松手导入</b><span>把 TXT / EPUB 拖进来就行，也可以拖整个文件夹</span></div></div>
   <div id="toast"></div>
 </div>

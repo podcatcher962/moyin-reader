@@ -121,6 +121,12 @@
       '<p>The shelf + reader layout and the speech scheduling were informed by Koodo Reader on this machine, with all code rewritten from zero and no dependencies: EPUB unzipping, OPF / NCX / Nav contents, body and illustration parsing are all built in, with no external scripts or CDN.</p>' +
       '<p class="kv">Speech can use the free open-source offline neural voices (sherpa-onnx + AISHELL3 multi-speaker VITS): no network, no fees, no account. The model contains 174 Chinese speakers (148 female + 26 male), 11 curated by default, and supports role-based reading. The library ships in <code>VoicePack</code>; the full Windows EXE has it appended inside, so one file is enough.</p>' +
       '<p>Released under the <b>MIT License</b>: use, modify and redistribute freely, including commercially, keeping the copyright and license notice. Full terms under <b>Open source &amp; license</b>.</p>' +
+      '<h3>What changed in 1.10.2</h3><ul>' +
+      '<li><b>Traditional to Simplified</b>: Settings has a Chinese switch — Original or Simplified. Turn it on for books from Taiwan or old texts; body and contents both convert, and <b>the file itself is never touched</b> — switch back to restore. Built on OpenCC\'s table (2965 one-to-one characters) and a same-length substitution, so highlights, notes and speech positions never drift.</li>' +
+      '<li><b>Tap an illustration to enlarge it</b>: maps, character charts and plate pages in EPUB were previously thumbnails only. Tap for full screen, tap anywhere or press Esc to close.</li>' +
+      '<li><b>Pinch to change text size</b> on touch screens — no need to open Settings; it saves on release.</li>' +
+      '<li><b>A .deb package for Linux</b>: double-click to install and it lands in the app menu, no unzip-and-run needed.</li>' +
+      '<li>Fix: the macOS build script no longer forces a pywebview install — if it fails the build continues and the app opens a browser window instead.</li></ul>' +
       '<h3>What changed in 1.10.1</h3><ul>' +
       '<li><b>The Linux / UOS build is a real program now</b>: not "HTML plus a launcher script" but a 10 MB standalone executable. Double-click and it runs — <b>no Python, no dependencies</b>. Verified on UOS Desktop 20 Professional (x86_64): shelf, import, page turning and themes all work.</li>' +
       '<li>It only needs the system libc / libz / libpthread (glibc 2.28+), so UOS 20, Kylin V10 and openEuler 20.03+ run it as is.</li>' +

@@ -526,6 +526,36 @@ async function main() {
     (await ev("document.getElementById('tocList').textContent")).slice(0, 20));
   await ev("(function(){document.getElementById('btnToc').click();return 1;})()"); await sleep(300);
 
+  console.log('=== 繁体转简体（显示层）');
+  console.log('  ', await ev("MY.hansify('這個書寫得很漂亮，臺灣的讀者閱讀圖書')"));
+  ok(await ev("MY.hansify('這個書')") === '这个书', '常见繁简字能转', await ev("MY.hansify('這個書')"));
+  ok(await ev("(function(){var a='這個書寫得很漂亮龍蘇鐘麵';return MY.hansify(a).length===a.length;})()"),
+    '转换后长度不变（划线/笔记的字符偏移不会错位）');
+  const cnTxt = '第一章 測試\n\n這是一段繁體中文的文字，用來檢查轉換是否正確。書寫、閱讀、圖書、這個、那個。\n\n第二段：臺灣的讀者說，這本書寫得很好。';
+  await ev(`(async()=>{const b=new TextEncoder().encode(${JSON.stringify(cnTxt)});
+    const id=await MY.importBuffer(b.buffer,'繁體測試.txt','txt'); MY.openBook(id);})()`);
+  await sleep(1800);
+  await ev("(function(){MY.CFG.hans=0;MY.saveCfg();MY.applyCfg();MY.renderChapter(0,{silent:true});return 1;})()");
+  await sleep(700);
+  const cnRaw = await ev("document.getElementById('page').textContent.slice(0,50)");
+  await ev("(function(){MY.CFG.hans=1;MY.saveCfg();MY.applyCfg();MY.renderChapter(0,{silent:true});return 1;})()");
+  await sleep(700);
+  const cnHans = await ev("document.getElementById('page').textContent.slice(0,50)");
+  console.log('  原文:', cnRaw);
+  console.log('  简体:', cnHans);
+  ok(cnRaw.indexOf('這') >= 0, '原文是繁体', cnRaw.slice(0, 16));
+  ok(cnHans.indexOf('这') >= 0 && cnHans.indexOf('這') < 0, '开「简体」后正文变简体', cnHans.slice(0, 16));
+  ok(cnHans.length === cnRaw.length, '渲染后字符数不变', { raw: cnRaw.length, cn: cnHans.length });
+  await ev("(function(){MY.CFG.hans=0;MY.saveCfg();MY.applyCfg();MY.renderChapter(0,{silent:true});return 1;})()");
+  await sleep(600);
+  const cnBack = await ev("document.getElementById('page').textContent.slice(0,50)");
+  ok(cnBack === cnRaw, '关掉开关还原成繁体原文', cnBack.slice(0, 16));
+  await ev("document.getElementById('btnSet').click()"); await sleep(400);
+  ok(await ev("document.querySelectorAll('#modalBody [data-set=\"hans\"]').length") === 2,
+    '设置里有「原文 / 简体」两个选项',
+    await ev("document.querySelectorAll('#modalBody [data-set=\"hans\"]').length"));
+  await ev("document.getElementById('modalX').click()"); await sleep(250);
+
   console.log('=== 网络位置导入（SMB / 映射盘）');
   ok(await ev("document.getElementById('btnImportNet').hidden"), '网页版不显示「网络位置」（没有本地文件权限）');
   /* 装上桌面外壳那套桥，再走一遍真实点击路径 */
