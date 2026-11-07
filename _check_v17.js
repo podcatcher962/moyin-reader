@@ -100,7 +100,7 @@ async function main() {
   console.log('=== 启动与版本');
   await send('Page.navigate', { url: APP });
   ok(await ready(), '页面初始化完成');
-  ok(await ev('MY.VER') === '1.7.1', '版本号 1.7.1', await ev('MY.VER'));
+  ok(await ev('MY.VER') >= '1.7.1', '版本号（1.7.1 起）', await ev('MY.VER'));
   ok(await ev("!!document.getElementById('btnLang')"), '首页有语言开关');
 
   console.log('=== 双语');

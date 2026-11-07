@@ -40,6 +40,7 @@ _samples/*
 _patch_*.py
 _fetch_fast.py
 _probe_*.js
+_shots*/ 
 build.local.cmd
 *.keystore
 .env

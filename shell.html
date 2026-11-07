@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark" data-lay="auto" data-motion="">
+<html lang="zh-CN" data-theme="dark" data-lay="auto" data-mode="scroll" data-motion="">
 <head>
 <meta charset="utf-8">
 <meta name="referrer" content="no-referrer">
@@ -11,6 +11,7 @@
   --tx:#E6E4E1; --tx2:#A5A29D; --acc:#4A9EFF; --ok:#3FC08A; --warn:#E8A33D; --bad:#E2685F;
   --paper:#1F2125; --paperTx:#E6E4E1; --paperTx2:#A5A29D;
   --fs:19px; --lh:1.85; --pagew:720px; --ff:"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif;
+  --ps:.85em; --ls:.02em; --ind:0em; --padx:32px;
   --tap:34px; --ui:1;
 }
 html[data-theme="light"]{
@@ -22,6 +23,21 @@ html[data-theme="sepia"]{
   --bg:#EDE3CE; --card:#F7F0E0; --card2:#E8DBC0; --line:#D6C6A6;
   --tx:#3A3227; --tx2:#6F6150; --acc:#9A5B2C;
   --paper:#FAF3E3; --paperTx:#3B3226; --paperTx2:#6F6150;
+}
+html[data-theme="green"]{
+  --bg:#E4EDDD; --card:#F4F8EF; --card2:#DCE7D3; --line:#C6D5BB;
+  --tx:#25301D; --tx2:#5B6B50; --acc:#3E7C4C;
+  --paper:#F3F8EC; --paperTx:#26301D; --paperTx2:#5B6B50;
+}
+html[data-theme="gray"]{
+  --bg:#20262E; --card:#2A323C; --card2:#333C48; --line:#43505F;
+  --tx:#DEE5EE; --tx2:#9BA7B6; --acc:#69A8F5;
+  --paper:#252D37; --paperTx:#DEE5EE; --paperTx2:#9BA7B6;
+}
+html[data-theme="black"]{
+  --bg:#000000; --card:#0E0E10; --card2:#17171A; --line:#2A2A2E;
+  --tx:#C9C9CC; --tx2:#85858A; --acc:#5AA9FF;
+  --paper:#000000; --paperTx:#C4C4C8; --paperTx2:#7E7E84;
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
@@ -101,12 +117,15 @@ input[type=range]{accent-color:var(--acc);height:var(--tap);min-width:90px}
 .side .it.lv1{padding-left:22px;font-size:.86em;color:var(--tx2)}
 .side .it.lv2{padding-left:36px;font-size:.82em;color:var(--tx2)}
 .side .q{width:100%;margin-bottom:9px}
-#pageWrap{flex:1;min-height:0;overflow-y:auto;scroll-behavior:smooth;background:var(--bg)}
-#page{max-width:var(--pagew);margin:0 auto;padding:34px 32px 70px;background:var(--paper);color:var(--paperTx);
-  font-family:var(--ff);font-size:var(--fs);line-height:var(--lh);min-height:100%;letter-spacing:.02em}
+#pageWrap{flex:1;min-height:0;overflow-y:auto;scroll-behavior:smooth;background:var(--bg);position:relative}
+/* 自动滚动时关掉平滑滚动，否则每帧设置 scrollTop 会被动画吃掉 */
+body.autoscroll #pageWrap{scroll-behavior:auto}
+#page{max-width:var(--pagew);margin:0 auto;padding:34px var(--padx) 70px;background:var(--paper);color:var(--paperTx);
+  font-family:var(--ff);font-size:var(--fs);line-height:var(--lh);min-height:100%;letter-spacing:var(--ls)}
 #page h1,#page h2,#page h3,#page h4{line-height:1.4;margin:1.4em 0 .7em;font-weight:700;text-align:left}
 #page h1{font-size:1.5em}#page h2{font-size:1.28em}#page h3{font-size:1.12em}
-#page p,#page .rdp{margin:0 0 .85em;text-align:justify}
+/* 段落排版：带上 html[data-mode] 提高权重，保证用户的段距/缩进能压过书自带样式 */
+html[data-mode] #page p,html[data-mode] #page .rdp{margin:0 0 var(--ps);text-align:justify;text-indent:var(--ind)}
 #page .rdh{font-weight:700;font-size:1.16em;margin:1.3em 0 .7em;text-align:left}
 #page img,#page svg{max-width:100%;height:auto;display:block;margin:12px auto}
 #page blockquote{border-left:3px solid var(--acc);padding-left:14px;margin:1em 0;color:var(--paperTx2)}
@@ -116,6 +135,8 @@ input[type=range]{accent-color:var(--acc);height:var(--tap);min-width:90px}
 #page .rdp.hit{background:rgba(232,163,61,.28)}
 #chTitle{font-size:1.35em;font-weight:700;margin:0 0 1.1em;padding-bottom:.5em;border-bottom:1px solid var(--line);font-family:var(--ff)}
 #chEnd{text-align:center;padding:26px 0 8px;color:var(--paperTx2);font-size:.85em}
+/* 书自带、与顶栏标题重复的那行标题 */
+#page .dupH{display:none}
 #readFoot{flex:0 0 auto;display:flex;gap:10px;align-items:center;padding:8px 14px;background:var(--card);border-top:1px solid var(--line)}
 #progRange{flex:1;min-width:80px}
 /* 朗读条 */
@@ -230,7 +251,66 @@ html[data-theme="light"] #page mark.hl-p{background:rgba(255,150,196,.45)}
 .sumEx .e .t{font-size:.9em;line-height:1.6}
 .sumEx .e .n{color:var(--acc);font-size:.85em;margin-top:3px}
 .sumEx .e .h{color:var(--tx2);font-size:.76em;margin-top:3px}
+/* ---------- 翻页模式（分栏） ---------- */
+html[data-mode="page"] #pageWrap{overflow:hidden}
+html[data-mode="page"] #page{
+  height:100%;min-height:0;padding:26px var(--padx);margin:0 auto;
+  max-width:min(100%,calc(var(--pagew) * var(--pcols,1) + 60px * (var(--pcols,1) - 1)));
+  column-fill:auto;column-gap:60px;
+  column-rule:1px solid rgba(128,128,128,.20);
+  transform:translateX(0);will-change:transform;backface-visibility:hidden;
+}
+html[data-mode="page"] #page.pg-slide{transition:transform .3s cubic-bezier(.22,.61,.36,1)}
+html[data-mode="page"] #page.pg-fade{animation:pgFade .26s ease}
+/* 版心是阅读器的地盘：书里的 body 样式会被映射到 #page 上，这里兜底钉死，
+   否则一本书写 body{margin:5%} 就能把双栏挤出屏幕 */
+html[data-mode] #page{margin:0 auto;padding:34px var(--padx) 70px;
+  font-family:var(--ff);font-size:var(--fs);line-height:var(--lh);letter-spacing:var(--ls);
+  background:var(--paper);color:var(--paperTx)}
+html[data-mode="page"] #page{padding:26px var(--padx)}
+@keyframes pgFade{from{opacity:.30}to{opacity:1}}
+html[data-mode="page"] #chEnd{break-inside:avoid}
+/* 翻页模式：左右点击区提示 */
+#pgHintL,#pgHintR{position:absolute;top:0;bottom:0;width:15%;pointer-events:none;opacity:0;transition:opacity .2s;z-index:5}
+#pgHintL{left:0;background:linear-gradient(90deg,rgba(128,128,128,.16),transparent)}
+#pgHintR{right:0;background:linear-gradient(270deg,rgba(128,128,128,.16),transparent)}
+html[data-mode="page"] #pageWrap:hover #pgHintL,html[data-mode="page"] #pageWrap:hover #pgHintR{opacity:.55}
+html[data-mode="scroll"] #pgHintL,html[data-mode="scroll"] #pgHintR{display:none}
+/* ---------- 沉浸模式 ---------- */
+#viewRead{position:relative}
+body.imm #readTop,body.imm #readFoot{position:absolute;left:0;right:0;z-index:32;box-shadow:0 6px 26px rgba(0,0,0,.34)}
+body.imm #readTop{top:0;transform:translateY(-102%);transition:transform .22s ease}
+body.imm #readFoot{bottom:0;transform:translateY(102%);transition:transform .22s ease}
+body.imm #readTop.peek,body.imm #readFoot.peek{transform:none}
+body.imm #readMain{padding:0}
+/* ---------- 亮度暗化 ---------- */
+#dim{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:45;transition:opacity .18s}
+/* ---------- 自动阅读胶囊 ---------- */
+#autoPill{position:fixed;left:50%;bottom:64px;transform:translateX(-50%);z-index:50;display:none;
+  align-items:center;gap:8px;padding:7px 9px 7px 14px;border-radius:22px;font-size:.84em;
+  background:var(--card);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.35);white-space:nowrap}
+#autoPill.on{display:flex}
+#autoPill button{min-height:28px;padding:3px 10px;border-radius:14px}
+#autoPill .dot{width:7px;height:7px;border-radius:50%;background:var(--warn);display:inline-block;margin-right:6px}
+/* 按钮上的状态点 */
+#btnAuto.on{background:var(--ok);border-color:var(--ok);color:#fff}
+/* ---------- 排版面板 ---------- */
+.sw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:8px;margin:6px 0 12px}
+.sw-grid .th{display:flex;flex-direction:column;gap:5px;align-items:center;padding:8px 4px;border-radius:10px;
+  border:1px solid var(--line);background:transparent;cursor:pointer;font-size:.78em;color:var(--tx2);min-height:56px}
+.sw-grid .th.on{border-color:var(--acc);color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+.sw-grid .th .sw{width:100%;height:22px;border-radius:6px;border:1px solid rgba(128,128,128,.35)}
+.clrRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.clrRow input[type=color]{width:40px;height:30px;min-height:30px;padding:0;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+.tpGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 12px}
+.tpGrid .cell{display:flex;flex-direction:column;gap:3px}
+.tpGrid .cell .lb{font-size:.78em;color:var(--tx2)}
+.tpGrid .cell .seg{flex-wrap:wrap}
+.kbd{display:inline-block;min-width:22px;text-align:center;background:var(--card2);border:1px solid var(--line);
+  border-bottom-width:2px;border-radius:5px;padding:0 5px;font-size:.86em;font-family:var(--ff)}
+p.kv.kbdline{line-height:2.1}
 /*__NARROW_CSS__*/
+
 </style>
 </head>
 <body>
@@ -304,8 +384,10 @@ html[data-theme="light"] #page mark.hl-p{background:rgba(255,150,196,.45)}
         <button id="btnMarks" data-i18n="书签">书签</button>
         <button id="btnNotes" data-i18n="笔记">笔记</button>
         <button id="btnMarkAdd" data-i18n="＋书签">＋书签</button>
-        <button id="btnFont" data-i18n="字体">字体</button>
-        <button id="btnTheme" data-i18n="主题">主题</button>
+        <button id="btnType" data-i18n="排版" data-i18n-title="排版：滚动 / 翻页、分栏、字号、行距、段距、字体、颜色" title="排版：滚动 / 翻页、分栏、字号、行距、段距、字体、颜色">排版</button>
+        <button id="btnTheme" data-i18n="主题" data-i18n-title="切换主题" title="切换主题">主题</button>
+        <button id="btnAuto" data-i18n="自动" data-i18n-title="自动阅读：自动滚动 / 自动翻页" title="自动阅读：自动滚动 / 自动翻页">自动</button>
+        <button id="btnFull" data-i18n="全屏" data-i18n-title="全屏 / 沉浸模式" title="全屏 / 沉浸模式">全屏</button>
         <button id="btnSpeak" class="pri" data-i18n="朗读">朗读</button>
       </div>
     </header>
@@ -322,6 +404,8 @@ html[data-theme="light"] #page mark.hl-p{background:rgba(255,150,196,.45)}
       </aside>
       <div id="pageWrap">
         <article id="page"></article>
+        <div id="pgHintL"></div>
+        <div id="pgHintR"></div>
       </div>
     </div>
     <div class="speakbar" id="speakBar">
@@ -370,6 +454,12 @@ html[data-theme="light"] #page mark.hl-p{background:rgba(255,150,196,.45)}
     <div class="mb" id="modalBody"></div>
     <div class="mf" id="modalFoot"></div>
   </div></div>
+  <div id="dim"></div>
+  <div id="autoPill">
+    <span><i class="dot"></i><span id="autoPillTx">自动阅读已暂停</span></span>
+    <button id="autoPillGo" data-i18n="继续">继续</button>
+    <button id="autoPillX" data-i18n="退出">退出</button>
+  </div>
   <div id="toast"></div>
 </div>
 <script>/*__APP_JS__*/</script>

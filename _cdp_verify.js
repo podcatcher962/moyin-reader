@@ -215,7 +215,7 @@ async function main() {
   await ev("document.getElementById('btnTheme').click()");
   ok(await ev("document.documentElement.getAttribute('data-theme')") === 'light', '主题切换到明亮');
   await shot('04_read_light');
-  await ev("document.getElementById('btnFont').click()");
+  await ev("document.getElementById('btnType').click()");
   const fs0 = await ev('MY.CFG.fs');
   await ev("document.querySelector('#modalBody [data-font=\"fs+\"]').click()");
   ok(await ev('MY.CFG.fs') === fs0 + 1, '字号 +1 即时生效');
@@ -402,7 +402,12 @@ async function main() {
   await ev('MY.stopSpeak(true)');
   await shot('06_phone_read');
   await ev("(function(){const b=document.getElementById('btnLayout');b.click();return 1;})()");
-  ok(['p', 'l'].indexOf(await ev('MY.CFG.lay')) >= 0, '版式手动切换');
+  ok(await ev("!!document.querySelector('#modalBody [data-set=\"mode\"]')") === true, '书架「版式」打开排版面板');
+  await ev("document.querySelector('#modalBody [data-set=\"lay\"][data-v=\"two\"]').click()");
+  ok(await ev('MY.CFG.lay') === 'two', '分栏可切到双栏', await ev('MY.CFG.lay'));
+  await ev("document.querySelector('#modalBody [data-set=\"lay\"][data-v=\"auto\"]').click()");
+  ok(await ev('MY.CFG.lay') === 'auto', '分栏可切回自动');
+  await ev("document.getElementById('modalX').click()");
 
   console.log('=== file:// 双击场景');
   const tab2 = JSON.parse(await get(CDP, '/json/new?about:blank', 'PUT'));
