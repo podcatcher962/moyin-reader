@@ -556,6 +556,12 @@
     '{a}/{b} 页': 'p. {a}/{b}',
     '点选即时生效，自动保存。': 'Changes apply instantly and are saved.',
     '网络位置': 'Network',
+    '繁简': 'Chinese',
+    '点任意处关闭': 'Tap anywhere to close',
+    '字号 {n}': 'Text size {n}',
+    '原文': 'Original',
+    '看台版书、古籍时开「简体」；只改显示，书里的原文一个字都不动':
+      'Turn on Simplified for Traditional books. Display only — the file itself is untouched.',
     '字重': 'Weight',
     '细': 'Light',
     '常规': 'Regular',

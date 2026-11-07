@@ -5,7 +5,7 @@
 #   bash build-macos.sh --onefile  # 生成单个可执行文件（不带 .app 外壳）
 #
 # 需要：Xcode Command Line Tools（xcode-select --install）、python3、pyinstaller
-#   python3 -m pip install --user pyinstaller pywebview
+#   python3 -m pip install --user pyinstaller        # pywebview 可选，见下
 #
 # ⚠️ 打出来的包只在「本机架构」上跑（Intel 只会出 x86_64，Apple Silicon 只会出 arm64）。
 #    要做通用包得在两种机器上各打一次，或者用 lipo 合并（这里不折腾）。
@@ -22,8 +22,17 @@ PY="$(command -v python3 || true)"
 [ -n "$PY" ] || { echo "先装 Command Line Tools：xcode-select --install"; exit 1; }
 echo "Python: $($PY -V 2>&1)   $(uname -m)"
 
-"$PY" -c "import PyInstaller" >/dev/null 2>&1 || "$PY" -m pip install --user pyinstaller
-"$PY" -c "import webview" >/dev/null 2>&1 || "$PY" -m pip install --user pywebview
+"$PY" -c "import PyInstaller" >/dev/null 2>&1 || "$PY" -m pip install --user pyinstaller || {
+  echo "装不上 PyInstaller。要么先解决网络/代理，要么直接双击 MoYinReader.html 用浏览器看。"
+  exit 1
+}
+
+# pywebview 是「可选」的：装上就有 Cocoa 原生窗口，装不上也会用系统浏览器的
+# --app 模式开一个无地址栏窗口（app.py 里已内置这条兜底），所以失败不算错。
+if ! "$PY" -c "import webview" >/dev/null 2>&1; then
+  "$PY" -m pip install --user pywebview >/dev/null 2>&1 || \
+    echo "提示：pywebview 没装上，不影响使用——会用浏览器 --app 模式开窗口。"
+fi
 
 mkdir -p dist build
 MODE="${1:-}"
