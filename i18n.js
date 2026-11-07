@@ -555,6 +555,22 @@
     '排版已恢复默认': 'Typography reset',
     '{a}/{b} 页': 'p. {a}/{b}',
     '点选即时生效，自动保存。': 'Changes apply instantly and are saved.',
+    '网络位置': 'Network',
+    '从局域网共享（SMB）或本机任意路径导入': 'Import from a LAN share (SMB) or any local path',
+    '从网络位置导入': 'Import from a network location',
+    '填一个文件夹路径，里面的 TXT / EPUB 会像本地文件一样导进来，不复制、不上传。':
+      'Enter a folder path — the TXT / EPUB inside it are imported as if they were local files, without copying or uploading anything.',
+    '可以写：\\\\主机\\共享名\\子目录、映射到网络的盘符（Z:\\书）、或用 NAS 的 IP。':
+      'Examples: \\\\host\\share\\subfolder, a mapped network drive (Z:\\books), or your NAS IP.',
+    '首次访问需要账号密码：先在「资源管理器」里打开一次并勾记住，这里就能直接读。':
+      'The first visit needs a username and password: open the folder once in File Explorer, tick "Remember", and this reader can read it directly.',
+    '这次导入只读当前选中的目录；原文件仍在原处，删掉书架里的书不会影响它们。':
+      'This import only reads the folder you choose. The originals stay where they are — removing a book from the shelf never touches them.',
+    '连接并扫描': 'Connect & scan',
+    '先填一个路径': 'Enter a path first',
+    '连不上这个位置': 'Cannot reach this location',
+    '确认共享已开启、本机已在资源管理器里成功打开过这个目录。':
+      'Check that sharing is on and that this folder opens once in File Explorer.',
 
     /* ---------- 1.9 多栏档位 / 主题面板 / 阅读时钟 / 休息提醒 ---------- */
     '设置': 'Settings',

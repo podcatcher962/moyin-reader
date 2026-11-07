@@ -7,6 +7,7 @@
 
     help: '<h3>Import</h3>' +
       '<p>Tap <b>＋ Import</b> on the shelf to add one or more <code>.txt</code> / <code>.epub</code> files, or <b>Folder</b> to pull every TXT / EPUB out of a directory at once. Everything is stored in this device’s browser database — nothing is uploaded.</p>' +
+      '<p><b>Network location</b> (desktop build): the <b>Network</b> button on the shelf accepts a LAN share such as <code>\\\\192.168.1.10\\Books</code>, a mapped drive like <code>Z:\\books</code>, or any absolute local path. It uses Windows’ own network access, with credentials remembered by the system — if File Explorer can open the folder, the reader can scan and open it directly, with no need to copy the books over first. The button stays hidden on phones.</p>' +
       '<h3>Reading</h3><ul>' +
       '<li><b>Contents</b> jumps between chapters, <b>Search</b> scans the whole book, <b>+ Mark</b> drops a bookmark where you are.</li>' +
       '<li>Drag the bottom slider to move anywhere in the book. Arrow keys change chapter, space scrolls a screen.</li>' +
@@ -120,6 +121,10 @@
       '<p>The shelf + reader layout and the speech scheduling were informed by Koodo Reader on this machine, with all code rewritten from zero and no dependencies: EPUB unzipping, OPF / NCX / Nav contents, body and illustration parsing are all built in, with no external scripts or CDN.</p>' +
       '<p class="kv">Speech can use the free open-source offline neural voices (sherpa-onnx + AISHELL3 multi-speaker VITS): no network, no fees, no account. The model contains 174 Chinese speakers (148 female + 26 male), 11 curated by default, and supports role-based reading. The library ships in <code>VoicePack</code>; the full Windows EXE has it appended inside, so one file is enough.</p>' +
       '<p>Released under the <b>MIT License</b>: use, modify and redistribute freely, including commercially, keeping the copyright and license notice. Full terms under <b>Open source &amp; license</b>.</p>' +
+      '<h3>What is new in 1.9.2</h3><ul>' +
+      '<li><b>Import from a network share (SMB)</b>: the shelf has a <b>Network</b> button. Type a LAN share such as <code>\\\\192.168.1.10\\Books</code>, a mapped drive (<code>Z:\\books</code>) or any local path, and its TXT / EPUB are imported as if they sat on this machine — no copying first. Windows handles the credentials, and an unreachable host answers within 12 seconds instead of spinning forever. Hidden on phones.</li></ul>' +
+      '<h3>What was fixed in 1.9.1</h3><ul>' +
+      '<li><b>No more half-empty last page</b>: at the end of a chapter the page count was under-calculated, so the remaining columns got squeezed into the left half of the last page — and later columns could not be reached at all. The count now follows the real column total, and the closing block sits in the right column.</li></ul>' +
       '<h3>What is new in 1.9</h3><ul>' +
       '<li><b>Columns stay simple</b>: one or two, nothing more — three or four columns just make Chinese text hard to read. The picker offers <b>Auto / 1 / 2</b>; Auto decides from screen width, and phones always stay single. Picking two columns switches to Pages.</li>' +
       '<li><b>Theme button opens a picker</b>: it used to cycle one step per tap. Now it shows all six themes as cards painted in their own paper and ink, so you can compare them side by side; the panel stays open and each pick applies at once.</li>' +
@@ -149,6 +154,6 @@
       '<li><b>Highlighting now works in the desktop app</b> — the Windows shell disabled web text selection by default, so dragging over the text did nothing and the colour toolbar never appeared. Selection is enabled now.</li>' +
       '<li><b>Folder import no longer looks like an upload</b> — the desktop build opens the native folder picker instead of the browser\'s “select the folder to upload … Upload” dialog.</li>' +
       '<li><b>The left sidebar can be dismissed</b> — there is a × on the tab strip, clicking the same toolbar button toggles it, and clicking the page closes it (unless you have text selected, so a fresh selection is never disturbed).</li></ul>' +
-      '<p class="kv">Version 1.9.0 · single file · offline by default · data stays on this device<br>Author / copyright © 2026 Lanlan Eternal (永远的兰兰)<br>Feedback and source: see the repository address in the bundled README</p>'
+      '<p class="kv">Version 1.9.1 · single file · offline by default · data stays on this device<br>Author / copyright © 2026 Lanlan Eternal (永远的兰兰)<br>Feedback and source: see the repository address in the bundled README</p>'
   };
 })(window);

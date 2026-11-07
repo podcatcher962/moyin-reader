@@ -28,13 +28,14 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.parse
 import urllib.request
 import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 APP = 'MoYinReader'
 APP_CN = '墨吟阅读器'
-VER = '1.9.0'
+VER = '1.9.2'
 VOICE_PORT = 8177
 PORTS = (38975, 38976, 0)
 CREATE_NO_WINDOW = 0x08000000
@@ -48,6 +49,7 @@ VOICE_PROC = None          # 由本进程拉起的语音服务子进程，退出
 VOICE_SRV = None           # 同进程内起的语音服务（线程方式），优先于子进程
 
 TOKEN = secrets.token_hex(16)
+NET_PROBE_SEC = 12          # 探测网络位置的最长等待（主机不在线时不必干等系统的 SMB 超时）
 PAGE_CACHE = None
 SERVER = None
 PORT = 0
@@ -58,6 +60,47 @@ PICK = {'sid': '', 'files': [], 'ts': 0}      # 上一次「选择文件夹」�
 # ---------------------------------------------------------------- 选择文件夹
 NOISE_DIRS = {'.git', '.svn', '.hg', 'node_modules', '__pycache__', 'venv', '.venv', 'env',
               'dist', 'build', 'site-packages', '.idea', '.vscode', 'voicepack', 'voicepack_lite'}
+
+
+def is_net_path(p):
+    """UNC 共享（\\\\主机\\共享）或映射到网络的盘符，都算「网络位置」。"""
+    if not p:
+        return False
+    if p.startswith('\\\\'):
+        return True
+    try:
+        if os.name == 'nt' and len(p) >= 2 and p[1] == ':':
+            import ctypes
+            drive = p[:2] + '\\'
+            if ctypes.windll.kernel32.GetDriveTypeW(ctypes.c_wchar_p(drive)) == 4:  # DRIVE_REMOTE
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def norm_net_path(raw):
+    """把用户手输的路径收拾成 Windows 认的样子。
+
+    接受 `\\\\192.168.1.10\\Books`、`//192.168.1.10/Books`、`192.168.1.10/Books`、
+    `Z:\\Books`、`Z:/Books`，以及资源管理器「复制路径」带出来的双引号。
+    """
+    p = str(raw or '').replace('\u3000', ' ').strip()
+    p = p.strip('"').strip("'").strip()
+    if not p:
+        return ''
+    p = p.replace('/', '\\')
+    if p.startswith('\\\\?\\'):
+        p = p[4:]
+        if p[:4].upper() == 'UNC\\':
+            p = '\\\\' + p[4:]            # \\?\UNC\nas\books → \\nas\books
+    if p.startswith('\\') and not p.startswith('\\\\'):
+        p = '\\' + p                      # 只写了一个反斜杠，补成 UNC
+    elif not p.startswith('\\') and not (len(p) >= 2 and p[1] == ':'):
+        p = '\\\\' + p                    # 192.168.1.10\Books → \\192.168.1.10\Books
+    while len(p) > 2 and p.endswith('\\'):
+        p = p[:-1]
+    return p
 
 
 def scan_dir(root, limit=500, min_size=1024, max_size=300 * 1024 * 1024):
@@ -186,24 +229,32 @@ HTMLAnchorElement.prototype.click=function(){
 PICK_JS = """<script>(function(){
 if(window.__moyinPickDir)return;
 var TK='%s';
+function grab(j){
+  if(!j.ok) throw new Error(j.error||'选择文件夹失败');
+  if(j.cancel) return {cancel:true,files:[],dir:''};
+  var fs=j.files||[],out=[],i=0;
+  function step(){
+    if(i>=fs.length) return Promise.resolve({files:out,dir:j.dir,sid:j.sid,
+      skipped:j.skipped||0,truncated:!!j.truncated,net:!!j.net,ms:j.ms||0});
+    var f=fs[i++];
+    return fetch('/__dirfile?sid='+j.sid+'&i='+f.i).then(function(r){
+      if(!r.ok) throw new Error('读不到 '+f.name);
+      return r.arrayBuffer();
+    }).then(function(b){
+      out.push({name:f.name,size:f.size,arrayBuffer:function(){return Promise.resolve(b);}});
+      return step();
+    });
+  }
+  return step();
+}
 window.__moyinPickDir=function(){
-  return fetch('/__pickdir?token='+TK+'&lang='+((document.documentElement.lang||'zh').slice(0,2)),{method:'POST'}).then(function(r){return r.json();}).then(function(j){
-    if(!j.ok) throw new Error(j.error||'选择文件夹失败');
-    if(j.cancel) return {cancel:true,files:[],dir:''};
-    var fs=j.files||[],out=[],i=0;
-    function step(){
-      if(i>=fs.length) return Promise.resolve({files:out,dir:j.dir,sid:j.sid});
-      var f=fs[i++];
-      return fetch('/__dirfile?sid='+j.sid+'&i='+f.i).then(function(r){
-        if(!r.ok) throw new Error('读不到 '+f.name);
-        return r.arrayBuffer();
-      }).then(function(b){
-        out.push({name:f.name,size:f.size,arrayBuffer:function(){return Promise.resolve(b);}});
-        return step();
-      });
-    }
-    return step();
-  });
+  return fetch('/__pickdir?token='+TK+'&lang='+((document.documentElement.lang||'zh').slice(0,2)),{method:'POST'})
+    .then(function(r){return r.json();}).then(grab);
+};
+/* 网络位置 / 任意路径：SMB 共享（\\\\\\\\主机\\\\共享）、映射盘、本地绝对路径 */
+window.__moyinScanDir=function(p){
+  return fetch('/__scandir?token='+TK+'&path='+encodeURIComponent(p),{method:'POST'})
+    .then(function(r){return r.json();}).then(grab);
 };
 })();</script>""" % TOKEN
 
@@ -253,31 +304,78 @@ class Handler(BaseHTTPRequestHandler):
                 q[k] = unquote(v)
         return q
 
+    def _json(self, obj):
+        self._send(200, 'application/json; charset=utf-8', json.dumps(obj, ensure_ascii=False))
+
     def _pickdir(self):
         en = self._q().get('lang') == 'en'
         try:
             d = ask_folder('Choose a folder to import (TXT / EPUB only)' if en
                            else '选择要导入的文件夹（只收 TXT / EPUB）')
         except Exception as e:
-            self._send(200, 'application/json; charset=utf-8',
-                       json.dumps({'ok': False, 'error': '打开对话框失败：%s' % e}, ensure_ascii=False))
+            self._json({'ok': False, 'error': '打开对话框失败：%s' % e})
             return
         if not d:
-            self._send(200, 'application/json; charset=utf-8', json.dumps({'ok': True, 'cancel': True}))
+            self._json({'ok': True, 'cancel': True})
             return
+        self._send_dir(d)
+
+    def _scandir(self):
+        """按路径扫描目录：SMB 共享（\\\\主机\\共享）、映射盘（Z:\\）、本地绝对路径都走这里。"""
+        raw = str(self._q().get('path') or '')
+        d = norm_net_path(raw)
+        if not d:
+            self._json({'ok': False, 'error': '路径是空的'})
+            return
+        if len(d) > 900:
+            self._json({'ok': False, 'error': '路径太长了'})
+            return
+        # 主机连不上时 os.path.exists 会卡在系统 SMB 超时里（几十秒且界面无反馈），
+        # 这里放到后台线程里等，超过 NET_PROBE_SEC 直接给一句人话。
+        box = {}
+
+        def probe():
+            try:
+                box['exists'] = os.path.exists(d)
+                box['isdir'] = os.path.isdir(d) if box.get('exists') else False
+            except Exception as e:
+                box['err'] = str(e)
+
+        t = threading.Thread(target=probe, daemon=True)
+        t.start()
+        t.join(NET_PROBE_SEC)
+        if t.is_alive():
+            self._json({'ok': False, 'timeout': True,
+                        'error': '连接超时：%d 秒内没能打开 %s' % (NET_PROBE_SEC, d),
+                        'tip': '确认这台机器开着、共享已打开、IP 没串；先在资源管理器里打开一次会更稳'})
+            return
+        if box.get('err'):
+            self._json({'ok': False, 'error': '打不开：%s' % box['err']})
+            return
+        if not box.get('exists'):
+            self._json({'ok': False, 'error': '找不到这个位置：%s' % d,
+                        'tip': '确认共享已打开、本机已能访问（资源管理器里能打开就行）'})
+            return
+        if not box.get('isdir'):
+            self._json({'ok': False, 'error': '这不是文件夹：%s' % d})
+            return
+        self._send_dir(d)
+
+    def _send_dir(self, d):
+        t0 = time.time()
         try:
             files, skipped, truncated = scan_dir(d)
         except Exception as e:
-            self._send(200, 'application/json; charset=utf-8',
-                       json.dumps({'ok': False, 'error': '遍历文件夹失败：%s' % e}, ensure_ascii=False))
+            self._json({'ok': False, 'error': '遍历文件夹失败：%s' % e})
             return
         PICK['sid'] = secrets.token_hex(12)
         PICK['files'] = [f['path'] for f in files]
         PICK['ts'] = time.time()
-        self._send(200, 'application/json; charset=utf-8', json.dumps({
+        self._json({
             'ok': True, 'dir': d, 'sid': PICK['sid'], 'skipped': skipped, 'truncated': truncated,
+            'net': is_net_path(d), 'ms': int((time.time() - t0) * 1000),
             'files': [{'i': i, 'name': f['name'], 'size': f['size']} for i, f in enumerate(files)],
-        }, ensure_ascii=False))
+        })
 
     def _send(self, code, mime, body, extra=''):
         if isinstance(body, str):
@@ -337,7 +435,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split('?', 1)[0]
-        if path not in ('/__save', '/__pickdir'):
+        if path not in ('/__save', '/__pickdir', '/__scandir'):
             self._send(404, 'text/plain; charset=utf-8', '只读')
             return
         q = self._q()
@@ -346,6 +444,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == '/__pickdir':
             self._pickdir()
+            return
+        if path == '/__scandir':
+            self._scandir()
             return
         try:
             n = int(self.headers.get('Content-Length', '0'))
@@ -766,6 +867,48 @@ def selftest(out=None):
         r = c.getresponse(); r.read(); c.close()
         ok &= ck(r.status == 403, '选文件夹接口拒绝错误令牌')
         ok &= ck('__moyinPickDir' in PAGE_CACHE.decode('utf-8', 'replace'), '原生选文件夹接口已注入页面')
+        ok &= ck('__moyinScanDir' in PAGE_CACHE.decode('utf-8', 'replace'), '网络位置接口已注入页面')
+        # 网络位置（SMB / 映射盘 / 任意路径）通道：令牌门 + 真扫一遍临时目录
+        c = http.client.HTTPConnection('127.0.0.1', PORT, timeout=8)
+        c.request('POST', '/__scandir?token=bad&path=X', b'')
+        r = c.getresponse(); r.read(); c.close()
+        ok &= ck(r.status == 403, '网络位置接口拒绝错误令牌')
+        tmpd = tempfile.mkdtemp(prefix='moyin_net_')
+        try:
+            fake = os.path.join(tmpd, '网络测试书.txt')
+            with open(fake, 'wb') as fh:
+                fh.write(('墨色在纸上铺开，' * 120).encode('utf-8'))
+            q = urllib.parse.quote(tmpd)
+            c = http.client.HTTPConnection('127.0.0.1', PORT, timeout=15)
+            c.request('POST', '/__scandir?token=' + TOKEN + '&path=' + q, b'')
+            r = c.getresponse()
+            jj = json.loads(r.read().decode('utf-8', 'replace'))
+            c.close()
+            ok &= ck(jj.get('ok') and len(jj.get('files') or []) == 1
+                     and jj['files'][0]['name'] == '网络测试书.txt', '按路径扫描到 1 本书（含中文文件名）')
+            ok &= ck(jj.get('net') is False, '本机临时目录不算网络位置')
+            # 顺着会话把文件读回来
+            if jj.get('ok') and jj.get('files'):
+                with urllib.request.urlopen('http://127.0.0.1:%d/__dirfile?sid=%s&i=0'
+                                            % (PORT, jj['sid']), timeout=8) as rr:
+                    data = rr.read()
+                ok &= ck(len(data) == os.path.getsize(fake), '/__dirfile 能读回该文件')
+            # 用一个必然快速失败的本机共享名（别用不可路由的 IP：那要看系统的 SMB 重试，耗时不可控）
+            c = http.client.HTTPConnection('127.0.0.1', PORT, timeout=20)
+            c.request('POST', '/__scandir?token=' + TOKEN
+                      + '&path=' + urllib.parse.quote('\\\\127.0.0.1\\moyin_no_such_share'), b'')
+            r = c.getresponse()
+            jj = json.loads(r.read().decode('utf-8', 'replace'))
+            c.close()
+            ok &= ck(jj.get('ok') is False and bool(jj.get('error')), '不存在的共享返回可读错误：%s'
+                     % str(jj.get('error'))[:44])
+        finally:
+            shutil.rmtree(tmpd, ignore_errors=True)
+        ok &= ck(norm_net_path('//192.168.1.10/Books') == '\\\\192.168.1.10\\Books', '斜杠写的共享路径能纠正成 UNC')
+        ok &= ck(norm_net_path('192.168.1.10/Books') == '\\\\192.168.1.10\\Books', '省略开头的 \\\\ 也能认')
+        ok &= ck(norm_net_path('D:/Desktop') == 'D:\\Desktop', '本地路径的斜杠也纠正')
+        ok &= ck(norm_net_path('  ') == '', '空路径被拒')
+        ok &= ck(is_net_path('\\\\nas\\books') and not is_net_path('D:\\Desktop'), '网络位置判定正确')
         try:
             urllib.request.urlopen('http://127.0.0.1:%d/__dirfile?sid=x&i=0' % PORT, timeout=5)
             ok &= ck(False, '无效会话应 403')
