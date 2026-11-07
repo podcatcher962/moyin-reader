@@ -101,7 +101,7 @@ _unit_zip.js                       ZIP 解压内核单测（482 项）
 
 ### 许可与致谢
 
-本项目以 **MIT 许可证**发布，版权 © 2026 永远的兰兰（Lanlan Eternal）。第三方组件（sherpa-onnx、AISHELL3 模型、pywebview、pythonnet、PyInstaller）各自遵循其原始许可证，详见 [LICENSE](LICENSE) 与软件内「开源与许可」。
+本项目以 **MIT 许可证**发布，版权 © 2026 永远的兰兰（Lanlan Eternal）。第三方组件（sherpa-onnx、AISHELL3 模型、pywebview、pythonnet、PyInstaller）各自遵循其原始许可证，详见 [LICENSE](LICENSE) 与 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)（也写在软件内「开源与许可」）。
 
 ### 免责
 
@@ -158,7 +158,7 @@ python _pkg_apk/build_apk.py    # optional Android apk (needs JDK 17 + build-too
 
 ### License
 
-MIT © 2026 Lanlan Eternal. Third-party components keep their own licenses — see [LICENSE](LICENSE).
+MIT © 2026 Lanlan Eternal. Third-party components keep their own licenses — see [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ### Disclaimer
 

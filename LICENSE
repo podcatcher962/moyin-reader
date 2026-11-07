@@ -19,16 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-第三方组件（各自遵循其原始许可证，本项目不修改其源码）：
-
-- sherpa-onnx                Apache-2.0   https://github.com/k2-fsa/sherpa-onnx
-- AISHELL3 中文多说话人模型   Apache-2.0   （开源语料 AISHELL-3 训练的 VITS 模型）
-- pywebview                  BSD-3-Clause https://github.com/r0x0r/pywebview
-- pythonnet                  MIT          https://github.com/pythonnet/pythonnet
-- PyInstaller                GPL-2.0 + bootloader exception  https://pyinstaller.org
-- Microsoft Edge WebView2    微软随系统分发的运行环境（不打包、不修改）
-
-本软件不附带任何书籍内容。仅供阅读自己合法持有的电子书使用。
