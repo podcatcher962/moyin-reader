@@ -1,54 +1,67 @@
-墨吟阅读器 v1.10.0 — Windows 版补了几处桌面体验，并首次提供 Linux / 信创 与 macOS 版。
+墨吟阅读器 v1.10.1 — Linux / 信创版这次是真程序了。
 
-## Windows 版新增
+## 这一版最重要的事
 
-**把书拖进窗口就导入**
-TXT / EPUB 直接拖到窗口上，松手就开始导入，不用先点「导入」再翻目录；拖整个文件夹也行（里面的书一起进来）。正在看书时拖也不打断，导入完回书架就能看到。拖进来不是书的文件会明确提示。
+上一版给的 Linux 包是「网页 + 启动脚本」，得靠系统的 Python 或浏览器。这次换成**真正的独立程序**：
 
-**记住窗口大小和位置**
-下次打开还是你上次调好的样子，不用每次重新拉。上次窗口如果在屏幕外（比如拔了外接显示器），会自动回到默认位置。
+- **10 MB 单文件，双击就跑**，不需要装 Python、不需要装任何依赖
+- 只依赖系统自带的 `libc` / `libz` / `libpthread`（glibc 2.28+）
+- 在**统信 UOS 20 专业版（x86_64）**上真机实测：书架、导入、翻页、主题、对话框全部正常
+- 窗口用系统浏览器内核的「应用模式」打开 —— 没有地址栏、没有标签页，是个独立窗口，关掉就退出
 
-**目录能搜了**
-长书几百章，侧栏「目录」顶部有搜索框，输关键字即时过滤，并显示「匹配 N 章」；搜不到会说「没有匹配的章节」。
+实测环境：统信 UOS Desktop 20 Professional，内核 6.6.28-amd64-desktop-hwe，1280×800，53 个中文字体。
 
-**字重可选**
-细 / 常规 / 中粗 / 粗 四档，在「设置 → 外观与版式」或「排版」面板里，中文正文看久了换一档更顺眼。
+## 怎么用（Linux / 信创）
 
-**顺带**：版本号比较改成按段判断（`1.10.0` 不会被误判成小于 `1.9.0`）。
+1. 下载 `MoYinReader-Linux-1.10.1.tar.gz`，**解压出来**（别在压缩包里直接点）
+2. 双击「墨吟阅读器.sh」—— 它会优先跑同目录的 `MoYinReader`
+3. 想放进应用菜单 / 桌面：双击一次「安装到应用菜单.sh」
 
-## 首次提供 Linux / 信创 与 macOS 版
+想清掉菜单项：双击「卸载.sh」（书和笔记不动）。
 
-| 包 | 覆盖 |
-|---|---|
-| `MoYinReader-Linux-1.10.0.tar.gz` | 统信 UOS、银河麒麟、中标麒麟、openEuler、Deepin，以及 x86_64 / aarch64（飞腾、鲲鹏）/ loongarch64（龙芯） |
-| `MoYinReader-macOS-1.10.0.zip` | Intel 与 Apple Silicon |
+## 其它架构怎么办
 
-两个包都是**解压双击即用**：不需要装 Python、不需要敲命令。
-包里同时带了 `start-linux.sh` / `start-macos.sh`（有 pywebview 就走原生窗口）、`build-linux.sh` / `build-macos.sh`（想打成二进制/`.app` 就在自己机器上跑一次）。
+飞腾 / 鲲鹏（aarch64）、龙芯（loongarch64）用不了 x86_64 的二进制，但**照样能用**：
 
-> ⚠️ 说明白：这两个包里的可执行入口是脚本，不是 ELF/Mach-O 二进制。
-> 原因是 PyInstaller 只能打「本机架构 + 本机 glibc」的包，我这台 Windows 机器上没有可用的 Linux 环境（WSL 被本机安全策略禁用、没装 Docker），做不出能在你机器上跑的二进制。
-> 如果你愿意开一台统信虚拟机并给我 SSH，我可以直接在虚拟机里打一次，产出真正的 `MoYinReader-linux-x86_64` 二进制再发上来。
+- 双击「墨吟阅读器.sh」会自动退回 Python 方式（系统自带 python3 就够）
+- 或者直接双击 `MoYinReader.html`，用浏览器打开，功能一模一样
+- 想打成自己架构的独立程序：在本机跑一次 `bash build-linux.sh`
 
-## 验证
+## 这一版还修了什么
 
-| 套件 | 结果 |
-|---|---|
-| `_check_v19.js`（112 → **124 项**：拖拽导入/非书拦截、字重、目录搜索过滤与空结果） | 124 / 124 |
-| `_check_v18.js` / `_cdp_verify.js` | 95 / 95、118 / 118 |
-| `_check_role.js` / `_check_voices.js` | 48 / 48、22 / 22 |
-| `_check_v17.js` / `_check_v171.js` | 57 / 57、17 / 17 |
-| exe 打包验收 / apk 体检 | 全过 / 全过 |
+- **Linux 上的路径判断**：以前会把 `/tmp/x` 当成 Windows 网络路径、改写成 `\\tmp\x`，导致「网络位置」在 Linux 上完全失效。现在按平台分开处理，Linux 直接认挂载点（`/mnt/nas/books`、`~/books`）。
+- 自检项按平台分开断言，不再拿 Windows 的 UNC 规则去测 Linux。
 
-## 下载
+## 各平台产物
 
 | 文件 | 说明 |
 |---|---|
-| `MoYinReader.exe` | **Windows 完整版**，语音库打包在 exe 内，单文件即可朗读与分角色 |
-| `MoYinReader_Lite.exe` | Windows 轻量版，需同目录放 `VoicePack` |
-| `MoYinReader.apk` | 安卓版（versionCode 15） |
-| `MoYinReader.html` | 单文件网页版（任何系统双击即用） |
-| `MoYinReader-Linux-1.10.0.tar.gz` | Linux / 信创 |
-| `MoYinReader-macOS-1.10.0.zip` | macOS |
+| `MoYinReader.exe` (47.3 MB) | Windows 完整版，174 个离线语音 + 分角色朗读 |
+| `MoYinReader_Lite.exe` (17.1 MB) | Windows 轻量版，需同目录 `VoicePack` |
+| `MoYinReader.apk` (176.8 KB) | 安卓，versionCode 16 |
+| `MoYinReader.html` (347.7 KB) | 单文件网页版，任何系统都能跑 |
+| `MoYinReader-Linux-1.10.1.tar.gz` (9.75 MB) | **本期主角**：x86_64 独立程序 + 兜底网页 |
+| `MoYinReader-macOS-1.10.1.zip` (138.7 KB) | macOS 源码 + 一键打包脚本 |
 
-默认零联网，书籍与进度只存在本机。
+五个包（apk / html / linux 里的 html / mac 里的 html）内嵌页面 md5 完全一致：`9d1eafe653a1`。
+
+## 验证
+
+| 项目 | 结果 |
+|---|---|
+| Linux 二进制自检（27 项：内嵌页、本地服务、导入通道、路径判断） | 全过 |
+| 统信 UOS 真机：启动 / 窗口 / 页面渲染 / 选择文件夹对话框 | 全过（截图见 README） |
+| `_check_v19.js` / `_check_v18.js` | 124 / 95 |
+| `_cdp_verify.js` | 118 |
+| `_check_role.js` / `_check_voices.js` | 48 / 22 |
+| `_check_v17.js` / `_check_v171.js` | 57 / 17 |
+| exe 打包验收 / apk 体检 | 全过（标题 1.10.1）/ 全过 |
+
+## 已知限制
+
+- Linux 上朗读走系统语音；**分角色朗读需要 Windows 版那套神经语音引擎**，Linux 暂不支持
+- Linux 的「网络位置」要用系统已挂载的路径（SMB 请先用系统挂载到 `/mnt/...`），不像 Windows 能直接填 `\\主机\共享`
+- macOS 版仍是「源码 + 打包脚本」：这个虚拟机环境里没法交叉编译 Mac 二进制，需要你在 Mac 上跑一次
+
+作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）
+本工具仅供个人阅读自己合法持有的电子书使用。
