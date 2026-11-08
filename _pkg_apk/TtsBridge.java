@@ -100,13 +100,20 @@ public class TtsBridge {
      * 页面初始化是异步的（IndexedDB 读完后才挂 window.MY），
      * 所以这里轮询等它出现，再把音色表换成「系统语音」并重新探测。
      * 不改 HTML 一个字节，桌面版行为完全不受影响。
+     *
+     * 两个实测坑：
+     *   1. 首次打开要建 IndexedDB、还可能自动导入书，MY 出现得比想象慢 ——
+     *      原来只等 12 秒，慢一点就永远注入不上，用户看到的是「不支持朗读」。
+     *      现在等满 60 秒。
+     *   2. TextToSpeech 初始化是异步的，onInit 可能晚于页面探测。注入完立刻
+     *      探一次，没就绪就每 1.5 秒再探，最多 22 秒，避免「刚装好就说没引擎」。
      */
     public void injectMoyin(WebView web, int port) {
         if (web == null || port <= 0) return;
         String js =
             "(function(){var P=" + port + ";var n=0;"
           + "var t=setInterval(function(){"
-          + "  if(++n>120){clearInterval(t);return;}"
+          + "  if(++n>600){clearInterval(t);return;}"
           + "  if(!window.MY||!MY.CFG||!MY.LOCAL_VOICES||!MY.localProbe)return;"
           + "  clearInterval(t);"
           + "  try{"
@@ -114,10 +121,31 @@ public class TtsBridge {
           + "    MY.LOCAL_VOICES.push(['android','系统语音 · 手机中文女声','Android 系统 TTS']);"
           + "    MY.CFG.localPort=P;MY.CFG.localVoice='android';MY.CFG.localOn=1;"
           + "    MY.LOCAL.ready=false;MY.LOCAL.miss=0;MY.LOCAL.checking=false;"
-          + "    MY.saveCfg();MY.localProbe(false);"
+          + "    MY.saveCfg();"
+          + "    var k=0,go=function(){MY.localProbe(false).then(function(ok){"
+          + "      if(!ok&&++k<15)setTimeout(go,1500);});};"
+          + "    go();"
           + "  }catch(e){}"
           + "},100);})();";
         try { web.evaluateJavascript(js, null); } catch (Throwable t) { }
+    }
+
+    /**
+     * 用户去系统设置装好中文语音后回来点「再试一次」，不应该要求重启应用。
+     * 这里在还没就绪时重新 setLanguage 一次；就绪了就直接返回。
+     */
+    private void recheckLang() {
+        if (ready || tts == null) return;
+        try {
+            int r = tts.setLanguage(Locale.CHINA);
+            if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) {
+                r = tts.setLanguage(Locale.SIMPLIFIED_CHINESE);
+            }
+            if (r != TextToSpeech.LANG_MISSING_DATA && r != TextToSpeech.LANG_NOT_SUPPORTED) {
+                ready = true;
+                engineName = "Android 系统中文语音";
+            }
+        } catch (Throwable t) { }
     }
 
     // ── GET /health ──────────────────────────────────────────────────
@@ -126,6 +154,7 @@ public class TtsBridge {
             err(c, 405, "只收 GET");
             return;
         }
+        recheckLang();
         try {
             JSONObject j = new JSONObject();
             j.put("ok", ready);

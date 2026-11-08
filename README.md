@@ -75,11 +75,18 @@
 | **Linux / 信创**（统信 UOS、麒麟、openEuler、Deepin） | `sudo dpkg -i moyin-reader_*.deb` 装进应用菜单；或用 `MoYinReader-Linux-*.tar.gz` 解压后双击「墨吟阅读器.sh」 | **x86_64 是 10 MB 独立程序，不用装 Python**（已在统信 UOS 20 专业版实测安装与启动）；飞腾 / 鲲鹏 / 龙芯会自动走 Python 或网页方式 |
 | **macOS**（Intel / Apple Silicon） | 解压 `MoYinReader-macOS-*.zip`，双击「墨吟阅读器.command」 | 免安装 Python |
 
-> **手机上装安卓版，下载卡住怎么办**：GitHub 的下载按钮会先跳 `github.com`，国内手机网络下经常十几秒不动或直接超时（电脑能下是因为走了代理）。改用直链，不经过 github.com：
+> **手机上装安卓版，下载卡住怎么办**
 >
-> `https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk`
+> GitHub 的下载按钮会先跳 `github.com`，再跳 `objects.githubusercontent.com`，这两跳在国内手机网络里经常十几秒不动或直接被掐断（电脑上能下，多是因为走了代理）。所以安卓包另外给三个**不经过 github.com** 的入口，按顺序试：
 >
-> 两点注意：① 在**浏览器**里打开，微信 / QQ 的内置浏览器会拦截 apk 下载，请点右上角"在浏览器打开"；② 装之前系统会提示"未知来源"，允许「墨吟」安装即可。
+> 1. 主直链：`https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk`
+> 2. 备用 CDN（Cloudflare 节点，国内通常更快）：`https://gcore.jsdelivr.net/gh/podcatcher962/moyin-reader@main/docs/download/MoYinReader.apk`
+>
+> 两个都打不开时，可以先把 apk 存到网盘（夸克 / 蓝奏）再发给对方。
+>
+> **为什么半夜更容易失败**：GitHub Pages 的地址段（185.199.108–111.153）在国内移动网络和家宽晚高峰后常被限速或重置，凌晨并不等于网络空闲；手机还会优先解析 IPv6，部分移动网络到 GitHub 的 IPv6 路由更差。换 Wi-Fi / 流量、或换上面的备用 CDN，通常就能下。
+>
+> 三点注意：① 一定要在**系统浏览器**里打开，微信 / QQ 的内置浏览器会直接拦掉 apk，请在右上角「…」→「在浏览器打开」；② 小米 / 华为浏览器可能提示「该文件可能有害」，选「仍要下载」；③ 装之前系统会提示「未知来源」，允许「墨吟」安装即可。
 
 Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF，只依赖系统自带的 libc / libz / libpthread / libdl（glibc 2.28+），UOS 20、银河麒麟 V10、openEuler 20.03 及更新版本都能直接运行。窗口用系统浏览器内核的「应用模式」打开——没有地址栏和标签页，是个独立窗口，关掉即退出。
 

@@ -45,8 +45,8 @@ os.makedirs(STAGE, exist_ok=True)
 MANIFEST = '''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="%s"
-    android:versionCode="17"
-    android:versionName="1.10.2">
+    android:versionCode="18"
+    android:versionName="1.10.3">
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
     <!-- 只有两条：WebView 访问本机 127.0.0.1 需要明文 http；
          不申请麦克风、定位、通讯录、存储，读书不需要这些。 -->
@@ -183,6 +183,29 @@ def prepare_sources():
 
 
 def make_icons(res):
+    try:
+        import PIL  # noqa: F401
+        has_pil = True
+    except Exception:
+        has_pil = False
+    if not has_pil:
+        # 本机 pip 装不上 Pillow 时，直接从上一版 APK 里取图标复用：
+        # 图标只在改版式时才需要重画，日常改页面不必为它去装依赖。
+        assert os.path.isfile(FINAL), '没有 Pillow，也找不到上一版 APK 复用图标'
+        got = 0
+        with zipfile.ZipFile(FINAL) as z:
+            for n in z.namelist():
+                m = re.match(r'res/mipmap-[a-z]+/ic_launcher\.png$', n)
+                if not m:
+                    continue
+                dst = os.path.join(res, n[len('res/'):].replace('/', os.sep))
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                with open(dst, 'wb') as f:
+                    f.write(z.read(n))
+                got += 1
+        assert got >= 5, '上一版 APK 里的图标不全（%d 张）' % got
+        print('复用上一版图标 %d 张（未安装 Pillow）' % got, flush=True)
+        return
     script = (
         "from PIL import Image,ImageDraw,ImageFont\n"
         "im=Image.new('RGB',(256,256),'#26303A')\n"

@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.10.2';
+  var VER = '1.10.3';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -332,6 +332,12 @@
   var PG = { i: 0, count: 1, cols: 1, cw: 0, gap: 0, padL: 0, step: 0, ready: 0 };
 
   function pgEnabled() { return CFG.mode === 'page'; }
+  /* 主指针是手指（手机 / 平板）：这类设备没有键盘和滚轮，
+     滚动模式下也要允许「点两侧翻一屏」，否则只能一直滑。 */
+  function touchy() {
+    try { return window.matchMedia('(pointer: coarse)').matches; }
+    catch (e) { return (navigator.maxTouchPoints || 0) > 0; }
+  }
   /* 每屏几栏：只有单栏和双栏。auto 够宽就双栏，手机一律单栏 */
   /* 真正可用的宽度：容器父级减掉侧栏。不能用 #pageWrap.clientWidth——
      它已经被上一轮的 --pcols 限宽了，拿它做判断会越算越窄。 */
@@ -2186,7 +2192,9 @@
       })
       .catch(function () {
         LOCAL.ready = false; LOCAL.info = null; LOCAL.list = null; LOCAL.checking = false; LOCAL.miss++;
-        fillVoices(); if (force) toast(T('没找到本地语音引擎，请先双击「VoicePack/启动语音引擎.cmd」'), 5200);
+        fillVoices();
+        // 桌面才讲「双击启动器」；手机上这句是废话，交给 speakBlocked() 说清楚
+        if (force && !speakEnv().android) toast(T('没找到本地语音引擎，请先双击「VoicePack/启动语音引擎.cmd」'), 5200);
         return false;
       });
   }
@@ -2692,6 +2700,55 @@
       }).catch(function (e) { toast(T('试听失败：') + e.message, 5200); });
     })();
   }
+  /* ── 朗读不可用时，按平台给不同的出路 ───────────────────────────────
+     桌面：换浏览器；安卓浏览器：装 APK；APK 内：去系统装中文语音。
+     在手机上甩一句「请用新版 Edge / Chrome」等于什么都没说。 */
+  var APK_URL = 'https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk';
+  function speakEnv() {
+    var ua = navigator.userAgent || '', host = location.hostname || '';
+    return {
+      android: /Android/i.test(ua),
+      ios: /iPhone|iPad|iPod/i.test(ua),
+      inApp: /MicroMessenger|QQ\/|Weibo|DingTalk/i.test(ua),
+      apk: host === '127.0.0.1' || host === 'localhost',
+      sys: !!(SYN && UTT)
+    };
+  }
+  function speakBlocked() {
+    var e = speakEnv(), title, body, btns, eng = (LOCAL.info && LOCAL.info.engine) || '';
+    if (e.android && e.apk) {
+      title = T('手机朗读还需要中文语音');
+      body = '<p>' + T('墨吟已经接入了手机系统的朗读引擎，但这台手机眼下没有可用的中文语音。') + '</p>';
+      if (LOCAL.info && LOCAL.info.ok === false && eng)
+        body += '<p class="kv">' + T('引擎报告：{m}', { m: eng }) + '</p>';
+      else if (!LOCAL.info)
+        body += '<p class="kv">' + T('没连上手机内的语音桥（127.0.0.1:{p}）。可先完全退出墨吟再打开；若装了安全软件，请允许它访问本机网络。', { p: CFG.localPort }) + '</p>';
+      body += '<p>' + T('打开「设置 → 无障碍 / 更多设置 → 文字转语音」，选「小爱语音引擎」或「讯飞语音引擎」，下载中文语音包后回到墨吟再点朗读。') + '</p>' +
+        '<p class="kv">' + T('列表里一个引擎都没有时，可在应用商店搜「讯飞语记」或「Google 文字转语音」装上再试。') + '</p>';
+      btns = [
+        { label: T('再试一次'), cls: 'pri', fn: function () { closeModal(); LOCAL.ready = false; localProbe(true); } },
+        { label: T('关闭') }
+      ];
+    } else if (e.android) {
+      title = T('手机浏览器不支持朗读');
+      body = '<p>' + (e.inApp
+        ? T('你现在是在微信 / QQ 的内置浏览器里打开，它既不允许下载，也不提供系统朗读。')
+        : T('手机浏览器没有系统朗读接口，网页版没法直接念书。')) + '</p>' +
+        '<p>' + T('装安卓版就可以了：只有一个不到 1 MB 的小壳，朗读走手机自带的中文语音，完全离线。') + '</p>' +
+        '<p class="kv" style="word-break:break-all">' + esc(APK_URL) + '</p>' +
+        (e.inApp ? '<p>' + T('在微信里请点右上角「…」→「在浏览器打开」，再下载。') + '</p>' : '');
+      btns = [
+        { label: T('去下载安卓版'), cls: 'pri', fn: function () { closeModal(); try { location.href = APK_URL; } catch (x) {} } },
+        { label: T('关闭') }
+      ];
+    } else {
+      title = T('这个浏览器不能朗读');
+      body = '<p>' + T('朗读要用浏览器自带的语音接口。桌面端请用 Microsoft Edge 或 Chrome 打开；精简版系统还需要在「设置 → 时间和语言 → 语音」里装一个中文语音。') + '</p>' +
+        (e.ios ? '<p>' + T('iPhone 上请用 Safari 打开，并在「设置 → 辅助功能 → 朗读内容」里打开「朗读所选项」。') + '</p>' : '');
+      btns = [{ label: T('关闭') }];
+    }
+    showModal(title, body, btns);
+  }
   function tryVoice() {
     if (SPK.playing) { stopSpeak(false); toast(T('已暂停书本朗读，开始试听')); }
     if (localReady()) {
@@ -2705,7 +2762,7 @@
       }).catch(function (e) { toast(T('试听失败：') + e.message, 5600); });
       return;
     }
-    if (!SYN || !UTT) { toast(T('当前浏览器不支持朗读，请用新版 Edge')); return; }
+    if (!SYN || !UTT) { speakBlocked(); return; }
     var v = curVoice();
     try { SYN.cancel(); } catch (e) {}
     var u = new UTT(TRY_TEXT);
@@ -2717,7 +2774,22 @@
     try { SYN.speak(u); } catch (e) { SPK.trying = false; toast(T('试听失败：') + e.message); }
   }
   function startSpeak(fromPi) {
-    if ((!SYN || !UTT) && !localReady()) { toast(T('当前浏览器不支持朗读，请用新版 Edge / Chrome')); return; }
+    if (!SYN || !UTT) {
+      /* 安卓壳里页面本身没有 Web Speech，语音走本机 127.0.0.1 的桥。
+         首次点朗读时引擎可能还在初始化（TextToSpeech 是异步的），
+         先探一次再决定，别急着甩「不支持浏览器」。 */
+      if (CFG.localOn && !LOCAL.ready) {
+        if (SPK.connecting) return;
+        SPK.connecting = true;
+        toast(T('正在连接手机语音引擎…'), 3000);
+        localProbe(true).then(function (ok) {
+          SPK.connecting = false;
+          if (ok) startSpeak(fromPi); else speakBlocked();
+        });
+        return;
+      }
+      speakBlocked(); return;
+    }
     if (!BK) return;
     autoStop(true);                     // 朗读和自动阅读会互相抢滚动，先停自动
     SPK.on = true; SPK.fb = 0; SPK.seenEnd = false;
@@ -2927,6 +2999,10 @@
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + AISHELL3 多说话人 VITS 模型）：不联网、不收费、无需账号，模型内含 174 个中文说话人（148 女 + 26 男），精选 11 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.10.3 改了什么</h3><ul>' +
+      '<li><b>手机上点一下就能翻页</b>：手机没有键盘和滚轮，以前只能一直用手指滑。现在轻点屏幕左侧 22% 回上一屏、右侧 22% 翻下一屏，中间留给选字、链接和「朗读从这里念」；手指滑动过就不算轻点，不会误翻。</li>' +
+      '<li><b>朗读提示不再答非所问</b>：以前在手机上点朗读只会弹一句「当前浏览器不支持朗读，请用新版 Edge / Chrome」——手机上根本没有 Edge 可装。现在分开说：安卓浏览器里提示装安卓版并给可复制的直链；安卓版里如果缺中文语音，会告诉你具体去系统哪个设置、装哪个引擎，并带「再试一次」。</li>' +
+      '<li>安卓版语音桥加固：等页面初始化的时间从 12 秒放宽到 60 秒（首次打开要建本地库，慢一点以前会永远连不上）；系统语音引擎初始化慢时自动重探，装好中文语音后点「再试一次」即可生效，不用重启应用。</li></ul>' +
       '<h3>1.10.2 改了什么</h3><ul>' +
       '<li><b>繁简转换</b>：设置里「繁简」可选「原文 / 简体」。看台版书、古籍时打开，正文和目录一起变简体；<strong>只改显示，书里的原文一个字都不动</strong>，关掉就还原。用的是 OpenCC 的对照表（2965 个一对一常用字），而且是等长替换，所以划线、笔记、朗读的位置都不会错。</li>' +
       '<li><b>点插图看大图</b>：EPUB 里的地图、人物关系表、插图页以前只能看缩略图，现在点一下全屏看，点任意处或按 Esc 关闭。</li>' +
@@ -2990,7 +3066,7 @@
       '<li><b>桌面版终于能划线了</b>：桌面外壳默认把网页的文字选择关掉了，导致选中正文没反应、浮动色块也不出来。已放开，Windows 版的划线与批注和其他版本一样。</li>' +
       '<li><b>导入文件夹不再像在上传</b>：桌面版改用系统的「选择文件夹」对话框，不再是浏览器那个「选择要上传的文件夹 … 上传」的选择器。</li>' +
       '<li><b>左侧导航能退出了</b>：标签栏右侧加了 ×，再点同一个按钮也能收起，点正文空白处自动收起（有选区时不收，免得把手选的位置抖掉）。</li></ul>' +
-      '<p class="kv">版本 1.10.2 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
+      '<p class="kv">版本 1.10.3 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
   };
   function showDoc(k) {
     var d = DOCS[k] || DOCS.help;
@@ -3553,15 +3629,20 @@
     /* 选中文字 → 浮动工具条（桌面上 mouseup，触屏上 touchend） */
     $('page').addEventListener('mouseup', onSelUp);
     $('page').addEventListener('touchend', function () { setTimeout(onSelUp, 60); });
-    /* 点正文：先收侧栏；翻页模式下左右两侧点一下翻页（有选区时不动） */
+    /* 点正文：先收侧栏；左右两侧点一下翻页（有选区时不动）。
+       手机上默认是滚动模式，没有键盘也没有滚轮 —— 所以触屏设备
+       在这里同样开放左右两侧轻点翻屏，中间 56% 留给选中文字、
+       点链接和「朗读从这里念」。 */
     $('pageWrap').addEventListener('click', function (e) {
       if (e.target.closest('#selTools')) return;
+      if (Date.now() - TAPMOVE < 700) return;          // 刚才是滑动，不是轻点
       var imHit = e.target.closest('#page img');
       if (imHit && imHit.getAttribute('src')) { showImg(imHit.getAttribute('src')); return; }
       var s = window.getSelection();
       var hasSel = !!(s && !s.isCollapsed);
       if ($('side').classList.contains('on')) { if (!hasSel) closeSide(); return; }
-      if (!pgEnabled() || hasSel) return;
+      if (hasSel) return;
+      if (!pgEnabled() && !touchy()) return;
       if (e.target.closest('a,button,mark,[data-act]')) return;
       if (SPK.on && e.target.closest('.rdp')) return;          // 朗读中点段落 = 从这里念
       var box = $('pageWrap').getBoundingClientRect(), x = e.clientX - box.left;
@@ -3569,7 +3650,7 @@
       else if (x > box.width * 0.78) readNext();
     });
     /* 滚轮翻页（翻页模式） */
-    var wheelT = 0;
+    var wheelT = 0, TAPMOVE = 0;        // TAPMOVE：最近一次手指移动的时间，用来区分轻点与滑动
     $('pageWrap').addEventListener('wheel', function (e) {
       autoPause();
       if (!pgEnabled()) return;
@@ -3616,9 +3697,10 @@
         toast(T('字号 {n}', { n: CFG.fs }), 1200);
         return;
       }
-      if (!pgEnabled()) return;
       var t = (e.changedTouches && e.changedTouches[0]) || null; if (!t) return;
       var dx = t.clientX - tx0, dy = t.clientY - ty0;
+      if (Math.abs(dx) > 12 || Math.abs(dy) > 12) TAPMOVE = Date.now();   // 手指动过 → 不算轻点
+      if (!pgEnabled()) return;
       if (Date.now() - tt0 > 900) return;
       if (Math.abs(dx) < 46 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
       var s = window.getSelection(); if (s && !s.isCollapsed) return;
