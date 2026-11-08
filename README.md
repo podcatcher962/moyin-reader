@@ -120,6 +120,7 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 | 🖥️ 沉浸全屏 | 上下工具栏自动收起，鼠标移到屏幕边缘唤出；F11 / Esc 快捷键 |
 | 🔍 导航 | 目录跳章、全文搜索、书签、章节内跳转；翻页模式下点两侧、滚轮、空格、← →、手机左右滑都能翻页 |
 | 💾 数据 | IndexedDB 本机存储，可导出/导入备份（含书籍文件），换设备不丢 |
+| 🔄 检查更新 | 设置里点一下，读出新版本号、该下哪个包、多大、sha256，并给出下载入口。**默认不自动查**——本软件平时不联网，只有你点了才发一次请求（约 90 KB，不传任何本机信息）；想自动查自己在设置里开，开了也一天最多一次，断网时静默不打扰 |
 | 🔒 隐私 | 默认零联网；语音在本机 127.0.0.1 合成，朗读文字不出本机 |
 
 ### 下载什么
@@ -129,10 +130,10 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 | `MoYinReader.exe` | 约 47 MB | **Windows 完整版**，语音库打包在 exe 尾部，只拷这一个文件就能听，首次启动自动释放到缓存 |
 | `MoYinReader_Lite.exe` | 约 17 MB | Windows 轻量版，需同目录放 `VoicePack` 文件夹（约 53 MB） |
 | `MoYinReader.apk` | 约 38.8 MB | 安卓完整版，页面 + 174 声线神经语音引擎与模型全在包里 |
-| `MoYinReader.html` | 约 388 KB | 单文件网页版，双击即用，任何系统都能跑 |
-| `moyin-reader_*_amd64.deb` | 约 9.7 MB | 统信 / 麒麟 / openEuler，**双击安装即进应用菜单**，卸载走系统正常流程 |
+| `MoYinReader.html` | 约 404 KB | 单文件网页版，双击即用，任何系统都能跑 |
+| `moyin-reader_*_amd64.deb` | 约 9.8 MB | 统信 / 麒麟 / openEuler，**双击安装即进应用菜单**，卸载走系统正常流程 |
 | `MoYinReader-Linux-*.tar.gz` | 约 9.8 MB | 免安装版：解压双击「墨吟阅读器.sh」，U 盘带走也能用 |
-| `MoYinReader-macOS-*.zip` | 约 157 KB | macOS 源码 + 打包脚本，在本机跑一次 `build-macos.sh` 出 `.app` |
+| `MoYinReader-macOS-*.zip` | 约 168 KB | macOS 源码 + 打包脚本，在本机跑一次 `build-macos.sh` 出 `.app` |
 
 不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本；或者用 **[在线版](https://podcatcher962.github.io/moyin-reader/)** 什么都不装。
 
@@ -145,6 +146,7 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 5. 选中正文任意一句即可高亮、写批注、复制或生成分享图；右侧「笔记」页汇总全部批注，可导出 Markdown 或打开阅读总结。
 6. 想换版式点顶栏「排版」：切滚动 / 翻页、选单栏或双栏（选双栏会自动切到翻页，TXT 和 EPUB 一样）、调字号行距段距、换六套主题；点「自动」进自动阅读，点「全屏」进沉浸阅读。
 7. 书架顶栏右侧的 `EN` / `中` 一键切换界面语言。
+8. 想知道有没有新版本：设置面板右上角点「检查更新」。**点了才联网**，不点永远不联网；下载完先看文件大小，对不上就是没下完。
 
 ### 语音是怎么来的
 
@@ -157,6 +159,11 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 仓库只放源码，`exe` 和语音模型不入库（体积大，且模型是第三方资产）。唯一的例外是 `docs/download/MoYinReader.apk`——38.8 MB 的成品，放在 Pages 上只为给手机一个不用访问 github.com 的下载口，正式版仍以 Release 为准。克隆后按下面两步即可复现：
 
 ```bash
+# 0) 版本号一处改、全局同步（页面 / exe / Linux / deb / APK / 推送脚本共 10 处）
+python _bump.py --check               # 先看现在的版本号是否处处一致，不一致返回 1
+python _bump.py 1.13.0                # 全部改到 1.13.0，安卓 versionCode 自动按
+                                      #   主×10000 + 次×100 + 修 算出 11300
+
 # 1) 生成单文件网页版（纯 Python 标准库，无需依赖）
 python build.py                       # → MoYinReader.html
 
@@ -185,6 +192,9 @@ _pkg_win/app.py                    Windows 外壳（pywebview + 内嵌 HTTP）
 _pkg_win/build_exe.py              exe 打包 + 验收
 _pkg_apk/TtsBridge.java            安卓 TTS 桥（系统语音）
 _pkg_apk/build_apk.py              apk 打包 + 体检
+_bump.py                           版本号统一工具（10 处一处改，含 versionCode 推算）
+_verify_update.js                  检查更新专项回归（29 项）
+VERSIONING.md                      版本号规范与发版流程
 _cdp_verify.js                     117 项界面回归（headless Edge，CDP）
 _check_v19.js                     131 项回归（分栏 / 主题面板 / 时钟 / 休息提醒 / 网络位置）
 _check_v18.js                      95 项版式回归（分栏 / 翻页 / 主题 / 自动阅读 / 全屏）
@@ -264,6 +274,7 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 - **Bilingual** — the entire window, including settings, dialogs and all documentation, switches between Chinese and English.
 - **Navigation** — table of contents, full-text search, bookmarks, arrow keys.
 - **Data** — everything in local IndexedDB, with export / import backup.
+- **Update check** — one click in Settings reads the latest version number, which package fits this device, its size and its sha256. **Never checks by itself** — the app is offline by default and only sends a request when you ask (a ~90 KB JSON, nothing about your device or books). You may opt into a startup check, which still runs at most once a day and stays silent when offline.
 - **Privacy** — zero network by default; speech is synthesized on `127.0.0.1`, text never leaves the machine.
 
 ### Platforms
@@ -303,6 +314,7 @@ Only source lives in this repo — `exe` and the speech model are not committed 
 > Open it in a real browser — WeChat / QQ in-app browsers block apk downloads (tap "open in browser"). Allow "unknown sources" when the system asks.
 
 ```bash
+python _bump.py --check         # verify the version number is identical in all 10 places
 python build.py                 # bundle the web app  → MoYinReader.html
 python VoicePack/install.py     # fetch engine + model (~55 MB, GitHub Releases)
 python _pkg_win/build_exe.py    # optional Windows exe (needs pyinstaller, pywebview, pythonnet)

@@ -33,7 +33,7 @@ def curl(args, timeout=900):
 
 def main():
     apply = '--apply' in sys.argv
-    tag = 'v1.11.0'
+    tag = 'v1.12.0'
     apk = 'docs/download/MoYinReader.apk'
     if not os.path.isfile(apk):
         print('找不到', apk)
@@ -52,7 +52,7 @@ def main():
         return 0
 
     if rel is None:
-        payload = {'tag_name': tag, 'name': '墨吟阅读器 1.11.0',
+        payload = {'tag_name': tag, 'name': '墨吟阅读器 1.12.0',
                    'body': ('手机端也能跑 174 个离线神经声线。\n\n'
                             '* 安卓包内置 sherpa-onnx 与 AISHELL3 模型，断网也能听\n'
                             '* 手机顶栏收进「⋯」，按键 44px；首启按屏宽给 18px/1.9\n'

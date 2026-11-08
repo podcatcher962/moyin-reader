@@ -675,6 +675,36 @@
     '稍后再提': 'Later',
     '已重新计时，读累了就歇会儿': 'Timer restarted — go easy on your eyes',
     '10 分钟后再提醒': 'Remind me in 10 minutes',
+
+    /* ---------- 1.12 检查更新 ---------- */
+    '检查更新': 'Check for updates',
+    '启动时自动查新': 'Check on startup',
+    '默认关。本软件平时不联网；就算打开，也只是启动后读一次 90 KB 的版本清单，不传任何本机信息。':
+      'Off by default — this app does not go online at all. Even when enabled, it only reads a 90 KB version list once after startup, and sends nothing about your device.',
+    '正在检查新版本…': 'Checking for updates…',
+    '已是最新版本': 'You are up to date',
+    '你用的是 {v}，服务器上也是最新的。': 'You are on {v}, which is the latest.',
+    '清单读取于刚才，共收录 {n} 个产物。': 'The list was read just now and covers {n} files.',
+    '检查失败': 'Update check failed',
+    '连不上版本服务器。可能是网络不通，或你现在处于完全离线状态。':
+      'Could not reach the update server — the network may be down, or you may be fully offline.',
+    '本软件的其它功能都不受影响，随时可以再试。':
+      'Everything else keeps working. You can try again any time.',
+    '发现新版本': 'New version available',
+    '有新版本': 'Version',
+    '你用的是': 'you have',
+    '你这台设备': 'For this device',
+    '没找到与你设备匹配的包，请从下面的「其它平台」里选。':
+      'No package matched this device — pick one under "Other platforms" below.',
+    '其它平台': 'Other platforms',
+    '下完先看大小：和上面写的不一样，就是没下完，别急着装。想更稳妥可以比对 sha256。':
+      'Check the file size after downloading: if it differs from the number above, the download was cut short. For extra safety, compare the sha256.',
+    '复制链接': 'Copy link',
+    '稍后再说': 'Later',
+    '去下载': 'Download',
+    '下载链接已复制': 'Download link copied',
+    '复制这个链接到浏览器': 'Copy this link into your browser',
+    '打不开下载页，请复制链接手动打开': 'Could not open the download page — please copy the link instead',
   };
 
   /* 中文侧也可能需要「统一改写」的文案：留空表示中文原样 */

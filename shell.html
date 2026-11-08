@@ -207,6 +207,15 @@ html[data-motion="low"] *{animation:none!important;transition:none!important}
 #toast.on{display:block}
 .docnav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .docnav button{padding:5px 10px;min-height:30px}
+/* ---------- 检查更新 ---------- */
+.updList{display:flex;flex-direction:column;gap:8px;margin:10px 0 4px}
+.updList .updGo{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  width:100%;padding:11px 14px;min-height:46px;text-align:left;font-size:.95em;border-radius:10px}
+.updList .updGo.pri{border-color:var(--acc);background:transparent;color:var(--tx);font-weight:600}
+.updList .updGo.pri:hover{background:transparent;color:var(--tx);filter:none;border-color:var(--acc)}
+.updMore{margin:12px 0 4px;border-top:1px solid var(--line);padding-top:10px}
+.updMore>summary{cursor:pointer;color:var(--tx2);font-size:.9em;padding:4px 0;outline:none}
+.updMore>summary:hover{color:var(--tx)}
 /* ---------- 书架分组条 ---------- */
 #shelfBar{flex:0 0 auto;display:flex;gap:6px;align-items:center;padding:8px 14px;background:var(--card);
   border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden;scrollbar-width:none}

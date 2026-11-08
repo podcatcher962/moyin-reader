@@ -21,8 +21,17 @@ JAR = os.path.join(SDK, 'platforms', 'android-34', 'android.jar')
 KS = os.environ.get('MOYIN_KEYSTORE') or os.path.join(AB, 'release.keystore')
 KS_PASS = os.environ.get('MOYIN_KS_PASS', '')
 if not KS_PASS:
-    sys.exit('缺少签名密钥库口令：请先设置环境变量 MOYIN_KS_PASS'
-             '（以及可选的 MOYIN_KEYSTORE 指向 .keystore 文件）')
+    # 口令不必每次手输，也不用塞进环境变量：放在构建目录下的 .kspass 里即可。
+    # 这个文件在 D:\Workuddy\android-build\（不是仓库目录），不会被提交。
+    _p = os.path.join(AB, '.kspass')
+    if os.path.isfile(_p):
+        KS_PASS = io.open(_p, encoding='utf-8').read().strip()
+if not KS_PASS:
+    sys.exit('缺少签名密钥库口令。三种给法，任选一种：\n'
+             '  1) 把口令单独一行写进 %s（推荐，写一次以后都不用管）\n'
+             '  2) set MOYIN_KS_PASS=<口令>\n'
+             '  3) 命令行前加 MOYIN_KS_PASS=<口令>\n'
+             '密钥库：%s' % (os.path.join(AB, '.kspass'), KS))
 
 PY312 = os.environ.get('MOYIN_PYTHON') or sys.executable
 JAVAC = os.path.join(JDK, 'bin', 'javac.exe')
@@ -59,8 +68,8 @@ os.makedirs(STAGE, exist_ok=True)
 MANIFEST = '''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="%s"
-    android:versionCode="19"
-    android:versionName="1.11.0">
+    android:versionCode="11200"
+    android:versionName="1.12.0">
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
     <!-- 只有两条：WebView 访问本机 127.0.0.1 需要明文 http；
          不申请麦克风、定位、通讯录、存储，读书不需要这些。 -->

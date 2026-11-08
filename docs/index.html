@@ -207,6 +207,15 @@ html[data-motion="low"] *{animation:none!important;transition:none!important}
 #toast.on{display:block}
 .docnav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .docnav button{padding:5px 10px;min-height:30px}
+/* ---------- 检查更新 ---------- */
+.updList{display:flex;flex-direction:column;gap:8px;margin:10px 0 4px}
+.updList .updGo{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  width:100%;padding:11px 14px;min-height:46px;text-align:left;font-size:.95em;border-radius:10px}
+.updList .updGo.pri{border-color:var(--acc);background:transparent;color:var(--tx);font-weight:600}
+.updList .updGo.pri:hover{background:transparent;color:var(--tx);filter:none;border-color:var(--acc)}
+.updMore{margin:12px 0 4px;border-top:1px solid var(--line);padding-top:10px}
+.updMore>summary{cursor:pointer;color:var(--tx2);font-size:.9em;padding:4px 0;outline:none}
+.updMore>summary:hover{color:var(--tx)}
 /* ---------- 书架分组条 ---------- */
 #shelfBar{flex:0 0 auto;display:flex;gap:6px;align-items:center;padding:8px 14px;background:var(--card);
   border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
@@ -1495,6 +1504,36 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     '稍后再提': 'Later',
     '已重新计时，读累了就歇会儿': 'Timer restarted — go easy on your eyes',
     '10 分钟后再提醒': 'Remind me in 10 minutes',
+
+    /* ---------- 1.12 检查更新 ---------- */
+    '检查更新': 'Check for updates',
+    '启动时自动查新': 'Check on startup',
+    '默认关。本软件平时不联网；就算打开，也只是启动后读一次 90 KB 的版本清单，不传任何本机信息。':
+      'Off by default — this app does not go online at all. Even when enabled, it only reads a 90 KB version list once after startup, and sends nothing about your device.',
+    '正在检查新版本…': 'Checking for updates…',
+    '已是最新版本': 'You are up to date',
+    '你用的是 {v}，服务器上也是最新的。': 'You are on {v}, which is the latest.',
+    '清单读取于刚才，共收录 {n} 个产物。': 'The list was read just now and covers {n} files.',
+    '检查失败': 'Update check failed',
+    '连不上版本服务器。可能是网络不通，或你现在处于完全离线状态。':
+      'Could not reach the update server — the network may be down, or you may be fully offline.',
+    '本软件的其它功能都不受影响，随时可以再试。':
+      'Everything else keeps working. You can try again any time.',
+    '发现新版本': 'New version available',
+    '有新版本': 'Version',
+    '你用的是': 'you have',
+    '你这台设备': 'For this device',
+    '没找到与你设备匹配的包，请从下面的「其它平台」里选。':
+      'No package matched this device — pick one under "Other platforms" below.',
+    '其它平台': 'Other platforms',
+    '下完先看大小：和上面写的不一样，就是没下完，别急着装。想更稳妥可以比对 sha256。':
+      'Check the file size after downloading: if it differs from the number above, the download was cut short. For extra safety, compare the sha256.',
+    '复制链接': 'Copy link',
+    '稍后再说': 'Later',
+    '去下载': 'Download',
+    '下载链接已复制': 'Download link copied',
+    '复制这个链接到浏览器': 'Copy this link into your browser',
+    '打不开下载页，请复制链接手动打开': 'Could not open the download page — please copy the link instead',
   };
 
   /* 中文侧也可能需要「统一改写」的文案：留空表示中文原样 */
@@ -1733,7 +1772,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.11.0';
+  var VER = '1.12.0';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -1809,6 +1848,8 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     autoNext: 1, follow: 1,
     localOn: 1, localPort: 8177, localVoice: 's12',
     voiceSet: 'curated', roleOn: 1, rolePool: 'mix', roleTouched: 0,
+    /* 启动时自动查新版本：1.11.1 起才有。默认 0，守「默认零联网」这条 */
+    updChk: 0,
     lang: 'zh', noteFilter: 'all'
   };
   var CFG = Object.assign({}, DEF), BOOKS = [], BK = null, URLCACHE = {}, ACTIVE_ZIP = null, ZIPSEQ = 0;
@@ -3982,6 +4023,147 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
         function (e) { if (!done) { done = true; clearTimeout(t); rej(e); } });
     });
   }
+  /* ---------------- 检查更新 ----------------
+     「默认零联网」是这个软件摆在第一位的承诺，所以这里不搞后台偷偷连：
+     ① 只有点了「检查更新」才发一次请求，读的是 90 KB 的版本清单，不传任何本机信息；
+     ② 「启动时自动检查」默认关闭，要开自己在设置里开，随时能关；
+     ③ 清单里带着每个包的大小和 sha256，下载完能自己核对，不怕中间被换包。 */
+  var UPD = { busy: false, doc: null, at: 0 };
+  /* 主源走 Pages；Pages 在国内偶发抽风时退到镜像读同一份文件（同 gh-proxy，与下载链同一个源） */
+  var UPD_SRC = [
+    'https://podcatcher962.github.io/versions.json',
+    'https://gh-proxy.com/https://raw.githubusercontent.com/podcatcher962/podcatcher962.github.io/main/versions.json'
+  ];
+  function jsonFetch(url, ms) {
+    return new Promise(function (res, rej) {
+      var t = setTimeout(function () { rej(new Error('timeout')); }, ms);
+      fetch(url, { cache: 'no-store' }).then(function (r) {
+        clearTimeout(t);
+        if (!r.ok) { rej(new Error('HTTP ' + r.status)); return; }
+        r.json().then(res, function () { rej(new Error('bad json')); });
+      }, function () { clearTimeout(t); rej(new Error('net')); });
+    });
+  }
+  /* 版本比较：1.9.10 必须大于 1.9.9（按数字比，别按字符串比） */
+  function cmpVer(a, b) {
+    var pa = String(a || '0').split(/[.+\-]/), pb = String(b || '0').split(/[.+\-]/);
+    for (var i = 0; i < Math.max(pa.length, pb.length); i++) {
+      var x = parseInt(pa[i], 10) || 0, y = parseInt(pb[i], 10) || 0;
+      if (x !== y) return x > y ? 1 : -1;
+    }
+    return 0;
+  }
+  /* 这台设备该拿哪个包。桌面壳分不出完整版还是 Lite（页面是同一份），所以 exe 两个都列出来让人选。 */
+  function updMine(builds) {
+    var e = speakEnv(), p = navigator.platform || '', ua = navigator.userAgent || '';
+    var mac = /Mac/i.test(p), lin = /Linux|X11/i.test(p) && !/Android/i.test(ua);
+    return (builds || []).filter(function (b) {
+      var f = b.file || '';
+      if (e.android) return /\.apk$/i.test(f);
+      if (e.apk) {
+        if (mac) return /\.zip$/i.test(f);
+        if (lin) return /\.tar\.gz$/i.test(f) || /\.deb$/i.test(f);
+        return /\.exe$/i.test(f);
+      }
+      return /\.html$/i.test(f);
+    });
+  }
+  function updSize(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+  /* 打开下载地址。安卓壳里 WebView 自己存不了 APK，交给系统浏览器；桌面壳里
+     octet-stream 会让 WebView2 走下载而不是跳页，不会把界面顶掉。 */
+  function openUrl(u) {
+    var e = speakEnv();
+    /* 两端原生壳都用 location.href：
+       安卓 —— WebViewClient 把站外链接交给系统浏览器，顺带把 APK 下下来；
+       桌面 —— 下载链返回 application/octet-stream，WebView2 会走「下载」而不是跳页，
+               外壳已开 ALLOW_DOWNLOADS，弹系统保存框。window.open 在这两种壳里都不靠谱
+               （WebView 没有 onCreateWindow，pywebview 会开一个空窗口）。 */
+    if (e.android || e.apk) {
+      try { location.href = u; return; } catch (x) { }
+    }
+    try { var w = window.open(u, '_blank'); if (w) return; } catch (x) { }
+    try { location.href = u; } catch (x) { toast(T('打不开下载页，请复制链接手动打开')); }
+  }
+  function copyUrl(u) {
+    /* copyText 不会 reject，失败时返回 false（老 WebView 没有 clipboard API 走 execCommand） */
+    copyText(u).then(function (ok) {
+      if (ok === false) { window.prompt(T('复制这个链接到浏览器'), u); return; }
+      toast(T('下载链接已复制'));
+    });
+  }
+  function checkUpdate(manual) {
+    if (UPD.busy) return;
+    UPD.busy = true;
+    if (manual) toast(T('正在检查新版本…'), 2000);
+    var i = 0;
+    var next = function () {
+      if (i >= UPD_SRC.length) throw new Error('all sources failed');
+      var u = UPD_SRC[i++];
+      return jsonFetch(u, manual ? 9000 : 7000).catch(next);   // 上一个源挂了就换下一个
+    };
+    next().then(function (doc) {
+      UPD.busy = false;
+      var t = null;
+      (doc && doc.tools || []).forEach(function (x) { if (x.id === 'moyin-reader') t = x; });
+      if (!t) throw new Error('no entry');
+      UPD.doc = t; UPD.at = Date.now();
+      if (cmpVer(t.version, VER) <= 0) {
+        if (manual) {
+          showModal(T('已是最新版本'), '<p>' + esc(T('你用的是 {v}，服务器上也是最新的。', { v: VER })) + '</p>' +
+            '<p class="kv">' + esc(T('清单读取于刚才，共收录 {n} 个产物。', { n: (t.builds || []).length })) + '</p>',
+            [{ label: T('关闭') }]);
+        }
+        return;
+      }
+      showUpdate(t);
+    }).catch(function () {
+      UPD.busy = false;
+      /* 自动检查失败就彻底安静，不打扰读书；手动点才提示 */
+      if (manual) showModal(T('检查失败'), '<p>' + esc(T('连不上版本服务器。可能是网络不通，或你现在处于完全离线状态。')) + '</p>' +
+        '<p class="kv">' + esc(T('本软件的其它功能都不受影响，随时可以再试。')) + '</p>', [{ label: T('关闭') }]);
+    });
+  }
+  function showUpdate(t) {
+    var mine = updMine(t.builds), others = (t.builds || []).filter(function (b) { return mine.indexOf(b) < 0; });
+    var btn = function (b, primary) {
+      var u = (b.urls && b.urls[0]) ? b.urls[0].u : '';
+      return '<button class="updGo' + (primary ? ' pri' : '') + '" data-u="' + esc(u) + '">' +
+        esc(b.file) + ' · ' + updSize(b.size) + '</button>';
+    };
+    var h = '<p style="font-size:1.12em">' + T('有新版本') + ' <b>' + esc(t.version) + '</b>' +
+      ' <span class="kv">（' + T('你用的是') + ' ' + esc(VER) + '）</span></p>' +
+      '<p class="kv">' + esc(t.name || '') + (t.published ? ' · ' + esc(t.published) : '') + '</p>';
+    h += '<h3>' + T('你这台设备') + '</h3><div class="updList">' +
+      (mine.length ? mine.map(function (b, i) { return btn(b, i === 0); }).join('')
+        : '<p class="kv">' + esc(T('没找到与你设备匹配的包，请从下面的「其它平台」里选。')) + '</p>') + '</div>';
+    if (others.length) {
+      h += '<details class="updMore"><summary>' + T('其它平台') + '（' + others.length + '）</summary><div class="updList">' +
+        others.map(function (b) { return btn(b, false); }).join('') + '</div></details>';
+    }
+    h += '<p class="kv">' + esc(T('下完先看大小：和上面写的不一样，就是没下完，别急着装。想更稳妥可以比对 sha256。')) + '</p>' +
+      '<p class="kv" style="word-break:break-all">sha256 ' + esc(mine.length ? mine[0].sha256 : (t.builds[0] || {}).sha256 || '') + '</p>';
+    showModal(T('发现新版本'), h, [
+      { label: T('复制链接') },
+      { label: T('稍后再说') },
+      {
+        label: T('去下载'), cls: 'pri', fn: function () {
+          var b = mine[0] || (t.builds || [])[0];
+          if (b && b.urls && b.urls[0]) { openUrl(b.urls[0].u); closeModal(); }
+        }
+      }
+    ]);
+    var mb = $('modalBody');
+    mb.onclick = function (e) {
+      var el = e.target;
+      while (el && el !== mb && !el.getAttribute('data-u')) el = el.parentNode;
+      if (el && el !== mb) { e.preventDefault(); openUrl(el.getAttribute('data-u')); closeModal(); }
+    };
+    var f = $('modalFoot');
+    if (f && f.children[0]) f.children[0].onclick = function () {
+      var b = mine[0] || (t.builds || [])[0];
+      if (b && b.urls && b.urls[0]) copyUrl(b.urls[0].u);
+    };
+  }
   function revokeURL(u) { if (u && String(u).indexOf('blob:') === 0) { try { URL.revokeObjectURL(u); } catch (e) {} } }
   function stopLocalAudio() {
     if (SPK.audio) {
@@ -4786,6 +4968,10 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + AISHELL3 多说话人 VITS 模型）：不联网、不收费、无需账号，模型内含 174 个中文说话人（148 女 + 26 男），精选 11 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.12 改了什么</h3><ul>' +
+      '<li><b>能查新版本了，但依然默认不联网</b>：阅读设置里多了「检查更新」，点一下才去读一次版本清单（约 90 KB，只说「我要最新版号」，不传任何本机信息、不传书、不传阅读记录）。有新版本会写清你这台设备该下哪个包、多大、sha256 是多少。<b>「启动时自动查新」默认是关的</b>，要开自己在设置里开，开了也一天最多查一次；断网时它会彻底安静，不会弹窗打扰看书。</li>' +
+      '<li><b>版本号从此一一对得上</b>：页面、Windows、Linux、deb、安卓包的版本号以前分五处手写，出现过「窗口标题 1.10.2、页面里 1.11」这种对不上的情况。现在由一处统一生成，安卓的 versionCode 也按版本号推算（1.12.0 → 11200），任何一个包都能对回同一个版本。</li>' +
+      '<li><b>下载走哪条线由实测决定</b>：新版本的下载会优先走实测最快的那条镜像，GitHub 原站慢或断了也能下得动。</li></ul>' +
       '<h3>1.11 改了什么</h3><ul>' +
       '<li><b>手机也有 174 个离线神经声线了</b>：以前只有电脑能听到 sherpa-onnx + AISHELL3 那套神经语音，手机上只能用安卓自带的机械音。现在引擎和模型直接装进了安卓包，断网、飞行模式照样能听，音色、音高分组、分角色朗读和电脑端完全一致。</li>' +
       '<li><b>顶栏不再挤成三行小格子</b>：手机上只留目录、搜索、排版、朗读四个常用键，每格 44px 高、字也大了一号；书签、笔记、主题、自动、全屏、设置收进「⋯」，点开就有，点一下动作自动收起。</li>' +
@@ -4886,7 +5072,10 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     var h = '<h3>' + T('界面语言') + '</h3><div class="row"><label>' + T('界面语言') + '</label><div class="seg">' +
       [['zh', '中文'], ['en', 'English']].map(function (x) {
         return '<button data-lang="' + x[0] + '"' + (CFG.lang === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
-      }).join('') + '</div><span class="kv">v' + VER + '</span></div>' +
+      }).join('') + '</div><span class="kv">v' + VER + '</span>' +
+      '<button data-act="chkUpd">' + T('检查更新') + '</button></div>' +
+      '<div class="row"><label>' + T('启动时自动查新') + '</label>' + boolSeg([['updChk', T('启动时自动查新')]]) +
+      '<span class="kv">' + T('默认关。本软件平时不联网；就算打开，也只是启动后读一次 90 KB 的版本清单，不传任何本机信息。') + '</span></div>' +
       '<h3>' + T('外观与版式') + '</h3>' +
       '<div class="row"><label>' + T('字号') + '</label><div class="seg">' +
         '<button data-act="fsDown">A−</button><button data-act="fsUp">A+</button></div>' +
@@ -5011,6 +5200,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       if (act === 'tryvoice') { tryVoice(); return; }
       if (act === 'tryrole') { tryRole(); return; }
       if (act === 'probe') { LOCAL.miss = 0; localProbe(true).then(function () { showSettings(); }); return; }
+      if (act === 'chkUpd') { checkUpdate(true); return; }
       var k = b.getAttribute('data-set'), v = b.getAttribute('data-v');
       if (k === 'bool') CFG[v] = CFG[v] ? 0 : 1; else CFG[k] = v;
       /* 多栏与翻页联动，两个入口（设置 / 排版面板）行为保持一致 */
@@ -5706,10 +5896,25 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       pgTo: pgTo, pgReflow: pgReflow, paraPage: paraPage, readNext: readNext, readPrev: readPrev,
       autoToggle: autoToggle, autoStart: autoStart, autoStop: autoStop, autoPause: autoPause,
       autoResume: autoResume, AUTO: AUTO, toggleFull: toggleFull, setTheme: setTheme,
-      THEMES: THEMES, revealPara: revealPara, renderKeep: renderKeep
+      THEMES: THEMES, revealPara: revealPara, renderKeep: renderKeep,
+      /* 1.11.1：检查更新（测试脚本要能直接调） */
+      checkUpdate: checkUpdate, cmpVer: cmpVer, UPD: UPD
     };
     document.documentElement.setAttribute('data-ready', '1');
     webEditionTip();
+    autoCheckUpdate();
+  }
+
+  /* 自动查新：默认关（守「零联网」），开了也一天最多查一次，且延后几秒，不跟首屏抢网络 */
+  function autoCheckUpdate() {
+    if (Number(CFG.updChk) !== 1) return;
+    var last = 0;
+    try { last = Number(localStorage.getItem('moyin.updAt') || 0); } catch (e) { }
+    if (Date.now() - last < 86400000) return;
+    setTimeout(function () {
+      try { localStorage.setItem('moyin.updAt', String(Date.now())); } catch (e) { }
+      checkUpdate(false);
+    }, 4000);
   }
 
   /* 在线版（GitHub Pages）提示：网页里只有系统语音，别让人以为声线坏了 */

@@ -12,6 +12,7 @@ make_deb.py 在 Windows 只把目录树打成 deb-root.tar.gz，真正的 `dpkg-
 import gzip
 import io
 import os
+import shutil
 import sys
 import tarfile
 import time
@@ -20,7 +21,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 DIST = os.path.join(ROOT, 'dist')
 DEB_ROOT = os.path.join(DIST, 'deb-root')
-VER = '1.11.0'
+VER = '1.12.0'
 OUT = os.path.join(DIST, 'moyin-reader_%s_amd64.deb' % VER)
 
 
@@ -54,9 +55,43 @@ def ar_member(name, data):
     return out
 
 
+def sync_payload():
+    """把根目录里的最新产物同步进 deb-root。
+
+    这个函数是补一个真出过的事故：本脚本原先直接沿用上次遗留的 dist/deb-root，
+    页面重新 build 之后 deb 里躺的还是旧页面——1.12.0 的包里装着 1.11.0 的 html，
+    版本号、检查更新全都不在，只有逐字节核对才发现。现在每次组装前先同步。
+    """
+    pairs = [
+        ('MoYinReader.html', 'usr/lib/moyin-reader/MoYinReader.html'),
+        (os.path.join('_pkg_win', 'app.py'), 'usr/lib/moyin-reader/app.py'),
+        ('README.md', 'usr/share/doc/moyin-reader/README.md'),
+        ('LICENSE', 'usr/share/doc/moyin-reader/copyright'),
+    ]
+    done = []
+    for src_rel, dst_rel in pairs:
+        src = os.path.join(ROOT, src_rel)
+        if not os.path.isfile(src):
+            continue
+        dst = os.path.join(DEB_ROOT, dst_rel.replace('/', os.sep))
+        if not os.path.isdir(os.path.dirname(dst)):
+            continue                      # 目录树里没这一项，说明布局变了，别硬塞
+        if os.path.isfile(dst) and os.path.getsize(dst) == os.path.getsize(src) \
+                and open(dst, 'rb').read() == open(src, 'rb').read():
+            continue                      # 已经一样，不动 mtime
+        shutil.copyfile(src, dst)
+        done.append(dst_rel)
+    return done
+
+
 def main():
     if not os.path.isdir(os.path.join(DEB_ROOT, 'DEBIAN')):
         sys.exit('没有 %s/DEBIAN，先跑 python _pkg_linux/make_deb.py' % DEB_ROOT)
+    synced = sync_payload()
+    if synced:
+        print('已同步 %d 个文件进 deb-root：' % len(synced))
+        for s in synced:
+            print('    ' + s)
     # control 侧：DEBIAN/ 里的脚本必须是 755，control 本身 644
     ctl = tar_gz(os.path.join(DEB_ROOT, 'DEBIAN'), './',
                  lambda rel, name: 0o644 if name == 'control' else 0o755)
