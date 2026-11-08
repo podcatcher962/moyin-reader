@@ -70,22 +70,29 @@
 | 平台 | 怎么用 | 说明 |
 |---|---|---|
 | **Windows** | 下载 `MoYinReader.exe` 双击 | 完整版，174 个离线语音与分角色朗读都在这一版 |
-| **安卓** | 下载 [`MoYinReader.apk`](https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk) 安装 | 页面内嵌，朗读走系统 TTS；手机下载见下方说明 |
+| **安卓** | 下载 [`MoYinReader.apk`](https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk) 安装 | 页面内嵌，**174 个离线神经声线随包带走**，断网也能听；手机下载见下方说明 |
 | **任意系统** | 双击 `MoYinReader.html` | 单文件网页版，功能与桌面版一致 |
 | **Linux / 信创**（统信 UOS、麒麟、openEuler、Deepin） | `sudo dpkg -i moyin-reader_*.deb` 装进应用菜单；或用 `MoYinReader-Linux-*.tar.gz` 解压后双击「墨吟阅读器.sh」 | **x86_64 是 10 MB 独立程序，不用装 Python**（已在统信 UOS 20 专业版实测安装与启动）；飞腾 / 鲲鹏 / 龙芯会自动走 Python 或网页方式 |
 | **macOS**（Intel / Apple Silicon） | 解压 `MoYinReader-macOS-*.zip`，双击「墨吟阅读器.command」 | 免安装 Python |
 
-> **手机上装安卓版，下载卡住怎么办**：GitHub 的下载按钮会先跳 `github.com`，国内手机网络下经常十几秒不动或直接超时（电脑能下是因为走了代理）。改用直链，不经过 github.com：
+> **手机上装安卓版，下载卡住怎么办**
 >
-> `https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk`
+> GitHub 的下载按钮会先跳 `github.com`，再跳 `objects.githubusercontent.com`，这两跳在国内手机网络里经常十几秒不动或直接被掐断（电脑上能下，多是因为走了代理）。所以安卓包另外给两条**不经过 github.com** 的入口，按顺序试：
 >
-> 两点注意：① 在**浏览器**里打开，微信 / QQ 的内置浏览器会拦截 apk 下载，请点右上角"在浏览器打开"；② 装之前系统会提示"未知来源"，允许「墨吟」安装即可。
+> 1. 主直链：`https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk`
+> 2. 前一条打不开时，可以先把 apk 存到网盘（夸克 / 蓝奏）再发给对方，或直接用 Release 里的附件
+>
+> 下完先看一眼文件大小（**约 38.8 MB**）。这一版把 32 MB 的中文语音模型和 sherpa-onnx 引擎一起打进了包，所以比 1.10 的 200 KB 大了两个数量级——换来的是手机上也能听 174 个离线神经声线，断网、飞行模式都不影响。如果只下到几 MB、装的时候提示「解析包错误」，就是没下完整，重下一次。
+>
+> **为什么半夜更容易失败**：GitHub Pages 的地址段（185.199.108–111.153）在国内移动网络和家宽晚高峰后常被限速或重置，凌晨并不等于网络空闲；手机还会优先解析 IPv6，部分移动网络到 GitHub 的 IPv6 路由更差。换 Wi-Fi / 流量、或换上面的备用 CDN，通常就能下。
+>
+> 三点注意：① 一定要在**系统浏览器**里打开，微信 / QQ 的内置浏览器会直接拦掉 apk，请在右上角「…」→「在浏览器打开」；② 小米 / 华为浏览器可能提示「该文件可能有害」，选「仍要下载」；③ 装之前系统会提示「未知来源」，允许「墨吟」安装即可。
 
 Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF，只依赖系统自带的 libc / libz / libpthread / libdl（glibc 2.28+），UOS 20、银河麒麟 V10、openEuler 20.03 及更新版本都能直接运行。窗口用系统浏览器内核的「应用模式」打开——没有地址栏和标签页，是个独立窗口，关掉即退出。
 
 其余架构（aarch64 / loongarch64）仍走 Python 或网页方式；包里附 `build-linux.sh`，可在本机打自己架构的二进制。macOS 同理附 `build-macos.sh`，打 `.app`。
 
-朗读在两个平台都走系统语音；分角色朗读需要 Windows 版打包的神经语音引擎。
+朗读：Windows 完整版与安卓版都自带神经语音（sherpa-onnx + AISHELL3，174 个中文声线，完全离线）；网页版 / Linux / macOS 走系统语音，也可以把同一份 `VoicePack` 放在旁边连本机引擎（`127.0.0.1:8177`）。
 
 ### 功能
 
@@ -121,8 +128,8 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 |---|---|---|
 | `MoYinReader.exe` | 约 47 MB | **Windows 完整版**，语音库打包在 exe 尾部，只拷这一个文件就能听，首次启动自动释放到缓存 |
 | `MoYinReader_Lite.exe` | 约 17 MB | Windows 轻量版，需同目录放 `VoicePack` 文件夹（约 53 MB） |
-| `MoYinReader.apk` | 约 197 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
-| `MoYinReader.html` | 约 372 KB | 单文件网页版，双击即用，任何系统都能跑 |
+| `MoYinReader.apk` | 约 38.8 MB | 安卓完整版，页面 + 174 声线神经语音引擎与模型全在包里 |
+| `MoYinReader.html` | 约 388 KB | 单文件网页版，双击即用，任何系统都能跑 |
 | `moyin-reader_*_amd64.deb` | 约 9.7 MB | 统信 / 麒麟 / openEuler，**双击安装即进应用菜单**，卸载走系统正常流程 |
 | `MoYinReader-Linux-*.tar.gz` | 约 9.8 MB | 免安装版：解压双击「墨吟阅读器.sh」，U 盘带走也能用 |
 | `MoYinReader-macOS-*.zip` | 约 157 KB | macOS 源码 + 打包脚本，在本机跑一次 `build-macos.sh` 出 `.app` |
@@ -147,7 +154,7 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 
 ### 从源码构建
 
-仓库只放源码，`exe` 和语音模型不入库（体积大，且模型是第三方资产）。唯一的例外是 `docs/download/MoYinReader.apk`——197 KB 的成品，放在 Pages 上只为给手机一个不用访问 github.com 的下载口，正式版仍以 Release 为准。克隆后按下面两步即可复现：
+仓库只放源码，`exe` 和语音模型不入库（体积大，且模型是第三方资产）。唯一的例外是 `docs/download/MoYinReader.apk`——38.8 MB 的成品，放在 Pages 上只为给手机一个不用访问 github.com 的下载口，正式版仍以 Release 为准。克隆后按下面两步即可复现：
 
 ```bash
 # 1) 生成单文件网页版（纯 Python 标准库，无需依赖）
@@ -277,8 +284,8 @@ The Linux binary only needs `libc` / `libz` / `libpthread` / `libdl` (glibc 2.28
 |---|---|---|
 | `MoYinReader.exe` | ~47 MB | Full build, voice pack appended inside the exe |
 | `MoYinReader_Lite.exe` | ~17 MB | Needs a `VoicePack` folder (~53 MB) next to it |
-| `MoYinReader.html` | ~372 KB | Standalone web build |
-| `MoYinReader.apk` | ~197 KB | Android shell with the page embedded |
+| `MoYinReader.html` | ~388 KB | Standalone web build |
+| `MoYinReader.apk` | ~38.8 MB | Android full build: page + 174-speaker neural TTS engine and model |
 | `moyin-reader_*_amd64.deb` | ~9.7 MB | UOS / Kylin / openEuler, installs into the app menu |
 | `MoYinReader-Linux-*.tar.gz` | ~9.8 MB | Portable build, same x86_64 binary, unzip and run |
 | `MoYinReader-macOS-*.zip` | ~157 KB | Source + `build-macos.sh`; run it once on your Mac to get a `.app` |
@@ -287,7 +294,7 @@ Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/re
 
 ### Build from source
 
-Only source lives in this repo — `exe` and the speech model are not committed (they are large, and the model is a third-party asset). The one exception is `docs/download/MoYinReader.apk`, a 197 KB build kept on Pages purely so phones get a download link that never touches `github.com` (which is slow or unreachable on many Chinese mobile networks); Releases remain the canonical source.
+Only source lives in this repo — `exe` and the speech model are not committed (they are large, and the model is a third-party asset). The one exception is `docs/download/MoYinReader.apk`, a 38.8 MB build kept on Pages purely so phones get a download link that never touches `github.com` (which is slow or unreachable on many Chinese mobile networks); Releases remain the canonical source.
 
 > **Android download stalls?** The GitHub button redirects through `github.com`, which often hangs for 10+ seconds on mobile networks in China. Use the direct link instead:
 >
