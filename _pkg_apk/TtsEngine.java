@@ -18,20 +18,39 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * 墨吟 · 手机端离线神经语音
  *
- * 复用桌面端那套 sherpa-onnx + AISHELL3 中文多说话人 VITS 模型：
- * 同一份 30 MB 模型内含 174 个说话人，靠 sid 切声线，所以体积不随音色增长。
+ * 两套模型并存，与桌面端 VoicePack/tts_server.py 的编排一致：
+ *   · 小雅（默认，x0）：Piper 中文单说话人 VITS，22.05 kHz。只有一个女声，
+ *     但采样率是 AISHELL3 的近三倍，齿音、气口、尾音收束都在。
+ *   · AISHELL3 音色库（s0…s173）：174 个说话人共用一份 8 位量化模型（14 MB），
+ *     靠 sid 切声线，体积不随音色数量增长。量化版推理慢，只当换口味用。
  *
  * 模型放在 apk 的 assets 里，首次启动解压到应用私有目录，之后直接用绝对路径，
- * onnxruntime 可以正常 mmap，不必每次把 30 MB 读进内存。
+ * onnxruntime 可以正常 mmap，不必每次把几十 MB 读进内存。
  */
 public final class TtsEngine {
 
-    public static final String[] ASSETS = {
-            "model.onnx", "lexicon.txt", "tokens.txt",
+    /** 主模型（小雅）：音色 key 固定 x0，不分说话人。 */
+    static final String MAIN_ASSET_DIR = "tts/xiaoya";
+    static final String MAIN_FILE_DIR = "tts/xiaoya";
+    static final String MAIN_MODEL = "zh_CN-xiao_ya-medium.onnx";
+    static final String MAIN_VOICE = "x0";
+    static final String MAIN_LABEL = "墨吟 · 中文女声";
+    static final int MAIN_F0 = 259;
+    static final String[] MAIN_ASSETS = {
+            MAIN_MODEL, "lexicon.txt", "tokens.txt",
             "date.fst", "number.fst", "phone.fst"
     };
-    private static final String ASSET_DIR = "tts/aishell3";
-    private static final int MODEL_VER = 1;
+
+    /** 备用音色库（AISHELL3 量化版）：音色 key s0…s173。 */
+    static final String LEGACY_ASSET_DIR = "tts/aishell3";
+    static final String LEGACY_FILE_DIR = "tts/aishell3";
+    static final String LEGACY_MODEL = "model.int8.onnx";
+    static final String[] LEGACY_ASSETS = {
+            LEGACY_MODEL, "lexicon.txt", "tokens.txt",
+            "date.fst", "number.fst", "phone.fst"
+    };
+
+    private static final int MODEL_VER = 2;
 
     /** sid → 中位基频（Hz），离线逐人实测。手机端与桌面共用同一份分组依据。 */
     static final int[] SID_F0 = {
@@ -90,34 +109,41 @@ public final class TtsEngine {
         return 12;
     }
 
-    /** /health 的音色表：174 个音色共用一份模型，所以全部报就绪。 */
+    /** 该音色是否走 AISHELL3 音色库（s0…s173）；其余一律走小雅。 */
+    static boolean isLegacy(String voice) {
+        if (voice == null) return false;
+        String v = voice.trim();
+        return v.startsWith("s") || v.startsWith("S");
+    }
+
+    /** /health 的音色表：小雅 1 个 + 音色库 174 个。 */
     String healthJson(boolean engineOk) {
-        StringBuilder sb = new StringBuilder(16384);
+        int n = SID_F0.length + 1;
+        StringBuilder sb = new StringBuilder(18432);
         sb.append("{\"ok\":").append(engineOk).append(",");
         sb.append("\"engine\":\"").append(engineOk ? "sherpa-onnx 2.0.1 · 安卓" : "模型加载中").append("\",");
         sb.append("\"ready\":").append(engineOk).append(",");
-        sb.append("\"count\":").append(SID_F0.length).append(",");
-        sb.append("\"version\":3,\"curated\":[");
+        sb.append("\"count\":").append(n).append(",");
+        sb.append("\"version\":4,\"curated\":[\"").append(MAIN_VOICE).append("\"");
         for (int i = 0; i < CURATED_SID.length; i++) {
-            if (i > 0) sb.append(',');
-            sb.append("\"s").append(CURATED_SID[i]).append("\"");
+            sb.append(",\"s").append(CURATED_SID[i]).append("\"");
         }
-        sb.append("],\"voices\":{");
+        sb.append("],\"voices\":{\"").append(MAIN_VOICE).append("\":").append(engineOk);
         for (int i = 0; i < SID_F0.length; i++) {
             if (i > 0) sb.append(',');
             sb.append("\"s").append(i).append("\":").append(engineOk);
         }
-        sb.append("},\"labels\":{");
+        sb.append("},\"labels\":{\"").append(MAIN_VOICE).append("\":\"").append(MAIN_LABEL).append("\",");
         for (int i = 0; i < SID_F0.length; i++) {
             if (i > 0) sb.append(',');
             sb.append("\"s").append(i).append("\":\"").append(labelOf(i)).append("\"");
         }
-        sb.append("},\"groups\":{");
+        sb.append("},\"groups\":{\"").append(MAIN_VOICE).append("\":\"").append(bandOf(MAIN_F0)).append("\",");
         for (int i = 0; i < SID_F0.length; i++) {
             if (i > 0) sb.append(',');
             sb.append("\"s").append(i).append("\":\"").append(bandOf(SID_F0[i])).append("\"");
         }
-        sb.append("},\"f0\":{");
+        sb.append("},\"f0\":{\"").append(MAIN_VOICE).append("\":").append(MAIN_F0).append(",");
         for (int i = 0; i < SID_F0.length; i++) {
             if (i > 0) sb.append(',');
             sb.append("\"s").append(i).append("\":").append(SID_F0[i]);
@@ -127,36 +153,44 @@ public final class TtsEngine {
     }
 
     private final ReentrantLock lock = new ReentrantLock();
-    private OfflineTts tts;
-    private int rate = 22050;
-    private String dir;
+    private Context appCtx;
+    private OfflineTts main;          // 小雅，默认音色
+    private OfflineTts legacy;        // AISHELL3 音色库，按需加载
+    private int mainRate = 22050;
+    private int legacyRate = 8000;
     private String lastError = "";
 
-    /** 当前是否已经能合成。 */
+    /** 只要能合成就算就绪（主模型装好即可，音色库缺了不影响听书）。 */
     public boolean ready() {
-        return tts != null;
+        return main != null || legacy != null;
     }
 
+    /** 默认音色的采样率，供 JS 侧初始化时用。 */
     public int sampleRate() {
-        return rate;
+        return main != null ? mainRate : legacyRate;
     }
 
     public String lastError() {
         return lastError;
     }
 
+    public static String mainVoice() {
+        return MAIN_VOICE;
+    }
+
     /** 解压模型目录；已解压过且版本一致就直接返回。 */
-    private String ensureModel(Context ctx) throws IOException {
-        File base = new File(ctx.getFilesDir(), "tts/aishell3");
+    private String ensureAssets(Context ctx, String assetDir, String fileDir,
+                                String[] files) throws IOException {
+        File base = new File(ctx.getFilesDir(), fileDir);
         File stamp = new File(base, ".v" + MODEL_VER);
         if (stamp.isFile()) return base.getAbsolutePath();
         if (!base.isDirectory() && !base.mkdirs()) {
             throw new IOException("mkdir failed: " + base);
         }
         AssetManager am = ctx.getAssets();
-        for (String name : ASSETS) {
+        for (String name : files) {
             File out = new File(base, name);
-            InputStream in = am.open(ASSET_DIR + "/" + name);
+            InputStream in = am.open(assetDir + "/" + name);
             FileOutputStream os = new FileOutputStream(out);
             byte[] buf = new byte[1 << 16];
             int n;
@@ -171,49 +205,83 @@ public final class TtsEngine {
         return base.getAbsolutePath();
     }
 
-    /** 载入模型。可重复调用，已载入则直接返回。 */
+    private OfflineTts build(Context ctx, String d, String model) {
+        OfflineTtsVitsModelConfig vits = new OfflineTtsVitsModelConfig(
+                d + "/" + model,            // model
+                d + "/lexicon.txt",         // lexicon
+                d + "/tokens.txt",          // tokens
+                "",                         // dataDir
+                "",                         // dictDir
+                0.667f,                     // noiseScale
+                0.8f,                       // noiseScaleW
+                1.0f);                      // lengthScale
+        OfflineTtsModelConfig mc = new OfflineTtsModelConfig(
+                vits, null, null, null, null, null, null,
+                2,                          // numThreads
+                false,                      // debug
+                "cpu");                     // provider
+        OfflineTtsConfig cfg = new OfflineTtsConfig(
+                mc,
+                d + "/date.fst," + d + "/number.fst," + d + "/phone.fst",
+                "",
+                1,                          // maxNumSentences
+                // 片段内部压紧（0.35）。停顿不靠这个倍率——它会把字间空隙
+                // 一起放大，逗号永远显不出来；标点之间的停顿改由 synth()
+                // 按类型插入，与桌面端 tts_server.py 的 PAUSE 表一致。
+                0.35f);                     // silenceScale
+        return new OfflineTts(ctx.getAssets(), cfg);
+    }
+
+    /** 载入默认音色（小雅）。可重复调用，已载入则直接返回。 */
     public boolean load(Context ctx) {
-        if (tts != null) return true;
+        appCtx = ctx.getApplicationContext();
+        if (main != null) return true;
         lock.lock();
         try {
-            if (tts != null) return true;
-            dir = ensureModel(ctx);
-            String d = dir;
-            OfflineTtsVitsModelConfig vits = new OfflineTtsVitsModelConfig(
-                    d + "/model.onnx",          // model
-                    d + "/lexicon.txt",         // lexicon
-                    d + "/tokens.txt",          // tokens
-                    "",                         // dataDir
-                    "",                         // dictDir
-                    0.667f,                     // noiseScale
-                    0.8f,                       // noiseScaleW
-                    1.0f);                      // lengthScale
-            OfflineTtsModelConfig mc = new OfflineTtsModelConfig(
-                    vits, null, null, null, null, null, null,
-                    2,                          // numThreads
-                    false,                      // debug
-                    "cpu");                     // provider
-            OfflineTtsConfig cfg = new OfflineTtsConfig(
-                    mc,
-                    d + "/date.fst," + d + "/number.fst," + d + "/phone.fst",
-                    "",
-                    1,                          // maxNumSentences
-                    // 片段内部压紧（0.35）。停顿不靠这个倍率——它会把字间空隙
-                    // 一起放大，逗号永远显不出来；标点之间的停顿改由 synth()
-                    // 按类型插入，与桌面端 tts_server.py 的 PAUSE 表一致。
-                    0.35f);                     // silenceScale
-            OfflineTts t = new OfflineTts(ctx.getAssets(), cfg);
-            rate = t.sampleRate();
-            if (rate <= 0) {
+            if (main != null) return true;
+            String d = ensureAssets(ctx, MAIN_ASSET_DIR, MAIN_FILE_DIR, MAIN_ASSETS);
+            OfflineTts t = build(ctx, d, MAIN_MODEL);
+            int sr = t.sampleRate();
+            if (sr <= 0) {
                 t.free();
                 lastError = "sampleRate=0";
                 return false;
             }
-            tts = t;
+            mainRate = sr;
+            main = t;
             return true;
         } catch (Throwable e) {
             lastError = e.getClass().getSimpleName() + ": " + e.getMessage();
-            tts = null;
+            main = null;
+            return false;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /** 按需载入音色库（第一次选 s* 时）。调用方可能已持有 lock，可重入。 */
+    private boolean ensureLegacy() {
+        if (legacy != null) return true;
+        if (appCtx == null) return false;
+        lock.lock();
+        try {
+            if (legacy != null) return true;
+            String d = ensureAssets(appCtx, LEGACY_ASSET_DIR, LEGACY_FILE_DIR,
+                    LEGACY_ASSETS);
+            OfflineTts t = build(appCtx, d, LEGACY_MODEL);
+            int sr = t.sampleRate();
+            if (sr <= 0) {
+                t.free();
+                lastError = "legacy sampleRate=0";
+                return false;
+            }
+            legacyRate = sr;
+            legacy = t;
+            return true;
+        } catch (Throwable e) {
+            lastError = "audio library: " + e.getClass().getSimpleName()
+                    + ": " + e.getMessage();
+            legacy = null;
             return false;
         } finally {
             lock.unlock();
@@ -225,13 +293,20 @@ public final class TtsEngine {
      *  停顿不再交给引擎的单一倍率（它会把字间空隙一起放大，逗号永远显不出来），
      *  而是按人念书的规律切分，标点之间按类型插不同长度的静音。
      *  与桌面端 VoicePack/tts_server.py 的 PAUSE 表保持一致。 */
-    public byte[] synth(String text, int sid, float speed) {
-        if (tts == null || text == null) return null;
+    public byte[] synth(String text, String voice, float speed) {
+        if (text == null) return null;
+        boolean lib = isLegacy(voice);
+        OfflineTts tts = lib ? legacy : main;
+        if (tts == null && lib && !ensureLegacy()) return null;
+        tts = lib ? legacy : main;
+        if (tts == null) return null;
+        int sid = lib ? sidOf(voice) : 0;
         String s = text.trim();
         if (s.length() == 0) return null;
         if (s.length() > 600) s = s.substring(0, 600);
         if (speed < 0.5f) speed = 0.5f;
         if (speed > 2.0f) speed = 2.0f;
+        final OfflineTts eng = tts;
         lock.lock();
         try {
             java.util.List<Unit> units = mergeShort(prosodySplit(s));
@@ -239,14 +314,14 @@ public final class TtsEngine {
 
             java.util.ArrayList<float[]> parts = new java.util.ArrayList<>();
             java.util.ArrayList<Float> gaps = new java.util.ArrayList<>();
-            int sr = rate;
+            int sr = lib ? legacyRate : mainRate;
 
             // 模型常驻内存，每段只要几十毫秒，串行就够了（这个类本来也靠 lock 串行）。
             // 某段没出声时把它的文本连标点一起带到下一段重念，书里就不会出现空白。
             String carry = "";
             for (Unit u : units) {
                 String t = carry + u.text;
-                GeneratedAudio a = tts.generate(t, sid, speed);
+                GeneratedAudio a = eng.generate(t, sid, speed);
                 float[] pcm = (a == null) ? null : a.getSamples();
                 if (pcm != null && pcm.length > 0 && peak(pcm) >= 0.01f) {
                     if (a.getSampleRate() > 0) sr = a.getSampleRate();
@@ -258,7 +333,7 @@ public final class TtsEngine {
                 }
             }
             if (!carry.isEmpty()) {
-                GeneratedAudio a = tts.generate(carry, sid, speed);
+                GeneratedAudio a = eng.generate(carry, sid, speed);
                 float[] pcm = (a == null) ? null : a.getSamples();
                 if (pcm != null && pcm.length > 0 && peak(pcm) >= 0.01f) {
                     if (a.getSampleRate() > 0) sr = a.getSampleRate();
@@ -504,9 +579,13 @@ public final class TtsEngine {
     public void close() {
         lock.lock();
         try {
-            if (tts != null) {
-                try { tts.free(); } catch (Throwable ignored) { }
-                tts = null;
+            if (main != null) {
+                try { main.free(); } catch (Throwable ignored) { }
+                main = null;
+            }
+            if (legacy != null) {
+                try { legacy.free(); } catch (Throwable ignored) { }
+                legacy = null;
             }
         } finally {
             lock.unlock();

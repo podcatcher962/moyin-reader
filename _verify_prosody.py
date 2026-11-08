@@ -62,7 +62,9 @@ def main():
         if not st or not st.get('ok'):
             print('FAIL 语音服务没起来')
             return 1
-        print('引擎 %s，音色 %d 个' % (st['engine'], st['count']))
+        V = (st.get('curated') or ['s12'])[0]
+        print('引擎 %s，音色 %d 个，被测音色 %s（%s）'
+              % (st['engine'], st['count'], V, st['labels'].get(V, '')))
 
         cases = [
             # (名称, 文本, 期望(句号级处数, 逗号级处数))
@@ -82,7 +84,7 @@ def main():
             t0 = time.time()
             req = urllib.request.Request(
                 'http://127.0.0.1:%d/tts' % PORT,
-                data=json.dumps({'text': txt, 'voice': 's12', 'speed': 1}).encode(),
+                data=json.dumps({'text': txt, 'voice': V, 'speed': 1}).encode(),
                 headers={'Content-Type': 'application/json'})
             wav = urllib.request.urlopen(req, timeout=180).read()
             el = time.time() - t0

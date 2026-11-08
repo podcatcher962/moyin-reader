@@ -76,7 +76,9 @@ def main():
         if not st or not st.get('ok'):
             print('FAIL EXE 内语音服务没起来（最后一次：%s）' % last_err)
             return 1
-        print('EXE 语音服务就绪：%s，音色 %d 个' % (st['engine'], st['count']))
+        V = (st.get('curated') or ['s12'])[0]
+        print('EXE 语音服务就绪：%s，音色 %d 个，被测音色 %s（%s）'
+              % (st['engine'], st['count'], V, st['labels'].get(V, '')))
 
         # 末尾标点之后不再补停顿，所以最后补一句，让句号是「句中的句号」
         txt = ('他合上书，屋里静下来。窗外的雨还在下，很细，落在瓦上没有声音。'
@@ -84,7 +86,7 @@ def main():
         t0 = time.time()
         req = urllib.request.Request(
             'http://127.0.0.1:%d/tts' % PORT,
-            data=json.dumps({'text': txt, 'voice': 's12', 'speed': 1}).encode(),
+            data=json.dumps({'text': txt, 'voice': V, 'speed': 1}).encode(),
             headers={'Content-Type': 'application/json'})
         wav = urllib.request.urlopen(req, timeout=180).read()
         el = time.time() - t0

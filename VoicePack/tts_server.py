@@ -69,10 +69,35 @@ if not HERE.isascii():
             MODEL_DIR = os.path.join(_mirror, 'models')
     except OSError:
         pass
-# 声线全部来自同一份 29 MB 的 AISHELL3 中文多说话人 VITS 模型：模型内含 174 个
-# 说话人，只靠 --sid 切换，所以放开到 174 个音色也完全不影响软件体积。
-# 下面的基频表是离线逐人实测的中位 F0（Hz），用来按音高分组，运行时只查表。
+# ---------------- 三套引擎 ----------------
+#
+# xiaoya（默认）：Piper 中文单说话人 VITS，22.05 kHz，60 MB。只有一个女声，
+#   但采样率是 AISHELL3 的近三倍，齿音、气口、尾音收束都在。
+#
+# aishell3（174 音色库，与小雅共存）：174 个说话人共用一份模型，只靠 --sid
+#   切声线，体积不随音色数量增长。装的是 8 位量化版（14 MB，原版 29 MB），
+#   说话人编号与原版完全一致；代价是推理慢约 15 倍，所以它只当「换口味」和
+#   男声用，日常朗读走小雅。
+#
+# matcha（保留，可回退）：flow-matching 中文模型 + hifigan_v2 声码器，22.05 kHz，
+#   韵律最自然，但 77 MB 且只有一个女声。模型放回 models/matcha 即启用。
+MATCHA_DIR = 'matcha'
+MATCHA_MODEL = 'model-steps-3.onnx'
+MATCHA_VOCODER = 'hifigan_v2.onnx'
+MATCHA_F0 = 245                        # 离线实测中位基频，用于分档显示
+
 AISHELL3_FSTS = ['date.fst', 'number.fst', 'phone.fst']
+
+# 小雅：与 AISHELL3 共用同一批词表文件名（词典、数字规则），但目录独立。
+XIAOYA_DIR = 'xiaoya'
+XIAOYA_MODEL = 'zh_CN-xiao_ya-medium.onnx'
+XIAOYA_F0 = 259                        # 离线实测中位基频，用于分档显示
+
+# 174 音色库优先用 8 位量化版：说话人编号不变，体积从 29 MB 降到 14 MB。
+_A3_INT8 = 'model.int8.onnx'
+AISHELL3_MODEL = (_A3_INT8
+                  if os.path.isfile(os.path.join(MODEL_DIR, 'aishell3', _A3_INT8))
+                  else 'model.onnx')
 
 SID_F0 = {
       0: 250,
@@ -286,16 +311,58 @@ def band_of(hz):
 
 
 def _v(sid, label, hz):
-    return {'kind': 'vits', 'dir': 'aishell3', 'model': 'model.onnx',
+    return {'kind': 'vits', 'dir': 'aishell3', 'model': AISHELL3_MODEL,
+            'files': [AISHELL3_MODEL, 'tokens.txt', 'lexicon.txt'] + AISHELL3_FSTS,
             'sid': sid, 'fsts': AISHELL3_FSTS, 'label': label,
             'band': band_of(hz), 'f0': hz}
 
 
+MATCHA_FILES = [MATCHA_MODEL, MATCHA_VOCODER, 'tokens.txt', 'lexicon.txt'] + AISHELL3_FSTS
+
+
+def matcha_ready():
+    d = os.path.join(MODEL_DIR, MATCHA_DIR)
+    return all(os.path.isfile(os.path.join(d, n)) for n in MATCHA_FILES)
+
+
+def _m():
+    return {'kind': 'matcha', 'dir': MATCHA_DIR, 'model': MATCHA_MODEL,
+            'vocoder': MATCHA_VOCODER, 'files': MATCHA_FILES, 'sid': None,
+            'fsts': AISHELL3_FSTS, 'label': '墨吟 · 中文女声',
+            'band': band_of(MATCHA_F0), 'f0': MATCHA_F0}
+
+
+XIAOYA_FILES = [XIAOYA_MODEL, 'tokens.txt', 'lexicon.txt'] + AISHELL3_FSTS
+
+
+def xiaoya_ready():
+    d = os.path.join(MODEL_DIR, XIAOYA_DIR)
+    return all(os.path.isfile(os.path.join(d, n)) for n in XIAOYA_FILES)
+
+
+def _x():
+    return {'kind': 'vits', 'dir': XIAOYA_DIR, 'model': XIAOYA_MODEL,
+            'files': XIAOYA_FILES, 'sid': None,
+            'fsts': AISHELL3_FSTS, 'label': '墨吟 · 中文女声',
+            'band': band_of(XIAOYA_F0), 'f0': XIAOYA_F0}
+
+
 VOICES = {}
-for _sid in sorted(SID_F0):
-    _hz = SID_F0[_sid]
-    _key = 's%d' % _sid
-    VOICES[_key] = _v(_sid, CURATED.get(_key) or ('%d 号' % _sid), _hz)
+if xiaoya_ready():
+    VOICES['x0'] = _x()
+elif matcha_ready():
+    VOICES['m0'] = _m()
+
+# 174 个备用音色与小雅共存：小雅负责好听，它们负责换口味和男声。
+if os.path.isdir(os.path.join(MODEL_DIR, 'aishell3')):
+    for _sid in sorted(SID_F0):
+        _hz = SID_F0[_sid]
+        _key = 's%d' % _sid
+        VOICES[_key] = _v(_sid, CURATED.get(_key) or ('%d 号' % _sid), _hz)
+
+# 默认音色：小雅优先；没装就退回 matcha，再没有就用调过的 12 号女声。
+DEFAULT_VOICE = ('x0' if 'x0' in VOICES
+                 else 'm0' if 'm0' in VOICES else 's12')
 
 
 _sem = threading.Semaphore(6)          # 并行合成数：每次调用 2 线程，6 路正好吃满 12 核
@@ -353,8 +420,7 @@ def voice_files(voice):
     """返回 (模型目录, 该音色必需的全部文件路径)。"""
     s = VOICES[voice]
     d = os.path.join(MODEL_DIR, s['dir'])
-    names = [s['model'], 'tokens.txt', 'lexicon.txt'] + list(s.get('fsts', []))
-    return d, [os.path.join(d, n) for n in names]
+    return d, [os.path.join(d, n) for n in s['files']]
 
 
 _ready_cache = {}
@@ -366,8 +432,7 @@ def voice_ready(voice):
     d = os.path.join(MODEL_DIR, s['dir'])
     ok = _ready_cache.get(d)
     if ok is None:
-        names = [s['model'], 'tokens.txt', 'lexicon.txt'] + list(s.get('fsts', []))
-        ok = all(os.path.isfile(os.path.join(d, n)) for n in names)
+        ok = all(os.path.isfile(os.path.join(d, n)) for n in s['files'])
         _ready_cache[d] = ok
     return ok
 
@@ -382,16 +447,30 @@ def health():
         'labels': {v: VOICES[v]['label'] for v in VOICES},
         'groups': {v: VOICES[v]['band'] for v in VOICES},
         'f0': {v: VOICES[v]['f0'] for v in VOICES},
-        'curated': [k for k in CURATED if k in VOICES],
+        'curated': ((([DEFAULT_VOICE] if DEFAULT_VOICE in VOICES else [])
+                     + [k for k in CURATED if k in VOICES and k != DEFAULT_VOICE])
+                    or list(VOICES)),
         'count': len(VOICES),
-        'version': 3,
+        'version': 5,
+        'engineKind': VOICES[DEFAULT_VOICE]['kind'] if DEFAULT_VOICE in VOICES else 'vits',
     }
 
 
 def build_args(voice, out, length_scale=1.0, silence_scale=None):
-    """按音色拼出引擎命令行参数（VITS 模型 + 可选 sid / 中文规则）。"""
+    """按音色拼出引擎命令行参数（VITS 或 Matcha + 可选 sid / 中文规则）。"""
     s = VOICES[voice]
     _d, f = voice_files(voice)
+    if s['kind'] == 'matcha':
+        a = ['--matcha-acoustic-model=' + f[0], '--matcha-vocoder=' + f[1],
+             '--matcha-tokens=' + f[2], '--matcha-lexicon=' + f[3]]
+        if f[4:]:
+            a.append('--tts-rule-fsts=' + ','.join(f[4:]))
+        a.append('--tts-silence-scale=%s'
+                 % (SILENCE_SCALE if silence_scale is None else silence_scale))
+        if abs(length_scale - 1.0) > 1e-6:
+            a.append('--matcha-length-scale=%.4f' % length_scale)
+        return a + ['--num-threads=4', '--output-filename=' + out]
+
     a = ['--vits-model=' + f[0], '--vits-tokens=' + f[1], '--vits-lexicon=' + f[2]]
     if s.get('sid') is not None:
         a.append('--sid=' + str(s['sid']))
@@ -721,7 +800,7 @@ def synth(text, voice, speed):
         raise RuntimeError('empty text')
     # 选了没装好的音色时，落到第一个可用音色，不打断听书
     if voice not in VOICES or not voice_ready(voice):
-        voice = next((v for v in VOICES if voice_ready(v)), 's12')
+        voice = next((v for v in VOICES if voice_ready(v)), DEFAULT_VOICE)
     key = (voice, text)
     with _cache_lock:
         if key in _cache:
@@ -804,7 +883,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(400, json.dumps({'error': 'bad request: %s' % e}, ensure_ascii=False))
             return
         try:
-            wav = synth(req.get('text'), req.get('voice') or 's12', req.get('speed') or 1)
+            wav = synth(req.get('text'), req.get('voice') or DEFAULT_VOICE, req.get('speed') or 1)
             self._send(200, wav, 'audio/wav')
         except subprocess.TimeoutExpired:
             self._send(503, json.dumps({'error': '合成超时'}, ensure_ascii=False))

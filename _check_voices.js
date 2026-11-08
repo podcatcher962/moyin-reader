@@ -69,8 +69,8 @@ async function main() {
   ok(h.ready === true, '页面探到本机语音引擎', h.badge);
   const voices = (h.info && h.info.voices) || {};
   const keys = Object.keys(voices);
-  ok(keys.length === 174, '服务报告 174 个说话人', keys.length);
-  ok(Object.values(voices).every(Boolean), '174 个声线全部文件就绪');
+  ok(keys.length === 175, '服务报告 175 个音色（x0 + 174 说话人）', keys.length);
+  ok(Object.values(voices).every(Boolean), '175 个声线全部文件就绪');
 
   console.log('=== 下拉结构（朗读条）');
   const dd = await ev(`(function(){
@@ -86,13 +86,13 @@ async function main() {
   })()`);
   console.log('  分组:', JSON.stringify(dd.labels));
   console.log('  当前值:', dd.cur, ' 禁用:', dd.disabled);
-  const localOpts = dd.all.filter(o => /^local:s\d+$/.test(o.v));
-  ok(localOpts.length === 11, '朗读条下拉里有 11 个本机声线', localOpts.length);
+  const localOpts = dd.all.filter(o => /^local:(s\d+|x0)$/.test(o.v));
+  ok(localOpts.length === 12, '朗读条下拉里有 12 个本机声线', localOpts.length);
   console.log('  本机声线:', localOpts.map(o => o.t).join(' | '));
   const female = localOpts.filter(o => !/男声/.test(o.t)).length;
-  ok(female === 10, '其中女声 10 个', female);
+  ok(female === 11, '其中女声 11 个（x0 + 10 个 s 声线）', female);
   ok(dd.disabled === false, '连上本机引擎后下拉仍可切换');
-  ok(/^local:s\d+$/.test(dd.cur), '默认停在本机声线上', dd.cur);
+  ok(dd.cur === 'local:x0', '默认停在新音色 x0 上', dd.cur);
   ok(/本机神经语音/.test(dd.labels.join(' ')), '本机声线有独立分组标题', dd.labels[0]);
 
   console.log('=== 逐声线真实合成');
@@ -112,7 +112,7 @@ async function main() {
     return out;
   })()`);
   synth.forEach(r => console.log('  ' + r.v.padEnd(5) + (r.err ? ' ERR ' + r.err : ' ' + r.size + ' B / ' + r.head + ' / ' + r.ms + ' ms')));
-  ok(synth.length === 11 && synth.every(r => !r.err && r.head === 'RIFF' && r.size > 20000), '11 个声线都合成了真实 WAV');
+  ok(synth.length === 12 && synth.every(r => !r.err && r.head === 'RIFF' && r.size > 20000), '12 个声线都合成了真实 WAV');
 
   console.log('=== 页面朗读（走本机声线）');
   const b64 = fs.readFileSync(path.join(HERE, '_samples', 'test_utf8.txt')).toString('base64');
@@ -187,7 +187,7 @@ async function main() {
   const txt = await ev("(document.getElementById('modalBody')||{}).textContent||''");
   ok(/174 个中文说话人/.test(txt), '设置面板写明 174 个说话人', (txt.match(/模型里一共[^）]{0,30}/) || [''])[0]);
   ok(/148 女/.test(txt) && /26 男/.test(txt), '设置面板写明男女声数量', (txt.match(/\(148 女[^）]{0,20}/) || [''])[0]);
-  ok(/精选 11 个/.test(txt), '设置面板写明精选 11 个');
+  ok(/精选 12 个/.test(txt), '设置面板写明精选 12 个');
 
   console.log('=== 运行时错误');
   ok(errors.length === 0, '无 JS 异常', errors.slice(0, 3));

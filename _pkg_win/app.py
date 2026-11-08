@@ -35,7 +35,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 APP = 'MoYinReader'
 APP_CN = '墨吟阅读器'
-VER = '1.12.2'
+VER = '1.13.0'
 VOICE_PORT = 8177
 PORTS = (38975, 38976, 0)
 CREATE_NO_WINDOW = 0x08000000
@@ -717,7 +717,15 @@ def cache_dir():
 BUNDLE_MUST = (
     'tts_server.py',
     'engine/bin/sherpa-onnx-offline-tts.exe',
-    'models/aishell3/model.onnx',
+    # 默认音色：小雅（22.05 kHz 单女声）
+    'models/xiaoya/zh_CN-xiao_ya-medium.onnx',
+    'models/xiaoya/tokens.txt',
+    'models/xiaoya/lexicon.txt',
+    'models/xiaoya/date.fst',
+    'models/xiaoya/number.fst',
+    'models/xiaoya/phone.fst',
+    # 174 音色库：AISHELL3 的 8 位量化版（8 kHz，按需换口味）
+    'models/aishell3/model.int8.onnx',
     'models/aishell3/tokens.txt',
     'models/aishell3/lexicon.txt',
     'models/aishell3/date.fst',

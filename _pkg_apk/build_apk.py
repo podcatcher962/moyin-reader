@@ -62,9 +62,13 @@ KOTLIN_JAR = os.path.join(SHERPA, 'kotlin-stdlib.jar')
 SHERPA_ABI = 'arm64-v8a'
 SHERPA_LIBS = ['libonnxruntime.so', 'libsherpa-onnx-c-api.so',
                'libsherpa-onnx-cxx-api.so', 'libsherpa-onnx-jni.so']
-VOICE_MODEL = os.path.join(ROOT, 'VoicePack', 'models', 'aishell3')
-VOICE_FILES = ['model.onnx', 'lexicon.txt', 'tokens.txt',
-               'date.fst', 'number.fst', 'phone.fst']
+# 两套模型：小雅（默认音色，22.05 kHz）+ AISHELL3 量化音色库（174 人，8 kHz）
+VOICE_MAIN = os.path.join(ROOT, 'VoicePack', 'models', 'xiaoya')
+VOICE_MAIN_FILES = ['zh_CN-xiao_ya-medium.onnx', 'lexicon.txt', 'tokens.txt',
+                    'date.fst', 'number.fst', 'phone.fst']
+VOICE_LIB = os.path.join(ROOT, 'VoicePack', 'models', 'aishell3')
+VOICE_LIB_FILES = ['model.int8.onnx', 'lexicon.txt', 'tokens.txt',
+                   'date.fst', 'number.fst', 'phone.fst']
 NEURO = '--no-neuro' not in sys.argv
 
 os.environ['JAVA_HOME'] = JDK
@@ -74,8 +78,8 @@ os.makedirs(STAGE, exist_ok=True)
 MANIFEST = '''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="%s"
-    android:versionCode="11202"
-    android:versionName="1.12.2">
+    android:versionCode="11300"
+    android:versionName="1.13.0">
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
     <!-- 只有两条：WebView 访问本机 127.0.0.1 需要明文 http；
          不申请麦克风、定位、通讯录、存储，读书不需要这些。 -->
@@ -247,10 +251,12 @@ def neuro_available():
         p = os.path.join(SHERPA_AAR, 'jni', SHERPA_ABI, lib)
         if not os.path.isfile(p):
             return False, '缺 so：' + p
-    for f in VOICE_FILES:
-        p = os.path.join(VOICE_MODEL, f)
-        if not os.path.isfile(p):
-            return False, '缺模型：' + p
+    for src_dir, files in ((VOICE_MAIN, VOICE_MAIN_FILES),
+                           (VOICE_LIB, VOICE_LIB_FILES)):
+        for f in files:
+            p = os.path.join(src_dir, f)
+            if not os.path.isfile(p):
+                return False, '缺模型：' + p
     return True, ''
 
 
@@ -280,15 +286,21 @@ def prepare_sources():
 
 
 def stage_voice_model(assets):
-    """把 32 MB 中文模型拷进 assets/tts/aishell3/，首次启动由 TtsEngine 解压到私有目录。"""
-    dst = os.path.join(assets, 'tts', 'aishell3')
-    os.makedirs(dst, exist_ok=True)
+    """两套模型分别拷进 assets/tts/xiaoya 与 assets/tts/aishell3，
+    首次启动由 TtsEngine 解压到私有目录（音色库等真正选中时才解压）。"""
     total = 0
-    for f in VOICE_FILES:
-        s = os.path.join(VOICE_MODEL, f)
-        shutil.copy2(s, os.path.join(dst, f))
-        total += os.path.getsize(s)
-    print('  语音模型入包：%d 个文件，%.1f MB' % (len(VOICE_FILES), total / 1048576), flush=True)
+    for sub, src_dir, files in (('xiaoya', VOICE_MAIN, VOICE_MAIN_FILES),
+                                ('aishell3', VOICE_LIB, VOICE_LIB_FILES)):
+        dst = os.path.join(assets, 'tts', sub)
+        os.makedirs(dst, exist_ok=True)
+        n = 0
+        for f in files:
+            src = os.path.join(src_dir, f)
+            shutil.copy2(src, os.path.join(dst, f))
+            total += os.path.getsize(src)
+            n += 1
+        print('  %-9s 入包 %d 个文件' % (sub, n), flush=True)
+    print('  语音模型合计：%.1f MB' % (total / 1048576), flush=True)
     return total
 
 
@@ -349,7 +361,7 @@ def build(src, res, assets):
     srcs = [os.path.join(src, 'MainActivity.java'), os.path.join(src, 'TtsBridge.java'),
             os.path.join(src, 'TtsEngine.java')]
     # 编译期永远要这两个 jar（TtsEngine 直接调 sherpa 的 Kotlin API）；
-    # has_neuro 只决定 so 和 32 MB 模型要不要进包。
+    # has_neuro 只决定 so 和两套语音模型要不要进包。
     cp = JAR + os.pathsep + SHERPA_JAR + os.pathsep + KOTLIN_JAR
     if not has_neuro:
         print('  [!] 不打包神经语音：%s（引擎类仍会编进去，运行时找不到 so 自动退回系统语音）' % why,
@@ -413,11 +425,15 @@ def audit(allcls, dexfile, has_neuro):
     ok &= ck(md5(page) == md5(src), '内嵌页面与源文件逐字节一致 md5=' + md5(page))
     ok &= ck('classes.dex' in names, 'dex 已打包')
     if has_neuro:
-        allowed = {'assets/index.html'} | {'assets/tts/aishell3/' + f for f in VOICE_FILES}
+        allowed = ({'assets/index.html'}
+                   | {'assets/tts/xiaoya/' + f for f in VOICE_MAIN_FILES}
+                   | {'assets/tts/aishell3/' + f for f in VOICE_LIB_FILES})
         extra = sorted(set(n for n in names if n.startswith('assets/')) - allowed)
-        ok &= ck(not extra, 'assets 只有页面与语音模型，多余项 %r' % extra[:3])
-        ok &= ck(all('assets/tts/aishell3/' + f in names for f in VOICE_FILES),
-                 '语音模型 6 个文件齐全')
+        ok &= ck(not extra, 'assets 只有页面与两套语音模型，多余项 %r' % extra[:3])
+        ok &= ck(all('assets/tts/xiaoya/' + f in names for f in VOICE_MAIN_FILES),
+                 '默认音色（小雅）7 个文件齐全')
+        ok &= ck(all('assets/tts/aishell3/' + f in names for f in VOICE_LIB_FILES),
+                 '音色库（AISHELL3 量化）6 个文件齐全')
         libs = [n for n in names if n.startswith('lib/')]
         ok &= ck(len(libs) == len(SHERPA_LIBS) and
                  all(n.startswith('lib/%s/' % SHERPA_ABI) for n in libs),
@@ -447,7 +463,7 @@ def audit(allcls, dexfile, has_neuro):
     size = os.path.getsize(FINAL)
     if has_neuro:
         ok &= ck(20 * 1048576 < size < 90 * 1048576,
-                 'APK 体积 %.1f MB（含 32 MB 模型与 sherpa 引擎）' % (size / 1048576))
+                 'APK 体积 %.1f MB（含 78 MB 语音模型与 sherpa 引擎）' % (size / 1048576))
     else:
         # 不带模型时 dex 里仍有 sherpa + kotlin 的类，所以下限放宽到 8 MB 以内
         ok &= ck(50 * 1024 < size < 8 * 1024 * 1024, 'APK 体积 %.1f MB' % (size / 1048576))

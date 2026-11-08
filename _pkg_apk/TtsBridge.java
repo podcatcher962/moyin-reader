@@ -273,7 +273,7 @@ public class TtsBridge {
 
         // 神经语音优先；合成失败（模型异常 / 内存不足）再退回系统语音，不中断听书
         if (hasNeuro) {
-            byte[] wav = neuro.synth(text, TtsEngine.sidOf(voice), rate);
+            byte[] wav = neuro.synth(text, voice, rate);
             if (wav != null) { ok(c, "audio/wav", wav); return; }
         }
         if (!ready || tts == null) { err(c, 503, "合成失败，请检查手机中文语音引擎"); return; }

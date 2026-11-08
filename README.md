@@ -82,7 +82,7 @@
 > 1. 主直链：`https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk`
 > 2. 前一条打不开时，可以先把 apk 存到网盘（夸克 / 蓝奏）再发给对方，或直接用 Release 里的附件
 >
-> 下完先看一眼文件大小（**约 38.8 MB**）。这一版把 32 MB 的中文语音模型和 sherpa-onnx 引擎一起打进了包，所以比 1.10 的 200 KB 大了两个数量级——换来的是手机上也能听 174 个离线神经声线，断网、飞行模式都不影响。如果只下到几 MB、装的时候提示「解析包错误」，就是没下完整，重下一次。
+> 下完先看一眼文件大小（**约 83.7 MB**）。这一版把两套中文语音模型（默认 22 kHz 女声 60 MB ＋ 174 个说话人的音色库 14 MB）和 sherpa-onnx 引擎一起打进了包，所以比 1.10 的 200 KB 大了两个数量级——换来的是手机上也能听 174 个离线神经声线，断网、飞行模式都不影响。如果只下到几 MB、装的时候提示「解析包错误」，就是没下完整，重下一次。
 >
 > **为什么半夜更容易失败**：GitHub Pages 的地址段（185.199.108–111.153）在国内移动网络和家宽晚高峰后常被限速或重置，凌晨并不等于网络空闲；手机还会优先解析 IPv6，部分移动网络到 GitHub 的 IPv6 路由更差。换 Wi-Fi / 流量、或换上面的备用 CDN，通常就能下。
 >
@@ -99,7 +99,7 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 | 类别 | 说明 |
 |---|---|
 | 📚 格式 | TXT（自动识别 UTF-8 / GBK / Big5 / UTF-16）、EPUB（内置 ZIP/OPF/NCX/Nav 解析，正文与插图都支持） |
-| 🗣️ 朗读 | 174 个离线中文说话人共用一份 29 MB 模型，按实测音高分 7 档；朗读条随时切换 |
+| 🗣️ 朗读 | 默认 22.05 kHz 女声 1 个；另有 174 个离线中文说话人共用一份 14 MB 压缩模型，按实测音高分 7 档，朗读条随时切换 |
 | 🎭 分角色 | **默认开启**：旁白用所选声线，对白按人物换声，同一人物全书同一声音。认识「张三说」「他盯我一眼，说」「我说」「他突然问我」，不会把「我对某人说」的听话人当说话人；人物多时声线池自动从 11 个扩到全部 174 个 |
 | ⏯️ 听书 | 段落高亮自动跟随、念完自动接下一章、定时停止、语速调节、整句朗读保语调 |
 | 🖍️ 划线批注 | 选中正文四色高亮、随手写笔记；「笔记」页按章汇总，可跳转 / 改色 / 编辑 / 删除 |
@@ -127,10 +127,10 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 
 | 文件 | 体积 | 说明 |
 |---|---|---|
-| `MoYinReader.exe` | 约 47 MB | **Windows 完整版**，语音库打包在 exe 尾部，只拷这一个文件就能听，首次启动自动释放到缓存 |
-| `MoYinReader_Lite.exe` | 约 17 MB | Windows 轻量版，需同目录放 `VoicePack` 文件夹（约 53 MB） |
-| `MoYinReader.apk` | 约 38.8 MB | 安卓完整版，页面 + 174 声线神经语音引擎与模型全在包里 |
-| `MoYinReader.html` | 约 404 KB | 单文件网页版，双击即用，任何系统都能跑 |
+| `MoYinReader.exe` | 约 87 MB | **Windows 完整版**，语音库打包在 exe 尾部，只拷这一个文件就能听，首次启动自动释放到缓存 |
+| `MoYinReader_Lite.exe` | 约 17 MB | Windows 轻量版，需同目录放 `VoicePack` 文件夹（约 90 MB） |
+| `MoYinReader.apk` | 约 83.7 MB | 安卓完整版，页面 + 两套语音模型（默认女声 + 174 声线音色库）与引擎全在包里 |
+| `MoYinReader.html` | 约 408 KB | 单文件网页版，双击即用，任何系统都能跑 |
 | `moyin-reader_*_amd64.deb` | 约 9.8 MB | 统信 / 麒麟 / openEuler，**双击安装即进应用菜单**，卸载走系统正常流程 |
 | `MoYinReader-Linux-*.tar.gz` | 约 9.8 MB | 免安装版：解压双击「墨吟阅读器.sh」，U 盘带走也能用 |
 | `MoYinReader-macOS-*.zip` | 约 168 KB | macOS 源码 + 打包脚本，在本机跑一次 `build-macos.sh` 出 `.app` |
@@ -150,13 +150,13 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 
 ### 语音是怎么来的
 
-朗读用的是开源引擎 [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 加一份 AISHELL3 中文多说话人 VITS 模型，全部在本机 CPU 上跑：不联网、不收费、不需要账号和 Key。174 个说话人共用同一份模型，只是切换说话人编号，所以**放开到 174 个也完全不增加体积**。
+朗读用的是开源引擎 [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)，全部在本机 CPU 上跑：不联网、不收费、不需要账号和 Key。模型有两份：默认的「墨吟 · 中文女声」是 22.05 kHz 的单说话人 VITS（60 MB），齿音、气口、尾音收束都在；AISHELL3 中文多说话人 VITS 提供 174 个说话人，打包时把权重压成 8 位整数（29 MB → 14 MB），切换说话人编号就能换声线，所以**放开到 174 个也几乎不增加体积**。压缩的代价是合成慢一些，只当换口味和听男声用。
 
 ![174 个离线声线](docs/screenshots/settings-voices.png)
 
 ### 从源码构建
 
-仓库只放源码，`exe` 和语音模型不入库（体积大，且模型是第三方资产）。唯一的例外是 `docs/download/MoYinReader.apk`——38.8 MB 的成品，放在 Pages 上只为给手机一个不用访问 github.com 的下载口，正式版仍以 Release 为准。克隆后按下面两步即可复现：
+仓库只放源码，`exe` 和语音模型不入库（体积大，且模型是第三方资产）。唯一的例外是 `docs/download/MoYinReader.apk`——83.7 MB 的成品，放在 Pages 上只为给手机一个不用访问 github.com 的下载口，正式版仍以 Release 为准。克隆后按下面两步即可复现：
 
 ```bash
 # 0) 版本号一处改、全局同步（页面 / exe / Linux / deb / APK / 推送脚本共 10 处）
@@ -167,7 +167,7 @@ python _bump.py 1.13.0                # 全部改到 1.13.0，安卓 versionCode
 # 1) 生成单文件网页版（纯 Python 标准库，无需依赖）
 python build.py                       # → MoYinReader.html
 
-# 2) 拉语音引擎与模型（约 55 MB，走 GitHub Release，带 gh-proxy 备用线路）
+# 2) 拉语音引擎与模型（约 80 MB，走 GitHub Release，带 gh-proxy 备用线路）
 python VoicePack/install.py           # → VoicePack/engine + VoicePack/models
 
 # 可选：打包 Windows exe（需要 pip install pyinstaller pywebview pythonnet）
@@ -254,7 +254,7 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 ### Features
 
 - **Formats** — TXT (auto-detects UTF-8 / GBK / Big5 / UTF-16) and EPUB, with a built-in ZIP / OPF / NCX / Nav parser and image support.
-- **Speech** — 174 offline Chinese speakers sharing a single 29 MB model, grouped by measured pitch; switch voices right from the playback bar, even mid-sentence.
+- **Speech** — a 22 kHz high-fidelity voice by default, plus 174 offline Chinese speakers sharing a single 14 MB quantised model, grouped by measured pitch; switch voices right from the playback bar, even mid-sentence.
 - **Role reading** — narration keeps your chosen voice while quoted dialogue switches per character, consistently for the whole book.
 - **Listening** — paragraph highlight with auto-scroll, auto-advance to the next chapter, sleep timer, speed control.
 - **Resume** — listening position is tracked separately from reading position; one click on a shelf card resumes "chapter N".
@@ -293,10 +293,10 @@ The Linux binary only needs `libc` / `libz` / `libpthread` / `libdl` (glibc 2.28
 
 | File | Size | Notes |
 |---|---|---|
-| `MoYinReader.exe` | ~47 MB | Full build, voice pack appended inside the exe |
-| `MoYinReader_Lite.exe` | ~17 MB | Needs a `VoicePack` folder (~53 MB) next to it |
-| `MoYinReader.html` | ~388 KB | Standalone web build |
-| `MoYinReader.apk` | ~38.8 MB | Android full build: page + 174-speaker neural TTS engine and model |
+| `MoYinReader.exe` | ~87 MB | Full build, voice pack appended inside the exe |
+| `MoYinReader_Lite.exe` | ~17 MB | Needs a `VoicePack` folder (~90 MB) next to it |
+| `MoYinReader.html` | ~408 KB | Standalone web build |
+| `MoYinReader.apk` | ~83.7 MB | Android full build: page + neural TTS engine with two model sets (default voice + 174-speaker library) |
 | `moyin-reader_*_amd64.deb` | ~9.7 MB | UOS / Kylin / openEuler, installs into the app menu |
 | `MoYinReader-Linux-*.tar.gz` | ~9.8 MB | Portable build, same x86_64 binary, unzip and run |
 | `MoYinReader-macOS-*.zip` | ~157 KB | Source + `build-macos.sh`; run it once on your Mac to get a `.app` |

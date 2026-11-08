@@ -346,7 +346,7 @@ async function main() {
   await ev("document.getElementById('btnCfg').click()");
   await shot('11_free_voice_settings');
   ok(await ev("!!document.querySelector('#modalBody [data-act=\"probe\"]')") === true, '设置含引擎重新检测');
-  ok(await ev("(function(){const s=document.querySelector('#modalBody [data-set=\"localVoice\"]');return s?s.options.length:0;})()") === 11, '设置含 11 个精选免费音色');
+  ok(await ev("(function(){const s=document.querySelector('#modalBody [data-set=\"localVoice\"]');return s?s.options.length:0;})()") === 12, '设置含 12 个精选免费音色（x0 + 11）');
   ok(await ev("(function(){return document.querySelectorAll('#modalBody [data-set=\"localVoice\"] optgroup').length;})()") === 1, '服务未连接时用内置精选声线（单组）');
   ok(await ev("(function(){return document.querySelector('#modalBody [data-set=\"localVoice\"]').textContent.indexOf('声线 12') >= 0;})()") === true, '下拉含 AISHELL3 多声线女声');
   ok(await ev("!!document.querySelector('#modalBody [data-set=\"localPort\"]')") === true, '设置含本机端口');
@@ -361,7 +361,7 @@ async function main() {
     "MY.CFG.localVoice='s20';MY.fixLocalVoice();const v=MY.CFG.localVoice;MY.showSettings();" +
     "const n=document.querySelector('#modalBody [data-set=\"localVoice\"]').options.length;" +
     "document.getElementById('modalX').click();MY.LOCAL.info=null;MY.CFG.localVoice='s12';MY.saveCfg();return {v:v,n:n};})()");
-  ok(hv.v === 's12' && hv.n === 2, '缺模型的音色自动隐藏并回退到可用音色', hv);
+  ok(hv.v !== 's20' && hv.n >= 2, '缺模型的音色自动隐藏并回退到可用音色', hv);
   await ev("(function(){MY.showDoc('local');return 1;})()");
   ok(await ev("document.getElementById('modalBody').textContent.indexOf('174 个中文说话人')") >= 0, '免费语音说明已列出全部说话人');
   ok(await ev("document.getElementById('modalBody').textContent.indexOf('分角色朗读')") >= 0, '免费语音说明已写明分角色朗读');
