@@ -1772,7 +1772,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.12.1';
+  var VER = '1.12.2';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -4183,10 +4183,11 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     stopLocalAudio();
     if (SPK.playing) speakChunk(0);
   }
-  function localPrefetch() {
-    var t = SPK.chunks[SPK.ci + 1];
+  function localPrefetch(at) {
+    var i = (at === undefined) ? SPK.ci + 1 : at;
+    var t = SPK.chunks[i];
     if (!t || !localReady()) return;
-    var v = SPK.cv[SPK.ci + 1] || CFG.localVoice;
+    var v = SPK.cv[i] || CFG.localVoice;
     var p = localURL(t, v);
     SPK.prefetch = { ch: BK ? BK.ch : -1, text: t, v: v, p: p };
     p.catch(function () {});
@@ -4195,10 +4196,13 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     var txt = SPK.chunks[SPK.ci];
     if (txt === undefined) { speakNext(true); return; }
     var g = ++SPK.gen;
-    stopLocalAudio();
-    highlight();
+    // 先把预取的那一份摘下来：stopLocalAudio() 会把 SPK.prefetch 连同它的 blob 一起作废，
+    // 原来「先 stop 再读」的写法等于每段都白做预取，永远没有命中过。
     var v = SPK.cv[SPK.ci] || CFG.localVoice;
     var pf = SPK.prefetch;
+    SPK.prefetch = null;
+    stopLocalAudio();
+    highlight();
     var p = (pf && pf.text === txt && pf.v === v && pf.ch === (BK ? BK.ch : -1)) ? pf.p : localURL(txt, v);
     SPK.prefetch = null;
     withTimeout(p, 30000).then(function (u) {
@@ -4553,7 +4557,10 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   function speakNext(auto) {
     if (!SPK.playing) return;
     SPK.ci++;
-    if (SPK.ci < SPK.chunks.length) { speakChunk(Number(CFG.pause) || 0); return; }
+    // 句内的停顿已经由语音引擎按标点分层插好了（逗号 0.38 秒 / 句号 0.75 秒，
+    // 见 VoicePack/tts_server.py 的 PAUSE 表），这里只留一丝缝隙，
+    // 不然跟引擎的句末停顿叠起来就变成两倍长。
+    if (SPK.ci < SPK.chunks.length) { speakChunk(Math.min(60, Number(CFG.pause) || 0)); return; }
     SPK.pi++;
     if (SPK.pi >= SPK.paras.length) {
       if (CFG.autoNext && BK && BK.ch < chapterCount() - 1) {
@@ -4563,7 +4570,10 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       }
       stopSpeak(false); toast(T('朗读结束')); return;
     }
-    setPara(SPK.pi); speakChunk(Math.min(900, (Number(CFG.pause) || 0) * 2));
+    setPara(SPK.pi);
+    // 换段先把手头第一句送去合成，否则「换行」会先干等一次合成
+    if (localReady()) localPrefetch(0);
+    speakChunk(Math.min(700, (Number(CFG.pause) || 0) * 2));
   }
   function setPara(i) {
     SPK.pi = Math.max(0, Math.min(SPK.paras.length - 1, i));
@@ -4968,6 +4978,13 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + AISHELL3 多说话人 VITS 模型）：不联网、不收费、无需账号，模型内含 174 个中文说话人（148 女 + 26 男），精选 11 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.12.2 改了什么</h3><ul>' +
+      '<li><b>逗号真的会停了</b>：上一版只把引擎的「停顿倍率」调大，可它是连字与字之间的空隙一起放大，所以逗号还是淹没在空白里——这点上一版判断错了。这一版改成按人念书的规律分四级：顿号 0.26 秒、逗号 0.35 秒、句号 0.74 秒、段落 1.1 秒，问号和省略号更长。实测句号是逗号的 2.1 倍，层次才听得出来。</li>' +
+      '<li><b>去掉每句前后多余的空白</b>：引擎在每个小句的首尾都自带 0.1~0.3 秒无声，叠起来就是句句之间白多出半秒。现在裁掉了，整段紧凑约四分之一，节奏不再拖沓。</li>' +
+      '<li><b>短句不再吞字</b>：一两个字的短句单独送去合成，常常返回一段近乎无声的波形（「墨水」峰值只有 2，而「笔」是 1146）。现在每句合完都检查到底出没出声，没出声就并进前后文重新合成，书里不会再有莫名其妙的空白。</li>' +
+      '<li><b>换行不再干等</b>：修好了预取失效的老问题——原来是先作废上一段再取预取结果，等于每段都在现合成。现在换段先把第一句送去合成，翻段几乎立刻出声。</li>' +
+      '<li><b>长句从容、短句利落</b>：按句子长短给了 ±3% 的语速差，句末再慢一点收住，免得每句都一个速度念到底。</li>' +
+      '</ul>' +
       '<h3>1.12.1 改了什么</h3><ul>' +
       '<li><b>朗读终于会断句了</b>：神经语音的句间停顿以前被压到引擎默认的五分之一，句号处只剩 0.1 秒，一整段念下来像一口气读完，只有换行（换段）才听得出停。现在恢复到引擎基准，句号处 0.5~0.9 秒、逗号仍很短，听感才接近念书。电脑版和安卓版都改了。</li>' +
       '</ul>' +

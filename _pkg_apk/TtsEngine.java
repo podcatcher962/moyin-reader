@@ -198,10 +198,10 @@ public final class TtsEngine {
                     d + "/date.fst," + d + "/number.fst," + d + "/phone.fst",
                     "",
                     1,                          // maxNumSentences
-                    // 句间停顿倍率。0.2 是引擎默认（把停顿压到 1/5），实测句号处
-                    // 只剩 0.1~0.25 秒，整段念下来听不出分句。1.0 是基准时长，
-                    // 句号处 0.5~0.9 秒，和桌面端 tts_server.py 的 SILENCE_SCALE 保持一致。
-                    1.0f);                      // silenceScale
+                    // 片段内部压紧（0.35）。停顿不靠这个倍率——它会把字间空隙
+                    // 一起放大，逗号永远显不出来；标点之间的停顿改由 synth()
+                    // 按类型插入，与桌面端 tts_server.py 的 PAUSE 表一致。
+                    0.35f);                     // silenceScale
             OfflineTts t = new OfflineTts(ctx.getAssets(), cfg);
             rate = t.sampleRate();
             if (rate <= 0) {
@@ -220,7 +220,11 @@ public final class TtsEngine {
         }
     }
 
-    /** 合成一句，返回 16-bit 单声道 WAV 字节；失败返回 null。 */
+    /** 合成一句，返回 16-bit 单声道 WAV 字节；失败返回 null。
+     *
+     *  停顿不再交给引擎的单一倍率（它会把字间空隙一起放大，逗号永远显不出来），
+     *  而是按人念书的规律切分，标点之间按类型插不同长度的静音。
+     *  与桌面端 VoicePack/tts_server.py 的 PAUSE 表保持一致。 */
     public byte[] synth(String text, int sid, float speed) {
         if (tts == null || text == null) return null;
         String s = text.trim();
@@ -230,17 +234,230 @@ public final class TtsEngine {
         if (speed > 2.0f) speed = 2.0f;
         lock.lock();
         try {
-            GeneratedAudio a = tts.generate(s, sid, speed);
-            if (a == null) return null;
-            float[] pcm = a.getSamples();
-            if (pcm == null || pcm.length == 0) return null;
-            return wav(pcm, a.getSampleRate());
+            java.util.List<Unit> units = mergeShort(prosodySplit(s));
+            if (units.isEmpty()) return null;
+
+            java.util.ArrayList<float[]> parts = new java.util.ArrayList<>();
+            java.util.ArrayList<Float> gaps = new java.util.ArrayList<>();
+            int sr = rate;
+
+            // 模型常驻内存，每段只要几十毫秒，串行就够了（这个类本来也靠 lock 串行）。
+            // 某段没出声时把它的文本连标点一起带到下一段重念，书里就不会出现空白。
+            String carry = "";
+            for (Unit u : units) {
+                String t = carry + u.text;
+                GeneratedAudio a = tts.generate(t, sid, speed);
+                float[] pcm = (a == null) ? null : a.getSamples();
+                if (pcm != null && pcm.length > 0 && peak(pcm) >= 0.01f) {
+                    if (a.getSampleRate() > 0) sr = a.getSampleRate();
+                    parts.add(trimSilence(pcm, sr));
+                    gaps.add(u.gap);
+                    carry = "";
+                } else {
+                    carry = t + (u.punct == 0 ? "，" : String.valueOf(u.punct));
+                }
+            }
+            if (!carry.isEmpty()) {
+                GeneratedAudio a = tts.generate(carry, sid, speed);
+                float[] pcm = (a == null) ? null : a.getSamples();
+                if (pcm != null && pcm.length > 0 && peak(pcm) >= 0.01f) {
+                    if (a.getSampleRate() > 0) sr = a.getSampleRate();
+                    parts.add(trimSilence(pcm, sr));
+                    gaps.add(0f);
+                }
+            }
+            if (parts.isEmpty()) return null;
+
+            int total = 0;
+            for (int i = 0; i < parts.size(); i++) {
+                total += parts.get(i).length;
+                if (i < parts.size() - 1) total += gapSamples(gaps.get(i), sr);
+            }
+            float[] all = new float[total];
+            int p = 0;
+            for (int i = 0; i < parts.size(); i++) {
+                float[] a2 = parts.get(i);
+                fade(a2, sr);
+                System.arraycopy(a2, 0, all, p, a2.length);
+                p += a2.length;
+                if (i < parts.size() - 1) {
+                    int g = gapSamples(gaps.get(i), sr);
+                    for (int k = 0; k < g; k++) {
+                        all[p++] = (float) ((Math.random() - 0.5) * 0.0016);
+                    }
+                }
+            }
+            return wav(all, sr);
         } catch (Throwable e) {
             lastError = e.getClass().getSimpleName() + ": " + e.getMessage();
             return null;
         } finally {
             lock.unlock();
         }
+    }
+
+    /* ---------------- 韵律：停顿按标点分层 ---------------- */
+
+    private static final String PUNCT = "，,、；;：:。！？!?…—～~";
+
+    private static final class Unit {
+        String text;
+        float gap;
+        char punct;
+
+        Unit(String t, float g, char pu) {
+            text = t;
+            gap = g;
+            punct = pu;
+        }
+    }
+
+    private static float pauseOf(char c) {
+        switch (c) {
+            case '、': return 0.28f;
+            case '，': return 0.38f;
+            case ',': return 0.34f;
+            case '；': return 0.48f;
+            case ';': return 0.44f;
+            case '：': return 0.46f;
+            case ':': return 0.42f;
+            case '。': return 0.75f;
+            case '.': return 0.72f;
+            case '！': return 0.80f;
+            case '!': return 0.76f;
+            case '？': return 0.78f;
+            case '?': return 0.74f;
+            case '…': return 0.92f;
+            case '—': return 0.58f;
+            case '～':
+            case '~': return 0.26f;
+            default: return 0f;
+        }
+    }
+
+    private static java.util.List<Unit> prosodySplit(String text) {
+        java.util.ArrayList<Unit> out = new java.util.ArrayList<>();
+        StringBuilder buf = new StringBuilder();
+        int n = text.length();
+        int i = 0;
+        while (i < n) {
+            char ch = text.charAt(i);
+            if (ch == '\n') {
+                String seg = buf.toString().trim();
+                if (seg.length() > 0) out.add(new Unit(seg, 1.10f, '。'));
+                buf.setLength(0);
+                i++;
+                continue;
+            }
+            // 小数点与时间里的冒号不是标点（3.5、12:30）
+            if ((ch == '.' || ch == ':') && i > 0 && i < n - 1
+                    && Character.isDigit(text.charAt(i - 1))
+                    && Character.isDigit(text.charAt(i + 1))) {
+                buf.append(ch);
+                i++;
+                continue;
+            }
+            if (PUNCT.indexOf(ch) >= 0) {
+                int j = i;
+                float gap = 0f;
+                while (j < n && PUNCT.indexOf(text.charAt(j)) >= 0) {
+                    float g = pauseOf(text.charAt(j));
+                    if (g > gap) gap = g;
+                    j++;
+                }
+                String seg = buf.toString().trim();
+                if (seg.length() > 0) out.add(new Unit(seg, gap, text.charAt(j - 1)));
+                buf.setLength(0);
+                i = j;
+                continue;
+            }
+            buf.append(ch);
+            i++;
+        }
+        String seg = buf.toString().trim();
+        if (seg.length() > 0) out.add(new Unit(seg, 0f, (char) 0));
+        return out;
+    }
+
+    /** 少于两个字的片段并进前一段，保留原标点。孤立的一两个字常常合成成静音。 */
+    private static java.util.List<Unit> mergeShort(java.util.List<Unit> in) {
+        java.util.ArrayList<Unit> out = new java.util.ArrayList<>();
+        for (Unit u : in) {
+            if (!out.isEmpty() && u.text.length() < 2) {
+                Unit prev = out.get(out.size() - 1);
+                prev.text = prev.text + (prev.punct == 0 ? '，' : prev.punct) + u.text;
+                prev.gap = u.gap;
+                prev.punct = u.punct;
+            } else {
+                out.add(u);
+            }
+        }
+        while (out.size() > 1 && out.get(0).text.length() < 2) {
+            Unit a = out.get(0);
+            Unit b = out.get(1);
+            a.text = a.text + (a.punct == 0 ? '，' : a.punct) + b.text;
+            a.gap = b.gap;
+            a.punct = b.punct;
+            out.remove(1);
+        }
+        return out;
+    }
+
+    private static float peak(float[] a) {
+        float m = 0f;
+        for (float v : a) {
+            float x = Math.abs(v);
+            if (x > m) m = x;
+        }
+        return m;
+    }
+
+    private static float rms(float[] a, int from, int len) {
+        double s = 0;
+        for (int i = from; i < from + len; i++) s += (double) a[i] * a[i];
+        return (float) Math.sqrt(s / len);
+    }
+
+    /** 裁掉引擎在片段首尾自带的静音（实测首 0.1~0.2 秒、尾 0.1~0.4 秒）。 */
+    private static float[] trimSilence(float[] pcm, int rate) {
+        int win = Math.max(1, rate / 100);
+        int n = pcm.length;
+        if (n <= win * 2) return pcm;
+        int first = -1;
+        for (int i = 0; i + win <= n; i += win) {
+            if (rms(pcm, i, win) >= 0.009f) {
+                first = i;
+                break;
+            }
+        }
+        if (first < 0) return pcm;
+        int last = n;
+        for (int i = (n - win) / win * win; i >= 0; i -= win) {
+            if (rms(pcm, i, win) >= 0.009f) {
+                last = i + win;
+                break;
+            }
+        }
+        int s = Math.max(0, first - (int) (rate * 0.015f));
+        int e = Math.min(n, last + (int) (rate * 0.030f));
+        if (e - s <= win) return pcm;
+        float[] r = new float[e - s];
+        System.arraycopy(pcm, s, r, 0, e - s);
+        return r;
+    }
+
+    /** 首尾渐入渐出，硬拼两段波形会有「咔」的一声。 */
+    private static void fade(float[] a, int rate) {
+        int cap = Math.max(1, a.length / 3);
+        int ni = Math.min(Math.max(1, (int) (rate * 0.006f)), cap);
+        int no = Math.min(Math.max(1, (int) (rate * 0.013f)), cap);
+        for (int i = 0; i < ni; i++) a[i] *= i / (float) ni;
+        for (int i = 0; i < no; i++) a[a.length - 1 - i] *= i / (float) no;
+    }
+
+    private static int gapSamples(float gap, int rate) {
+        float g = Math.max(0.02f, gap - 0.045f);
+        return (int) (rate * g);
     }
 
     /** float[-1,1] → 44 字节头 + PCM16 LE。 */
