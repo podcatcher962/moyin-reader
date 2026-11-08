@@ -19,6 +19,12 @@ SDK = os.path.join(AB, 'sdk')
 BT = os.path.join(SDK, 'build-tools', '34.0.0')
 JAR = os.path.join(SDK, 'platforms', 'android-34', 'android.jar')
 KS = os.environ.get('MOYIN_KEYSTORE') or os.path.join(AB, 'release.keystore')
+if not os.path.isfile(KS) and os.path.isdir(AB):
+    # 构建目录里可能只有 lanlan.keystore 这类老名字，唯一一个就直接用它
+    _ks = [os.path.join(AB, f) for f in os.listdir(AB)
+           if f.lower().endswith(('.keystore', '.jks'))]
+    if len(_ks) == 1:
+        KS = _ks[0]
 KS_PASS = os.environ.get('MOYIN_KS_PASS', '')
 if not KS_PASS:
     # 口令不必每次手输，也不用塞进环境变量：放在构建目录下的 .kspass 里即可。
