@@ -128,7 +128,7 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 |---|---|---|
 | `MoYinReader.exe` | 约 47 MB | **Windows 完整版**，语音库打包在 exe 尾部，只拷这一个文件就能听，首次启动自动释放到缓存 |
 | `MoYinReader_Lite.exe` | 约 17 MB | Windows 轻量版，需同目录放 `VoicePack` 文件夹（约 53 MB） |
-| `MoYinReader.apk` | 约 197 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
+| `MoYinReader.apk` | 约 201 KB | 安卓壳，页面内嵌，朗读走系统 TTS |
 | `MoYinReader.html` | 约 372 KB | 单文件网页版，双击即用，任何系统都能跑 |
 | `moyin-reader_*_amd64.deb` | 约 9.7 MB | 统信 / 麒麟 / openEuler，**双击安装即进应用菜单**，卸载走系统正常流程 |
 | `MoYinReader-Linux-*.tar.gz` | 约 9.8 MB | 免安装版：解压双击「墨吟阅读器.sh」，U 盘带走也能用 |
@@ -154,7 +154,7 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 
 ### 从源码构建
 
-仓库只放源码，`exe` 和语音模型不入库（体积大，且模型是第三方资产）。唯一的例外是 `docs/download/MoYinReader.apk`——197 KB 的成品，放在 Pages 上只为给手机一个不用访问 github.com 的下载口，正式版仍以 Release 为准。克隆后按下面两步即可复现：
+仓库只放源码，`exe` 和语音模型不入库（体积大，且模型是第三方资产）。唯一的例外是 `docs/download/MoYinReader.apk`——201 KB 的成品，放在 Pages 上只为给手机一个不用访问 github.com 的下载口，正式版仍以 Release 为准。克隆后按下面两步即可复现：
 
 ```bash
 # 1) 生成单文件网页版（纯 Python 标准库，无需依赖）
@@ -285,7 +285,7 @@ The Linux binary only needs `libc` / `libz` / `libpthread` / `libdl` (glibc 2.28
 | `MoYinReader.exe` | ~47 MB | Full build, voice pack appended inside the exe |
 | `MoYinReader_Lite.exe` | ~17 MB | Needs a `VoicePack` folder (~53 MB) next to it |
 | `MoYinReader.html` | ~372 KB | Standalone web build |
-| `MoYinReader.apk` | ~197 KB | Android shell with the page embedded |
+| `MoYinReader.apk` | ~201 KB | Android shell with the page embedded |
 | `moyin-reader_*_amd64.deb` | ~9.7 MB | UOS / Kylin / openEuler, installs into the app menu |
 | `MoYinReader-Linux-*.tar.gz` | ~9.8 MB | Portable build, same x86_64 binary, unzip and run |
 | `MoYinReader-macOS-*.zip` | ~157 KB | Source + `build-macos.sh`; run it once on your Mac to get a `.app` |
@@ -294,7 +294,7 @@ Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/re
 
 ### Build from source
 
-Only source lives in this repo — `exe` and the speech model are not committed (they are large, and the model is a third-party asset). The one exception is `docs/download/MoYinReader.apk`, a 197 KB build kept on Pages purely so phones get a download link that never touches `github.com` (which is slow or unreachable on many Chinese mobile networks); Releases remain the canonical source.
+Only source lives in this repo — `exe` and the speech model are not committed (they are large, and the model is a third-party asset). The one exception is `docs/download/MoYinReader.apk`, a 201 KB build kept on Pages purely so phones get a download link that never touches `github.com` (which is slow or unreachable on many Chinese mobile networks); Releases remain the canonical source.
 
 > **Android download stalls?** The GitHub button redirects through `github.com`, which often hangs for 10+ seconds on mobile networks in China. Use the direct link instead:
 >

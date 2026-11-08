@@ -195,10 +195,11 @@ def make_icons(res):
         got = 0
         with zipfile.ZipFile(FINAL) as z:
             for n in z.namelist():
-                m = re.match(r'res/mipmap-[a-z]+/ic_launcher\.png$', n)
+                # aapt2 编出来的路径带版本后缀：res/mipmap-xxhdpi-v4/ic_launcher.png
+                m = re.match(r'res/(mipmap-[a-z]+)(?:-v\d+)?/ic_launcher\.png$', n)
                 if not m:
                     continue
-                dst = os.path.join(res, n[len('res/'):].replace('/', os.sep))
+                dst = os.path.join(res, m.group(1), 'ic_launcher.png')
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 with open(dst, 'wb') as f:
                     f.write(z.read(n))
