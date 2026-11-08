@@ -84,3 +84,6 @@ _local_books.json
 _push_via_api.py
 _apply_repo_meta.py
 _token.txt
+
+# ---- Pages 上的安卓直链（体积小，给手机一个不经过 github.com 的下载口） ----
+!docs/download/*.apk

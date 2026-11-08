@@ -70,10 +70,16 @@
 | 平台 | 怎么用 | 说明 |
 |---|---|---|
 | **Windows** | 下载 `MoYinReader.exe` 双击 | 完整版，174 个离线语音与分角色朗读都在这一版 |
-| **安卓** | 下载 `MoYinReader.apk` 安装 | 页面内嵌，朗读走系统 TTS |
+| **安卓** | 下载 [`MoYinReader.apk`](https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk) 安装 | 页面内嵌，朗读走系统 TTS；手机下载见下方说明 |
 | **任意系统** | 双击 `MoYinReader.html` | 单文件网页版，功能与桌面版一致 |
 | **Linux / 信创**（统信 UOS、麒麟、openEuler、Deepin） | `sudo dpkg -i moyin-reader_*.deb` 装进应用菜单；或用 `MoYinReader-Linux-*.tar.gz` 解压后双击「墨吟阅读器.sh」 | **x86_64 是 10 MB 独立程序，不用装 Python**（已在统信 UOS 20 专业版实测安装与启动）；飞腾 / 鲲鹏 / 龙芯会自动走 Python 或网页方式 |
 | **macOS**（Intel / Apple Silicon） | 解压 `MoYinReader-macOS-*.zip`，双击「墨吟阅读器.command」 | 免安装 Python |
+
+> **手机上装安卓版，下载卡住怎么办**：GitHub 的下载按钮会先跳 `github.com`，国内手机网络下经常十几秒不动或直接超时（电脑能下是因为走了代理）。改用直链，不经过 github.com：
+>
+> `https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk`
+>
+> 两点注意：① 在**浏览器**里打开，微信 / QQ 的内置浏览器会拦截 apk 下载，请点右上角"在浏览器打开"；② 装之前系统会提示"未知来源"，允许「墨吟」安装即可。
 
 Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF，只依赖系统自带的 libc / libz / libpthread / libdl（glibc 2.28+），UOS 20、银河麒麟 V10、openEuler 20.03 及更新版本都能直接运行。窗口用系统浏览器内核的「应用模式」打开——没有地址栏和标签页，是个独立窗口，关掉即退出。
 
@@ -141,7 +147,7 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 
 ### 从源码构建
 
-仓库只放源码，`exe` / `apk` / 语音模型都不入库（体积大，且模型是第三方资产）。克隆后按下面两步即可复现：
+仓库只放源码，`exe` 和语音模型不入库（体积大，且模型是第三方资产）。唯一的例外是 `docs/download/MoYinReader.apk`——197 KB 的成品，放在 Pages 上只为给手机一个不用访问 github.com 的下载口，正式版仍以 Release 为准。克隆后按下面两步即可复现：
 
 ```bash
 # 1) 生成单文件网页版（纯 Python 标准库，无需依赖）
@@ -281,7 +287,13 @@ Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/re
 
 ### Build from source
 
-Only source lives in this repo — `exe` / `apk` and the speech model are not committed (they are large, and the model is a third-party asset).
+Only source lives in this repo — `exe` and the speech model are not committed (they are large, and the model is a third-party asset). The one exception is `docs/download/MoYinReader.apk`, a 197 KB build kept on Pages purely so phones get a download link that never touches `github.com` (which is slow or unreachable on many Chinese mobile networks); Releases remain the canonical source.
+
+> **Android download stalls?** The GitHub button redirects through `github.com`, which often hangs for 10+ seconds on mobile networks in China. Use the direct link instead:
+>
+> `https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk`
+>
+> Open it in a real browser — WeChat / QQ in-app browsers block apk downloads (tap "open in browser"). Allow "unknown sources" when the system asks.
 
 ```bash
 python build.py                 # bundle the web app  → MoYinReader.html
