@@ -87,6 +87,8 @@ input[type=range]{accent-color:var(--acc);height:var(--tap);min-width:90px}
 .brand{font-size:1.25em;font-weight:700;letter-spacing:.12em;white-space:nowrap}
 .brand small{font-size:.55em;font-weight:400;color:var(--tx2);letter-spacing:.05em;margin-left:8px}
 .acts{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+/* 「⋯ 更多」只在窄屏出现，宽屏所有按钮本来就排得下 */
+.only-narrow{display:none}
 .spacer{flex:1 1 auto}
 .hint{color:var(--tx2);font-size:.86em}
 /* ---------- 书架 ---------- */
@@ -419,15 +421,16 @@ body.imm #clockFloat{display:block}
       <div class="acts" id="libActs">
         <button class="pri" id="btnImport" data-i18n="＋ 导入书籍">＋ 导入书籍</button>
         <button id="btnImportDir" data-i18n="导入文件夹" data-i18n-title="导入整个文件夹里的 TXT / EPUB" title="导入整个文件夹里的 TXT / EPUB">导入文件夹</button>
-        <button id="btnImportNet" hidden data-i18n="网络位置" data-i18n-title="从局域网共享（SMB）或本机任意路径导入" title="从局域网共享（SMB）或本机任意路径导入">网络位置</button>
+        <button id="btnImportNet" class="sec" hidden data-i18n="网络位置" data-i18n-title="从局域网共享（SMB）或本机任意路径导入" title="从局域网共享（SMB）或本机任意路径导入">网络位置</button>
         <button id="btnSort" data-i18n="排序">排序</button>
         <button id="btnLayout" data-i18n="版式">版式</button>
-        <button id="btnShelves" data-i18n="管理书架">管理书架</button>
-        <button data-doc="help" data-i18n="使用说明">使用说明</button>
-        <button data-doc="faq" data-i18n="常见问题">常见问题</button>
-        <button data-doc="disclaimer" data-i18n="免责声明">免责声明</button>
-        <button data-doc="about" data-i18n="关于">关于</button>
-        <button id="btnLang" data-i18n-title="切换界面语言" title="切换界面语言">EN</button>
+        <button id="btnShelves" class="sec" data-i18n="管理书架">管理书架</button>
+        <button class="sec" data-doc="help" data-i18n="使用说明">使用说明</button>
+        <button class="sec" data-doc="faq" data-i18n="常见问题">常见问题</button>
+        <button class="sec" data-doc="disclaimer" data-i18n="免责声明">免责声明</button>
+        <button class="sec" data-doc="about" data-i18n="关于">关于</button>
+        <button class="sec" id="btnLang" data-i18n-title="切换界面语言" title="切换界面语言">EN</button>
+        <button id="btnMoreLib" class="only-narrow" data-i18n-title="更多：管理书架、使用说明、常见问题、免责声明、关于、语言" title="更多">⋯</button>
       </div>
       <input type="file" id="fileInput" multiple accept=".txt,.epub,.text,.TXT,.EPUB" hidden>
       <input type="file" id="dirInput" webkitdirectory directory multiple hidden>
@@ -472,15 +475,16 @@ body.imm #clockFloat{display:block}
       <div class="acts" id="readActs">
         <button id="btnToc" data-i18n="目录">目录</button>
         <button id="btnFind" data-i18n="搜索">搜索</button>
-        <button id="btnMarks" data-i18n="书签">书签</button>
-        <button id="btnNotes" data-i18n="笔记">笔记</button>
-        <button id="btnMarkAdd" data-i18n="＋书签">＋书签</button>
+        <button id="btnMarks" class="sec" data-i18n="书签">书签</button>
+        <button id="btnNotes" class="sec" data-i18n="笔记">笔记</button>
+        <button id="btnMarkAdd" class="sec" data-i18n="＋书签">＋书签</button>
         <button id="btnType" data-i18n="排版" data-i18n-title="排版：滚动 / 翻页、分栏、字号、行距、段距、字体、颜色" title="排版：滚动 / 翻页、分栏、字号、行距、段距、字体、颜色">排版</button>
-        <button id="btnTheme" data-i18n="主题" data-i18n-title="切换主题" title="切换主题">主题</button>
-        <button id="btnAuto" data-i18n="自动" data-i18n-title="自动阅读：自动滚动 / 自动翻页" title="自动阅读：自动滚动 / 自动翻页">自动</button>
-        <button id="btnFull" data-i18n="全屏" data-i18n-title="全屏 / 沉浸模式" title="全屏 / 沉浸模式">全屏</button>
-        <button id="btnSet" data-i18n="设置" data-i18n-title="阅读设置：外观、朗读、语音、时钟与提醒" title="阅读设置：外观、朗读、语音、时钟与提醒">设置</button>
+        <button id="btnTheme" class="sec" data-i18n="主题" data-i18n-title="切换主题" title="切换主题">主题</button>
+        <button id="btnAuto" class="sec" data-i18n="自动" data-i18n-title="自动阅读：自动滚动 / 自动翻页" title="自动阅读：自动滚动 / 自动翻页">自动</button>
+        <button id="btnFull" class="sec" data-i18n="全屏" data-i18n-title="全屏 / 沉浸模式" title="全屏 / 沉浸模式">全屏</button>
+        <button id="btnSet" class="sec" data-i18n="设置" data-i18n-title="阅读设置：外观、朗读、语音、时钟与提醒" title="阅读设置：外观、朗读、语音、时钟与提醒">设置</button>
         <button id="btnSpeak" class="pri" data-i18n="朗读">朗读</button>
+        <button id="btnMore" class="only-narrow" data-i18n-title="更多：书签、笔记、主题、自动阅读、全屏、设置" title="更多">⋯</button>
       </div>
     </header>
     <div id="clockFloat" aria-hidden="true"></div>

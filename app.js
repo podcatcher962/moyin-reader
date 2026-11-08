@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.10.3';
+  var VER = '1.11.0';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -150,14 +150,28 @@
 
   /* ---------------- 配置 ---------------- */
   function loadCfg() {
-    try { var o = JSON.parse(localStorage.getItem(CFGKEY) || '{}'); Object.keys(DEF).forEach(function (k) { if (o[k] !== undefined) CFG[k] = o[k]; }); }
+    var raw = null;
+    try { raw = localStorage.getItem(CFGKEY); } catch (e) { /* 隐私模式 */ }
+    try { var o = JSON.parse(raw || '{}'); Object.keys(DEF).forEach(function (k) { if (o[k] !== undefined) CFG[k] = o[k]; }); }
     catch (e) { /* 用默认值 */ }
     // 1.7 及以前：lay 是「界面密度」(auto/p/l)，1.8 起改成「分栏」(auto/one/two)
     if (CFG.lay === 'p' || CFG.lay === 'l') CFG.lay = 'auto';
     // 分角色朗读 1.9.4 起默认开：从没手动关过的老配置也跟着开一次（有引擎才生效，没引擎自动回落）
     if (!CFG.roleTouched) CFG.roleOn = 1;
+    // 头一次在手机上打开（还没存过任何配置）：桌面那套 19px 字号 + 32px 边距，
+    // 到 390 宽的屏上两边吃掉 64px、一行剩不到二十字，读着憋。按窄屏重给一套。
+    if (!raw) tuneNarrowDefaults();
     if (I18N) I18N.set(CFG.lang);
     applyCfg();
+  }
+  /* 窄屏首启的排版基线。只在「从没保存过配置」时生效，用户自己调过就完全听用户的。 */
+  function tuneNarrowDefaults() {
+    var w = window.innerWidth || 390;
+    if (w > 860) return;
+    CFG.fs = w < 360 ? 17 : 18;   // 小屏再收一号，免得一行只剩十三四字
+    CFG.lh = 1.9;
+    CFG.padw = w < 360 ? 14 : 18;
+    CFG.ps = 0.75;
   }
   function saveCfg() { try { localStorage.setItem(CFGKEY, JSON.stringify(CFG)); } catch (e) { /* 隐私模式 */ } }
   function applyCfg() {
@@ -2097,6 +2111,28 @@
     cast: {}, castName: {}, used: {},
     watch: null, deadline: 0, timer: null, gapT: null, fb: 0, seenEnd: false, trying: false,
     audio: null, prefetch: null };
+  /* 听书时让屏幕保持常亮：手机一熄屏，WebView 里的音频立刻被系统掐掉，
+     走路、做家务时听书就断在半句上。Wake Lock 失败（旧内核 / file://）就算了，
+     只是不如常亮，不影响朗读本身。 */
+  var WAKE = null;
+  function wakeKeep(on) {
+    try {
+      if (on) {
+        if (WAKE || !navigator.wakeLock || !navigator.wakeLock.request) return;
+        navigator.wakeLock.request('screen').then(function (s) {
+          WAKE = s;
+          if (s.addEventListener) s.addEventListener('release', function () { if (WAKE === s) WAKE = null; });
+        })['catch'](function () { });
+      } else if (WAKE) {
+        try { WAKE.release(); } catch (e) { }
+        WAKE = null;
+      }
+    } catch (e) { /* 老内核没有这个 API */ }
+  }
+  /* 切到后台 Wake Lock 会被系统收回，回前台且还在念时要重新要一次 */
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && SPK.playing) wakeKeep(true);
+  });
   /* 免费离线神经语音：本机 sherpa-onnx + 一份 AISHELL3 中文多说话人 VITS 模型。
      模型内含 174 个说话人，靠 --sid 切换，所以放开到 174 个音色也不增加体积。
      每项：[音色 key, 显示名, 音高分档]；服务在线时用 /health 返回的全量表，
@@ -2716,7 +2752,26 @@
   }
   function speakBlocked() {
     var e = speakEnv(), title, body, btns, eng = (LOCAL.info && LOCAL.info.engine) || '';
-    if (e.android && e.apk) {
+    var info = LOCAL.info || {};
+    if (e.android && e.apk && info.loading) {
+      // 安卓版自带神经语音，第一次启动要解压 32 MB 模型，别把它说成「手机缺中文语音」
+      title = T('语音引擎正在准备');
+      body = '<p>' + T('安卓版第一次启动要把 32 MB 的中文语音模型解压到应用目录，通常十几秒；之后就不用再等了。') + '</p>' +
+        '<p>' + T('稍等一下再点朗读就行，先看字也不耽误。') + '</p>';
+      btns = [
+        { label: T('再试一次'), cls: 'pri', fn: function () { closeModal(); LOCAL.ready = false; localProbe(true); } },
+        { label: T('关闭') }
+      ];
+    } else if (e.android && e.apk && info.detail) {
+      title = T('语音引擎没能启动');
+      body = '<p>' + T('这一次神经语音没加载起来，可以把下面这行发给作者；也可以先用手机系统自带的中文语音顶上。') + '</p>' +
+        '<p class="kv">' + T('引擎报告：{m}', { m: String(info.detail).slice(0, 180) }) + '</p>' +
+        '<p>' + T('打开「设置 → 无障碍 / 更多设置 → 文字转语音」，选「小爱语音引擎」或「讯飞语音引擎」，下载中文语音包后回到墨吟再点朗读。') + '</p>';
+      btns = [
+        { label: T('再试一次'), cls: 'pri', fn: function () { closeModal(); LOCAL.ready = false; localProbe(true); } },
+        { label: T('关闭') }
+      ];
+    } else if (e.android && e.apk) {
       title = T('手机朗读还需要中文语音');
       body = '<p>' + T('墨吟已经接入了手机系统的朗读引擎，但这台手机眼下没有可用的中文语音。') + '</p>';
       if (LOCAL.info && LOCAL.info.ok === false && eng)
@@ -2734,7 +2789,7 @@
       body = '<p>' + (e.inApp
         ? T('你现在是在微信 / QQ 的内置浏览器里打开，它既不允许下载，也不提供系统朗读。')
         : T('手机浏览器没有系统朗读接口，网页版没法直接念书。')) + '</p>' +
-        '<p>' + T('装安卓版就可以了：只有一个不到 1 MB 的小壳，朗读走手机自带的中文语音，完全离线。') + '</p>' +
+        '<p>' + T('装安卓版就可以了：174 个离线神经声线随包带走，断网也能听，是手机浏览器给不了的效果。') + '</p>' +
         '<p class="kv" style="word-break:break-all">' + esc(APK_URL) + '</p>' +
         (e.inApp ? '<p>' + T('在微信里请点右上角「…」→「在浏览器打开」，再下载。') + '</p>' : '');
       btns = [
@@ -2774,10 +2829,13 @@
     try { SYN.speak(u); } catch (e) { SPK.trying = false; toast(T('试听失败：') + e.message); }
   }
   function startSpeak(fromPi) {
-    if (!SYN || !UTT) {
-      /* 安卓壳里页面本身没有 Web Speech，语音走本机 127.0.0.1 的桥。
-         首次点朗读时引擎可能还在初始化（TextToSpeech 是异步的），
-         先探一次再决定，别急着甩「不支持浏览器」。 */
+    /* 安卓壳里 System WebView 会给出一个「哑」的 speechSynthesis：对象建得出来、
+       也能调 speak()，就是不出声。所以只要在安卓壳里，就必须等本机 127.0.0.1 的桥，
+       不能因为 SYN 存在就走系统语音那条路——否则用户点了朗读，界面在动，耳朵里没有声音。
+       注意必须连 Android 一起判：桌面 exe 也是从 127.0.0.1 加载的，那上面 SYN 是真的能用。 */
+    var env0 = speakEnv();
+    var needBridge = env0.android && env0.apk && CFG.localOn;
+    if (!SYN || !UTT || (needBridge && !LOCAL.ready)) {
       if (CFG.localOn && !LOCAL.ready) {
         if (SPK.connecting) return;
         SPK.connecting = true;
@@ -2793,6 +2851,7 @@
     if (!BK) return;
     autoStop(true);                     // 朗读和自动阅读会互相抢滚动，先停自动
     SPK.on = true; SPK.fb = 0; SPK.seenEnd = false;
+    wakeKeep(true);                     // 听书时别让屏幕自己熄了，一熄音频就断
     SPK.prefetch = null; stopLocalAudio(); voiceBadge(curVoice());
     $('speakBar').classList.add('on'); syncRoleBtn();
     if (!$('spVoice').options.length || $('spVoice').options[0].value === '') fillVoices();
@@ -2833,6 +2892,7 @@
     }
   }
   function stopSpeak(hide) {
+    wakeKeep(false);
     SPK.playing = false; SPK.gen++; clearTimeout(SPK.watch); clearTimeout(SPK.gapT);
     stopLocalAudio(); SPK.prefetch = null;
     clearInterval(SPK.timer); SPK.deadline = 0; $('spLeft').textContent = '';
@@ -2999,6 +3059,10 @@
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + AISHELL3 多说话人 VITS 模型）：不联网、不收费、无需账号，模型内含 174 个中文说话人（148 女 + 26 男），精选 11 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.11 改了什么</h3><ul>' +
+      '<li><b>手机也有 174 个离线神经声线了</b>：以前只有电脑能听到 sherpa-onnx + AISHELL3 那套神经语音，手机上只能用安卓自带的机械音。现在引擎和模型直接装进了安卓包，断网、飞行模式照样能听，音色、音高分组、分角色朗读和电脑端完全一致。</li>' +
+      '<li><b>顶栏不再挤成三行小格子</b>：手机上只留目录、搜索、排版、朗读四个常用键，每格 44px 高、字也大了一号；书签、笔记、主题、自动、全屏、设置收进「⋯」，点开就有，点一下动作自动收起。</li>' +
+      '<li><b>手机上第一次打开就是顺眼的排版</b>：字号 18px、行距 1.9、左右各留 18px（原来照搬桌面 32px，屏窄时一行剩不到二十字）。只影响「从没调过设置」的新用户，调过就完全听你的。</li></ul>' +
       '<h3>1.10.3 改了什么</h3><ul>' +
       '<li><b>手机上点一下就能翻页</b>：手机没有键盘和滚轮，以前只能一直用手指滑。现在轻点屏幕左侧 22% 回上一屏、右侧 22% 翻下一屏，中间留给选字、链接和「朗读从这里念」；手指滑动过就不算轻点，不会误翻。</li>' +
       '<li><b>朗读提示不再答非所问</b>：以前在手机上点朗读只会弹一句「当前浏览器不支持朗读，请用新版 Edge / Chrome」——手机上根本没有 Edge 可装。现在分开说：安卓浏览器里提示装安卓版并给可复制的直链；安卓版里如果缺中文语音，会告诉你具体去系统哪个设置、装哪个引擎，并带「再试一次」。</li>' +
@@ -3066,7 +3130,7 @@
       '<li><b>桌面版终于能划线了</b>：桌面外壳默认把网页的文字选择关掉了，导致选中正文没反应、浮动色块也不出来。已放开，Windows 版的划线与批注和其他版本一样。</li>' +
       '<li><b>导入文件夹不再像在上传</b>：桌面版改用系统的「选择文件夹」对话框，不再是浏览器那个「选择要上传的文件夹 … 上传」的选择器。</li>' +
       '<li><b>左侧导航能退出了</b>：标签栏右侧加了 ×，再点同一个按钮也能收起，点正文空白处自动收起（有选区时不收，免得把手选的位置抖掉）。</li></ul>' +
-      '<p class="kv">版本 1.10.3 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
+      '<p class="kv">版本 1.11.0 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
   };
   function showDoc(k) {
     var d = DOCS[k] || DOCS.help;
@@ -3455,6 +3519,30 @@
   }
 
   /* ---------------- 事件 ---------------- */
+  /* 手机顶栏的「⋯ 更多」：默认只露 5 个常用键，点开才摊平其余动作。
+     点其中任何一个都会自动收起，免得挡住正文。 */
+  function bindMore(btnId, boxId) {
+    var b = $(btnId), box = $(boxId);
+    if (!b || !box) return;
+    function shut() {
+      box.classList.remove('open');
+      b.textContent = '⋯';
+      b.setAttribute('aria-expanded', 'false');
+    }
+    b.onclick = function (e) {
+      e.stopPropagation();
+      var on = !box.classList.contains('open');
+      box.classList.toggle('open', on);
+      b.textContent = on ? '×' : '⋯';
+      b.setAttribute('aria-expanded', on ? 'true' : 'false');
+    };
+    box.addEventListener('click', function (e) {
+      if (e.target.closest('.only-narrow')) return;
+      if (e.target.tagName === 'BUTTON') setTimeout(shut, 80);
+    });
+    // 换页 / 换视图时收起来，别把上一次展开的状态带到新页面
+    window.addEventListener('resize', shut);
+  }
   function bind() {
     $('btnImport').onclick = function () { $('fileInput').click(); };
     $('fileInput').onchange = function (e) { if (e.target.files.length) importFiles(Array.prototype.slice.call(e.target.files)); e.target.value = ''; };
@@ -3522,6 +3610,8 @@
       var i = Math.floor(this.value / 1000 * chapterCount());
       renderChapter(Math.min(chapterCount() - 1, i));
     };
+    bindMore('btnMore', 'readActs');
+    bindMore('btnMoreLib', 'libActs');
     $('btnToc').onclick = function () { openSide('toc'); };
     $('btnMarks').onclick = function () { openSide('mark'); };
     $('btnFind').onclick = function () { openSide('find'); };
@@ -3833,6 +3923,17 @@
     renderShelf();
     window.MY = {
       Z: Z, CFG: CFG, get BK() { return BK; }, get SPK() { return SPK; }, get BOOKS() { return BOOKS; },
+      /* 安卓返回键：页面能自己处理就返回 true，处理不了（书架页）才让应用退出。
+         顺序照常识来：先关弹窗，再收侧栏，最后才是从书里退回书架。 */
+      backKey: function () {
+        try {
+          if ($('modal').classList.contains('on')) { closeModal(); return true; }
+          if (document.body.classList.contains('selmode')) { enterSelMode(false); return true; }
+          if ($('side').classList.contains('on')) { closeSide(); return true; }
+          if (document.getElementById('viewRead').classList.contains('on')) { closeBook(); return true; }
+        } catch (e) { /* 状态不全时不拦退出 */ }
+        return false;
+      },
       parseBook: parseBook, openBook: openBook, renderChapter: renderChapter, importFiles: importFiles,
       importFolder: importFolder, openSide: openSide, closeSide: closeSide,
       importBuffer: async function (buf, name, ext) {

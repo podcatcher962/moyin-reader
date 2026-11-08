@@ -172,6 +172,15 @@
     '中文': '中文',
     'English': 'English',
     '切换界面语言': 'Switch interface language',
+    '更多：管理书架、使用说明、常见问题、免责声明、关于、语言': 'More: manage shelves, help, FAQ, disclaimer, about, language',
+    '更多：书签、笔记、主题、自动阅读、全屏、设置': 'More: bookmarks, notes, theme, auto reading, full screen, settings',
+    '收起': 'Collapse',
+    '语音引擎正在准备': 'Preparing the speech engine',
+    '安卓版第一次启动要把 32 MB 的中文语音模型解压到应用目录，通常十几秒；之后就不用再等了。': 'The Android build unpacks its 32 MB Chinese voice model on first launch — usually ten-odd seconds, and only once.',
+    '稍等一下再点朗读就行，先看字也不耽误。': 'Give it a moment and tap Read aloud again; reading the page meanwhile is fine.',
+    '语音引擎没能启动': 'The speech engine did not start',
+    '这一次神经语音没加载起来，可以把下面这行发给作者；也可以先用手机系统自带的中文语音顶上。': 'The neural voice failed to load this time. Send the line below to the author, or fall back to the phone system voice for now.',
+    '装安卓版就可以了：174 个离线神经声线随包带走，断网也能听，是手机浏览器给不了的效果。': 'Install the Android build: all 174 offline neural voices travel inside the package and work with no network — something a mobile browser simply cannot do.',
 
     /* ---------- 设置：朗读 ---------- */
     '朗读': 'Reading aloud',

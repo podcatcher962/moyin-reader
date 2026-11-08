@@ -15,11 +15,18 @@ NARROW = r'''
 .brand small{display:none}
 #libSearch{width:100%;order:3}
 #libTop .spacer,#readTop .spacer{display:none}
+/* 顶栏先只留 5 个常用键（各占 1/5 宽、44px 高，拇指点不错），
+   书签 / 笔记 / 主题 / 自动 / 全屏 / 设置这些收进「⋯」，点开再摊平。
+   原来 5 列 × 3 行、36px 高、.8em 小字，拇指经常摸到隔壁。 */
 #libActs,#readActs{width:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-#libActs button,#readActs button{font-size:.8em;padding:6px 2px;min-height:36px;overflow:hidden;text-overflow:ellipsis}
+#libActs .sec,#readActs .sec{display:none}
+#libActs.open .sec,#readActs.open .sec{display:block}
+/* 展开后键多了，改 6 列：12 个正好两行排满，不会留半行空格 */
+#libActs.open,#readActs.open{grid-template-columns:repeat(6,1fr)}
+#libActs .only-narrow,#readActs .only-narrow{display:block}
+#libActs button,#readActs button{font-size:.86em;padding:8px 2px;min-height:44px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #readTitle{max-width:100%}
 #readTitle{max-width:calc(100% - 112px)}
-#btnMarkAdd{display:none}
 #clock{font-size:.7em;padding:2px 6px;border-radius:9px;white-space:nowrap}
 body.imm #clockFloat{font-size:.7em;top:6px;right:8px}
 #restTip{bottom:60px;left:8px;right:8px;max-width:none}

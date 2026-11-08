@@ -38,6 +38,20 @@ HTML = os.path.join(ROOT, 'MoYinReader.html')
 FINAL = os.path.join(ROOT, 'MoYinReader.apk')
 STAGE = os.path.join(PKG_DIR, 'stage_' + time.strftime('%H%M%S'))
 
+# ── 手机端离线神经语音：sherpa-onnx Android AAR + AISHELL3 中文多说话人模型 ──
+# 引擎与模型只在打包时用，不进仓库。缺了也能打，只是 APK 里没有神经语音。
+SHERPA = os.environ.get('MOYIN_SHERPA') or r'D:\Workuddy\_tools\sherpa_android'
+SHERPA_AAR = os.path.join(SHERPA, 'aar')
+SHERPA_JAR = os.path.join(SHERPA_AAR, 'classes.jar')
+KOTLIN_JAR = os.path.join(SHERPA, 'kotlin-stdlib.jar')
+SHERPA_ABI = 'arm64-v8a'
+SHERPA_LIBS = ['libonnxruntime.so', 'libsherpa-onnx-c-api.so',
+               'libsherpa-onnx-cxx-api.so', 'libsherpa-onnx-jni.so']
+VOICE_MODEL = os.path.join(ROOT, 'VoicePack', 'models', 'aishell3')
+VOICE_FILES = ['model.onnx', 'lexicon.txt', 'tokens.txt',
+               'date.fst', 'number.fst', 'phone.fst']
+NEURO = '--no-neuro' not in sys.argv
+
 os.environ['JAVA_HOME'] = JDK
 os.environ['ANDROID_HOME'] = SDK
 os.makedirs(STAGE, exist_ok=True)
@@ -45,8 +59,8 @@ os.makedirs(STAGE, exist_ok=True)
 MANIFEST = '''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="%s"
-    android:versionCode="18"
-    android:versionName="1.10.3">
+    android:versionCode="19"
+    android:versionName="1.11.0">
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
     <!-- 只有两条：WebView 访问本机 127.0.0.1 需要明文 http；
          不申请麦克风、定位、通讯录、存储，读书不需要这些。 -->
@@ -140,6 +154,43 @@ def patch_main():
     rep('        return AUDIO_EXT.indexOf("|" + ext + "|") >= 0 ? "拾声录音" : "拾声备份";',
         '        return "墨吟备份";', 'album')
 
+    # 7.5) 返回键先交给页面：弹窗 → 侧栏 → 回书架，页面不管了才退出应用
+    rep('''    @Override
+    public void onBackPressed() {
+        if (web != null && web.canGoBack()) {
+            web.goBack();
+        } else {
+            super.onBackPressed();
+        }
+    }''',
+        '''    private long backAt = 0;
+
+    @Override
+    public void onBackPressed() {
+        if (web == null) { super.onBackPressed(); return; }
+        // 单页应用没有浏览器历史，直接 goBack 是空操作，原来的实现等于「一按就退」。
+        // 现在按常识来：弹窗开着关弹窗，侧栏开着收侧栏，在看书就回书架；
+        // 页面说「我不管」才真的退出。900ms 内连按只算一次，免得手抖退掉。
+        long now = System.currentTimeMillis();
+        if (now - backAt < 900) return;
+        backAt = now;
+        try {
+            web.evaluateJavascript(
+                "(function(){try{return (window.MY&&MY.backKey&&MY.backKey())?'1':'0';}"
+                    + "catch(e){return '0';}})()",
+                new android.webkit.ValueCallback<String>() {
+                    @Override
+                    public void onReceiveValue(String v) {
+                        if (v != null && v.indexOf('1') >= 0) return;
+                        if (web != null && web.canGoBack()) { web.goBack(); return; }
+                        finish();
+                    }
+                });
+        } catch (Throwable t) {
+            super.onBackPressed();
+        }
+    }''', 'backkey')
+
     # 7) 页面里 toast 是 IIFE 内的局部函数，注入脚本够不着；改成自带提示条
     #    JS 全部用单引号，Java 字符串里就不会出现需要转义的双引号
     rep('          + "var say=function(m,t){try{if(typeof toast===\'function\')toast(m,t||3500);}catch(e){}};"',
@@ -155,9 +206,37 @@ def patch_main():
     assert '{PKG}' not in s and '{PORT}' not in s
     # 硬断言：TTS 桥的三处接线都在（防止以后换模板时静默丢掉）
     for kw in ('TtsBridge bridge', 'bridge.handleHealth', 'bridge.handleTts',
-               'bridge.injectMoyin', 'bridge.stop()'):
+               'bridge.injectMoyin', 'bridge.stop()', 'MY.backKey'):
         assert kw in s, '接线缺失: ' + kw
     return s
+
+
+def neuro_compile_deps():
+    """编译 TtsEngine 必需的两个 jar（有它们才能过 javac，跟打不打包无关）。"""
+    for p, what in ((SHERPA_JAR, 'sherpa classes.jar'), (KOTLIN_JAR, 'kotlin-stdlib.jar')):
+        if not os.path.isfile(p):
+            sys.exit('缺 %s：%s\n'
+                     '这个包必须带上 sherpa-onnx 的 Android AAR 才能编译（TtsEngine.java 要调它的 API）。\n'
+                     '从 https://github.com/k2-fsa/sherpa-onnx/releases 取 sherpa-onnx-2.0.1.aar，\n'
+                     '解压到 %s（要 aar/classes.jar 和 aar/jni/），再用 MOYIN_SHERPA 指过去。\n'
+                     'kotlin-stdlib 可从 maven.aliyun.com 取 '
+                     'org/jetbrains/kotlin/kotlin-stdlib/2.0.21/。' % (what, p, SHERPA))
+    return True
+
+
+def neuro_available():
+    """能否把神经语音真正打进包：so + 模型都得在，并且没被 --no-neuro 关掉。"""
+    if not NEURO:
+        return False, '命令行指定了 --no-neuro'
+    for lib in SHERPA_LIBS:
+        p = os.path.join(SHERPA_AAR, 'jni', SHERPA_ABI, lib)
+        if not os.path.isfile(p):
+            return False, '缺 so：' + p
+    for f in VOICE_FILES:
+        p = os.path.join(VOICE_MODEL, f)
+        if not os.path.isfile(p):
+            return False, '缺模型：' + p
+    return True, ''
 
 
 def prepare_sources():
@@ -168,6 +247,9 @@ def prepare_sources():
     bridge = io.open(os.path.join(PKG_DIR, 'TtsBridge.java'), encoding='utf-8').read()
     bridge = bridge.replace('{PKG}', PKG)
     io.open(os.path.join(src, 'TtsBridge.java'), 'w', encoding='utf-8').write(bridge)
+    engine = io.open(os.path.join(PKG_DIR, 'TtsEngine.java'), encoding='utf-8').read()
+    engine = engine.replace('{PKG}', PKG)
+    io.open(os.path.join(src, 'TtsEngine.java'), 'w', encoding='utf-8').write(engine)
     io.open(os.path.join(STAGE, 'AndroidManifest.xml'), 'w', encoding='utf-8').write(MANIFEST)
     # res
     res = os.path.join(STAGE, 'res')
@@ -180,6 +262,19 @@ def prepare_sources():
     os.makedirs(assets, exist_ok=True)
     shutil.copy2(HTML, os.path.join(assets, 'index.html'))
     return src, res, assets
+
+
+def stage_voice_model(assets):
+    """把 32 MB 中文模型拷进 assets/tts/aishell3/，首次启动由 TtsEngine 解压到私有目录。"""
+    dst = os.path.join(assets, 'tts', 'aishell3')
+    os.makedirs(dst, exist_ok=True)
+    total = 0
+    for f in VOICE_FILES:
+        s = os.path.join(VOICE_MODEL, f)
+        shutil.copy2(s, os.path.join(dst, f))
+        total += os.path.getsize(s)
+    print('  语音模型入包：%d 个文件，%.1f MB' % (len(VOICE_FILES), total / 1048576), flush=True)
+    return total
 
 
 def make_icons(res):
@@ -235,16 +330,28 @@ def build(src, res, assets):
     dex = os.path.join(STAGE, 'dex')
     os.makedirs(cls, exist_ok=True)
     os.makedirs(dex, exist_ok=True)
+    has_neuro, why = neuro_available()
+    srcs = [os.path.join(src, 'MainActivity.java'), os.path.join(src, 'TtsBridge.java'),
+            os.path.join(src, 'TtsEngine.java')]
+    # 编译期永远要这两个 jar（TtsEngine 直接调 sherpa 的 Kotlin API）；
+    # has_neuro 只决定 so 和 32 MB 模型要不要进包。
+    cp = JAR + os.pathsep + SHERPA_JAR + os.pathsep + KOTLIN_JAR
+    if not has_neuro:
+        print('  [!] 不打包神经语音：%s（引擎类仍会编进去，运行时找不到 so 自动退回系统语音）' % why,
+              flush=True)
     # javac：中文注释必须 -encoding UTF-8
     sh([JAVAC, '-encoding', 'UTF-8', '-source', '8', '-target', '8',
-        '-classpath', JAR, '-d', cls,
-        os.path.join(src, 'MainActivity.java'), os.path.join(src, 'TtsBridge.java')])
+        '-classpath', cp, '-d', cls] + srcs)
     # ★ 所有 .class（含 MainActivity$1..$N）都必须进 d8，否则一点图标就闪退
     allcls = sorted(os.path.join(dp, f)
                     for dp, dn, fn in os.walk(cls) for f in fn if f.endswith('.class'))
-    assert len(allcls) >= 2, '编译产物太少: %r' % allcls
+    assert len(allcls) >= 3, '编译产物太少: %r' % allcls
     print('javac 产物 %d 个 class' % len(allcls), flush=True)
-    sh([D8, '--release', '--lib', JAR, '--output', dex] + allcls)
+    # d8 只吃 jar 或单个 class 文件，目录不收，所以把本项目 class 打成一个 jar
+    mine = os.path.join(STAGE, 'mine.jar')
+    sh([os.path.join(JDK, 'bin', 'jar.exe'), 'cf', mine, '-C', cls, '.'])
+    inputs = [mine, SHERPA_JAR, KOTLIN_JAR]
+    sh([D8, '--release', '--min-api', '21', '--lib', JAR, '--output', dex] + inputs)
     reszip = os.path.join(STAGE, 'res.zip')
     sh([AAPT2, 'compile', '--dir', res, '-o', reszip])
     base = os.path.join(STAGE, 'base.apk')
@@ -253,14 +360,18 @@ def build(src, res, assets):
     dexfile = os.path.join(dex, 'classes.dex')
     with zipfile.ZipFile(base, 'a', zipfile.ZIP_DEFLATED) as z:
         z.write(dexfile, 'classes.dex')
+        if has_neuro:
+            for lib in SHERPA_LIBS:
+                p = os.path.join(SHERPA_AAR, 'jni', SHERPA_ABI, lib)
+                z.write(p, 'lib/%s/%s' % (SHERPA_ABI, lib))
     aligned = os.path.join(STAGE, 'aligned.apk')
     sh([ZIPALIGN, '-f', '4', base, aligned])
     sh([APKSIGNER, 'sign', '--ks', KS, '--ks-pass', 'pass:' + KS_PASS,
         '--out', FINAL, aligned])
-    return allcls, dexfile
+    return allcls, dexfile, has_neuro
 
 
-def audit(allcls, dexfile):
+def audit(allcls, dexfile, has_neuro):
     lines = []
 
     def ck(c, m):
@@ -286,8 +397,21 @@ def audit(allcls, dexfile):
         src = open(HTML, 'rb').read()
     ok &= ck(md5(page) == md5(src), '内嵌页面与源文件逐字节一致 md5=' + md5(page))
     ok &= ck('classes.dex' in names, 'dex 已打包')
-    ok &= ck(len([n for n in names if n.startswith('assets/')]) == 1,
-             'assets 只有 index.html，没夹带别的东西')
+    if has_neuro:
+        allowed = {'assets/index.html'} | {'assets/tts/aishell3/' + f for f in VOICE_FILES}
+        extra = sorted(set(n for n in names if n.startswith('assets/')) - allowed)
+        ok &= ck(not extra, 'assets 只有页面与语音模型，多余项 %r' % extra[:3])
+        ok &= ck(all('assets/tts/aishell3/' + f in names for f in VOICE_FILES),
+                 '语音模型 6 个文件齐全')
+        libs = [n for n in names if n.startswith('lib/')]
+        ok &= ck(len(libs) == len(SHERPA_LIBS) and
+                 all(n.startswith('lib/%s/' % SHERPA_ABI) for n in libs),
+                 '只带 %s 的 so，没混入别的架构' % SHERPA_ABI)
+        ok &= ck('native-code' in bad and SHERPA_ABI in bad,
+                 'badging 认出 native 架构 %s' % SHERPA_ABI)
+    else:
+        ok &= ck(len([n for n in names if n.startswith('assets/')]) == 1,
+                 'assets 只有 index.html，没夹带别的东西')
     ok &= ck('allowBackup="false"' in io.open(os.path.join(STAGE, 'AndroidManifest.xml'),
                                               encoding='utf-8').read(), 'allowBackup=false')
     # dex 里「真正定义」的类必须覆盖所有 javac 产物（挡住匿名内部类漏打）
@@ -306,7 +430,12 @@ def audit(allcls, dexfile):
              ('umeng', 'tencent/qq', 'bytedance', 'alibaba', 'google/android/gms', 'facebook'))]
     ok &= ck(not third, 'dex 无第三方 SDK 类')
     size = os.path.getsize(FINAL)
-    ok &= ck(50 * 1024 < size < 3 * 1024 * 1024, 'APK 体积 %.1f KB' % (size / 1024))
+    if has_neuro:
+        ok &= ck(20 * 1048576 < size < 90 * 1048576,
+                 'APK 体积 %.1f MB（含 32 MB 模型与 sherpa 引擎）' % (size / 1048576))
+    else:
+        # 不带模型时 dex 里仍有 sherpa + kotlin 的类，所以下限放宽到 8 MB 以内
+        ok &= ck(50 * 1024 < size < 8 * 1024 * 1024, 'APK 体积 %.1f MB' % (size / 1048576))
     text = '\n'.join(lines) + '\n' + ('ALL PASS' if ok else 'HAS FAIL') + '\n'
     io.open(os.path.join(PKG_DIR, 'apk_audit.txt'), 'w', encoding='utf-8').write(text)
     assert ok, 'APK 体检有 FAIL'
@@ -316,12 +445,15 @@ def audit(allcls, dexfile):
 def main():
     for t in (JAVAC, AAPT2, D8, ZIPALIGN, APKSIGNER, JAR, KS):
         assert os.path.exists(t), '缺工具: ' + t
+    neuro_compile_deps()          # 缺 AAR 就直接报清楚，别拖到 javac 报一堆符号找不到
     src, res, assets = prepare_sources()
+    if neuro_available()[0]:
+        stage_voice_model(assets)
     make_icons(res)
-    allcls, dexfile = build(src, res, assets)
-    audit(allcls, dexfile)
-    print('\n=== APK 全部通过 ===\n成品: %s (%.1f KB)' %
-          (FINAL, os.path.getsize(FINAL) / 1024), flush=True)
+    allcls, dexfile, has_neuro = build(src, res, assets)
+    audit(allcls, dexfile, has_neuro)
+    print('\n=== APK 全部通过 ===\n成品: %s (%.1f MB)' %
+          (FINAL, os.path.getsize(FINAL) / 1048576), flush=True)
 
 
 if __name__ == '__main__':
