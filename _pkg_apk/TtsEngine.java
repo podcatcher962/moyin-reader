@@ -94,7 +94,7 @@ public final class TtsEngine {
     String healthJson(boolean engineOk) {
         StringBuilder sb = new StringBuilder(16384);
         sb.append("{\"ok\":").append(engineOk).append(",");
-        sb.append("\"engine\":\"").append(engineOk ? "sherpa-onnx 2.0.1 · 安卓" : "模型加载中").append("\",\"");
+        sb.append("\"engine\":\"").append(engineOk ? "sherpa-onnx 2.0.1 · 安卓" : "模型加载中").append("\",");
         sb.append("\"ready\":").append(engineOk).append(",");
         sb.append("\"count\":").append(SID_F0.length).append(",");
         sb.append("\"version\":3,\"curated\":[");

@@ -72,7 +72,7 @@
 | **Windows** | 下载 `MoYinReader.exe` 双击 | 完整版，174 个离线语音与分角色朗读都在这一版 |
 | **安卓** | 下载 [`MoYinReader.apk`](https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk) 安装 | 页面内嵌，**174 个离线神经声线随包带走**，断网也能听；手机下载见下方说明 |
 | **任意系统** | 双击 `MoYinReader.html` | 单文件网页版，功能与桌面版一致 |
-| **Linux / 信创**（统信 UOS、麒麟、openEuler、Deepin） | `sudo dpkg -i moyin-reader_*.deb` 装进应用菜单；或用 `MoYinReader-Linux-*.tar.gz` 解压后双击「墨吟阅读器.sh」 | **x86_64 是 10 MB 独立程序，不用装 Python**（已在统信 UOS 20 专业版实测安装与启动）；飞腾 / 鲲鹏 / 龙芯会自动走 Python 或网页方式 |
+| **Linux / 信创**（统信 UOS、麒麟、openEuler、Deepin） | `sudo dpkg -i moyin-reader_*.deb` 装进应用菜单；或用 `MoYinReader-Linux-*.tar.gz` 解压后双击「墨吟阅读器.sh」 | **x86_64 是 10 MB 独立程序，不用装 Python**（1.10 版在统信 UOS 20 专业版实测安装与启动；1.11 的包内容只换了内嵌页面，deb 归档结构自检通过，若装不上请直接用 tar.gz）。飞腾 / 鲲鹏 / 龙芯会自动走 Python 或网页方式 |
 | **macOS**（Intel / Apple Silicon） | 解压 `MoYinReader-macOS-*.zip`，双击「墨吟阅读器.command」 | 免安装 Python |
 
 > **手机上装安卓版，下载卡住怎么办**

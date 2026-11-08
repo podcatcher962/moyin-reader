@@ -211,14 +211,23 @@ def patch_main():
     return s
 
 
+def neuro_compile_deps():
+    """编译 TtsEngine 必需的两个 jar（有它们才能过 javac，跟打不打包无关）。"""
+    for p, what in ((SHERPA_JAR, 'sherpa classes.jar'), (KOTLIN_JAR, 'kotlin-stdlib.jar')):
+        if not os.path.isfile(p):
+            sys.exit('缺 %s：%s\n'
+                     '这个包必须带上 sherpa-onnx 的 Android AAR 才能编译（TtsEngine.java 要调它的 API）。\n'
+                     '从 https://github.com/k2-fsa/sherpa-onnx/releases 取 sherpa-onnx-2.0.1.aar，\n'
+                     '解压到 %s（要 aar/classes.jar 和 aar/jni/），再用 MOYIN_SHERPA 指过去。\n'
+                     'kotlin-stdlib 可从 maven.aliyun.com 取 '
+                     'org/jetbrains/kotlin/kotlin-stdlib/2.0.21/。' % (what, p, SHERPA))
+    return True
+
+
 def neuro_available():
-    """神经语音所需的东西是否齐全（AAR 解包结果 + kotlin 标准库 + 模型）。"""
+    """能否把神经语音真正打进包：so + 模型都得在，并且没被 --no-neuro 关掉。"""
     if not NEURO:
         return False, '命令行指定了 --no-neuro'
-    if not os.path.isfile(SHERPA_JAR):
-        return False, '缺 sherpa classes.jar：' + SHERPA_JAR
-    if not os.path.isfile(KOTLIN_JAR):
-        return False, '缺 kotlin-stdlib.jar：' + KOTLIN_JAR
     for lib in SHERPA_LIBS:
         p = os.path.join(SHERPA_AAR, 'jni', SHERPA_ABI, lib)
         if not os.path.isfile(p):
@@ -324,11 +333,12 @@ def build(src, res, assets):
     has_neuro, why = neuro_available()
     srcs = [os.path.join(src, 'MainActivity.java'), os.path.join(src, 'TtsBridge.java'),
             os.path.join(src, 'TtsEngine.java')]
-    cp = JAR
-    if has_neuro:
-        cp = JAR + os.pathsep + SHERPA_JAR + os.pathsep + KOTLIN_JAR
-    else:
-        print('  [!] 不含神经语音：%s' % why, flush=True)
+    # 编译期永远要这两个 jar（TtsEngine 直接调 sherpa 的 Kotlin API）；
+    # has_neuro 只决定 so 和 32 MB 模型要不要进包。
+    cp = JAR + os.pathsep + SHERPA_JAR + os.pathsep + KOTLIN_JAR
+    if not has_neuro:
+        print('  [!] 不打包神经语音：%s（引擎类仍会编进去，运行时找不到 so 自动退回系统语音）' % why,
+              flush=True)
     # javac：中文注释必须 -encoding UTF-8
     sh([JAVAC, '-encoding', 'UTF-8', '-source', '8', '-target', '8',
         '-classpath', cp, '-d', cls] + srcs)
@@ -337,12 +347,10 @@ def build(src, res, assets):
                     for dp, dn, fn in os.walk(cls) for f in fn if f.endswith('.class'))
     assert len(allcls) >= 3, '编译产物太少: %r' % allcls
     print('javac 产物 %d 个 class' % len(allcls), flush=True)
-    inputs = allcls
-    if has_neuro:
-        # d8 只吃 jar 或单个 class 文件，目录不收，所以把本项目 class 打成一个 jar
-        mine = os.path.join(STAGE, 'mine.jar')
-        sh([os.path.join(JDK, 'bin', 'jar.exe'), 'cf', mine, '-C', cls, '.'])
-        inputs = [mine, SHERPA_JAR, KOTLIN_JAR]
+    # d8 只吃 jar 或单个 class 文件，目录不收，所以把本项目 class 打成一个 jar
+    mine = os.path.join(STAGE, 'mine.jar')
+    sh([os.path.join(JDK, 'bin', 'jar.exe'), 'cf', mine, '-C', cls, '.'])
+    inputs = [mine, SHERPA_JAR, KOTLIN_JAR]
     sh([D8, '--release', '--min-api', '21', '--lib', JAR, '--output', dex] + inputs)
     reszip = os.path.join(STAGE, 'res.zip')
     sh([AAPT2, 'compile', '--dir', res, '-o', reszip])
@@ -426,7 +434,8 @@ def audit(allcls, dexfile, has_neuro):
         ok &= ck(20 * 1048576 < size < 90 * 1048576,
                  'APK 体积 %.1f MB（含 32 MB 模型与 sherpa 引擎）' % (size / 1048576))
     else:
-        ok &= ck(50 * 1024 < size < 3 * 1024 * 1024, 'APK 体积 %.1f KB' % (size / 1024))
+        # 不带模型时 dex 里仍有 sherpa + kotlin 的类，所以下限放宽到 8 MB 以内
+        ok &= ck(50 * 1024 < size < 8 * 1024 * 1024, 'APK 体积 %.1f MB' % (size / 1048576))
     text = '\n'.join(lines) + '\n' + ('ALL PASS' if ok else 'HAS FAIL') + '\n'
     io.open(os.path.join(PKG_DIR, 'apk_audit.txt'), 'w', encoding='utf-8').write(text)
     assert ok, 'APK 体检有 FAIL'
@@ -436,6 +445,7 @@ def audit(allcls, dexfile, has_neuro):
 def main():
     for t in (JAVAC, AAPT2, D8, ZIPALIGN, APKSIGNER, JAR, KS):
         assert os.path.exists(t), '缺工具: ' + t
+    neuro_compile_deps()          # 缺 AAR 就直接报清楚，别拖到 javac 报一堆符号找不到
     src, res, assets = prepare_sources()
     if neuro_available()[0]:
         stage_voice_model(assets)
