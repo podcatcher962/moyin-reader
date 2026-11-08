@@ -80,9 +80,9 @@
 > GitHub 的下载按钮会先跳 `github.com`，再跳 `objects.githubusercontent.com`，这两跳在国内手机网络里经常十几秒不动或直接被掐断（电脑上能下，多是因为走了代理）。所以安卓包另外给三个**不经过 github.com** 的入口，按顺序试：
 >
 > 1. 主直链：`https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk`
-> 2. 备用 CDN（Cloudflare 节点，国内通常更快）：`https://gcore.jsdelivr.net/gh/podcatcher962/moyin-reader@main/docs/download/MoYinReader.apk`
+> 2. 备用 CDN（Cloudflare 节点，国内通常更快）：`https://gcore.jsdelivr.net/gh/podcatcher962/moyin-reader@v1.10.3/docs/download/MoYinReader.apk`
 >
-> 两个都打不开时，可以先把 apk 存到网盘（夸克 / 蓝奏）再发给对方。
+> 两个都打不开时，可以先把 apk 存到网盘（夸克 / 蓝奏）再发给对方。下完先看一眼文件大小（约 201 KB）；如果只有几十 KB 或装了打不开，多半是没下完整，重下一次。
 >
 > **为什么半夜更容易失败**：GitHub Pages 的地址段（185.199.108–111.153）在国内移动网络和家宽晚高峰后常被限速或重置，凌晨并不等于网络空闲；手机还会优先解析 IPv6，部分移动网络到 GitHub 的 IPv6 路由更差。换 Wi-Fi / 流量、或换上面的备用 CDN，通常就能下。
 >
