@@ -80,7 +80,7 @@ def main():
             print('远端已是同一份（%s），不用再传' % want[:12])
             return 0
 
-        payload = {'message': '安卓包更新：修 healthJson 引号，声线表恢复完整 174 条',
+        payload = {'message': '安卓包更新到 1.12.0（versionCode 11200，签名不变可覆盖安装）',
                    'content': base64.b64encode(open(rel, 'rb').read()).decode(),
                    'branch': BRANCH}
         if cur:
