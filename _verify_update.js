@@ -10,6 +10,10 @@ const SHOTS = path.join(HERE, '_samples');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const P = (...a) => process.stdout.write(a.join(' ') + '\n');
 
+/* 当前版本从 app.js 读，不写死：升版后这份测试不用跟着改 */
+const VER = (fs.readFileSync(path.join(HERE, 'app.js'), 'utf8')
+  .match(/var VER = '([^']+)'/) || [, '0.0.0'])[1];
+
 let pass = 0, fail = 0;
 const ok = (c, label, extra) => {
   if (c) { pass++; P('  ok   ' + label); }
@@ -140,10 +144,10 @@ const fakeDoc = (ver) => ({
 
   // ── ④ 已是最新 ─────────────────────────────────────────────────
   P('\n【已是最新】');
-  st = await withDoc('1.12.0', true);
+  st = await withDoc(VER, true);
   ok(st.open, '弹窗打开了');
   ok(/已是最新版本/.test(st.title), '标题是「已是最新版本」', st.title);
-  ok(/1\.12\.0/.test(st.body), '正文里写着你当前用的版本');
+  ok(st.body.indexOf(VER) >= 0, '正文里写着你当前用的版本', VER);
 
   // ── ⑤ 新版比本地旧（服务器滞后）也不能提示更新 ──────────────────
   P('\n【服务器比本地旧】');
@@ -173,8 +177,8 @@ const fakeDoc = (ver) => ({
   ok(hasBtn, '设置里有「检查更新」按钮');
   let hasSwitch = await ev(`!!document.querySelector('#modalBody [data-set="bool"][data-v="updChk"]')`);
   ok(hasSwitch, '设置里有「启动时自动查新」开关');
-  let verShown = await ev(`(document.getElementById('modalBody').innerText.match(/v1\\.12\\.0/)||[''])[0]`);
-  ok(verShown === 'v1.12.0', '设置里显示当前版本 v1.12.0', verShown);
+  let verShown = await ev(`(document.getElementById('modalBody').innerText.match(/v\\d+\\.\\d+\\.\\d+/)||[''])[0]`);
+  ok(verShown === 'v' + VER, '设置里显示当前版本 v' + VER, verShown);
   await shot('upd-3-settings.png');
 
   // ── ⑧ 桌面尺寸：该给 exe，且 Lite 也要列出来 ────────────────────

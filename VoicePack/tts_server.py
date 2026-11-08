@@ -299,6 +299,8 @@ _cache = OrderedDict()                 # 同句重复朗读直接复用，最多
 _cache_lock = threading.Lock()
 CACHE_MAX = 48
 MAX_TEXT = 600                         # 单次最多 600 字，防止超长文本卡死
+# 句间停顿倍率：1.0 = 引擎基准（句号约 0.5~0.9 秒）。详见 build_args 里的注释。
+SILENCE_SCALE = 1.0
 
 
 def find_exe():
@@ -358,6 +360,10 @@ def build_args(voice, out):
         a.append('--sid=' + str(s['sid']))
     if s.get('fsts'):
         a.append('--tts-rule-fsts=' + ','.join(f[3:]))
+    # 句间停顿倍率。引擎默认 0.2 是把停顿压到 1/5，实测句号处只剩 0.1~0.25 秒，
+    # 一整段念下来听不出分句（用户 2026-11-08 报的就是这个）。
+    # 改成 1.0 即引擎的基准时长，句号处 0.5~0.9 秒，逗号仍很短，听起来才像念书。
+    a.append('--tts-silence-scale=%s' % SILENCE_SCALE)
     return a + ['--num-threads=2', '--output-filename=' + out]
 
 

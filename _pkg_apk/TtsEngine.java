@@ -198,7 +198,10 @@ public final class TtsEngine {
                     d + "/date.fst," + d + "/number.fst," + d + "/phone.fst",
                     "",
                     1,                          // maxNumSentences
-                    0.2f);                      // silenceScale
+                    // 句间停顿倍率。0.2 是引擎默认（把停顿压到 1/5），实测句号处
+                    // 只剩 0.1~0.25 秒，整段念下来听不出分句。1.0 是基准时长，
+                    // 句号处 0.5~0.9 秒，和桌面端 tts_server.py 的 SILENCE_SCALE 保持一致。
+                    1.0f);                      // silenceScale
             OfflineTts t = new OfflineTts(ctx.getAssets(), cfg);
             rate = t.sampleRate();
             if (rate <= 0) {
