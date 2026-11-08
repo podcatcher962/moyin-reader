@@ -5,19 +5,19 @@
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>墨吟 MoYin Reader · 全离线中文 EPUB/TXT 阅读器与听书</title>
-<meta name="description" content="墨吟（MoYin Reader）是一个完全离线、单文件的中文电子书阅读器：174 个离线声线、对白按人物自动换声、翻页/滚动双模式、宽屏双栏、繁简一键转换、划线批注与笔记导出。Windows / 安卓 / 网页 / 信创 Linux / macOS 全平台，MIT 开源免费，数据只留在本机。">
+<meta name="description" content="墨吟（MoYin Reader）是一个完全离线、单文件的中文电子书阅读器：187 个离线声线、对白按人物自动换声、翻页/滚动双模式、宽屏双栏、繁简一键转换、划线批注与笔记导出。Windows / 安卓 / 网页 / 信创 Linux / macOS 全平台，MIT 开源免费，数据只留在本机。">
 <meta name="keywords" content="墨吟,MoYin Reader,moyin reader,阅读器,电子书,EPUB,TXT,听书,离线阅读器,TTS,分角色朗读,繁简转换,开源阅读器,信创,统信,麒麟">
 <meta name="author" content="永远的兰兰">
 <meta name="robots" content="index,follow">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="墨吟 MoYin Reader">
 <meta property="og:title" content="墨吟 MoYin Reader · 全离线中文 EPUB/TXT 阅读器与听书">
-<meta property="og:description" content="174 个离线声线，对白按人物自动换声；翻页双栏、繁简转换、划线批注；Windows / 安卓 / 网页 / 信创 Linux / macOS，MIT 开源免费。">
+<meta property="og:description" content="187 个离线声线，对白按人物自动换声；翻页双栏、繁简转换、划线批注；Windows / 安卓 / 网页 / 信创 Linux / macOS，MIT 开源免费。">
 <meta property="og:url" content="https://podcatcher962.github.io/moyin-reader/">
 <meta property="og:image" content="https://podcatcher962.github.io/moyin-reader/screenshots/read-paged-dark.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="墨吟 MoYin Reader · 全离线中文阅读器">
-<meta name="twitter:description" content="174 个离线声线 + 分角色朗读，全离线、单文件、全平台。">
+<meta name="twitter:description" content="187 个离线声线 + 分角色朗读，全离线、单文件、全平台。">
 <style>
 :root{
   --bg:#1B1C1F; --card:#24262A; --card2:#2C2F34; --line:#3A3D43;
@@ -469,7 +469,7 @@ html[data-mode="page"] #page{padding:14px min(var(--padx),16px)}
   <!-- ============ 书架 ============ -->
   <section id="viewLib" class="view on">
     <div id="webTip" hidden>
-      <span data-i18n-html="这是<b>网页在线版</b>：朗读使用浏览器自带语音（一般只有 1–3 个老式音色）。想要 174 个离线中文声线，手机上装安卓版、电脑上装 Windows 版即可。">这是<b>网页在线版</b>：朗读使用浏览器自带语音（一般只有 1–3 个老式音色）。想要 174 个离线中文声线，手机上装安卓版、电脑上装 Windows 版即可。</span>
+      <span data-i18n-html="这是<b>网页在线版</b>：朗读使用浏览器自带语音（一般只有 1–3 个老式音色）。想要 187 个离线中文声线，手机上装安卓版、电脑上装 Windows 版即可。">这是<b>网页在线版</b>：朗读使用浏览器自带语音（一般只有 1–3 个老式音色）。想要 187 个离线中文声线，手机上装安卓版、电脑上装 Windows 版即可。</span>
       <a href="download/MoYinReader.apk" data-i18n="下载安卓版">下载安卓版</a>
       <a href="https://github.com/podcatcher962/moyin-reader/releases/latest" target="_blank" rel="noopener" data-i18n="Windows 版">Windows 版</a>
       <button id="webTipX" title="不再提示">×</button>
@@ -1009,7 +1009,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     '稍等一下再点朗读就行，先看字也不耽误。': 'Give it a moment and tap Read aloud again; reading the page meanwhile is fine.',
     '语音引擎没能启动': 'The speech engine did not start',
     '这一次神经语音没加载起来，可以把下面这行发给作者；也可以先用手机系统自带的中文语音顶上。': 'The neural voice failed to load this time. Send the line below to the author, or fall back to the phone system voice for now.',
-    '装安卓版就可以了：174 个离线神经声线随包带走，断网也能听，是手机浏览器给不了的效果。': 'Install the Android build: all 174 offline neural voices travel inside the package and work with no network — something a mobile browser simply cannot do.',
+    '装安卓版就可以了：187 个离线神经声线随包带走，断网也能听，是手机浏览器给不了的效果。': 'Install the Android build: all 187 offline neural voices travel inside the package and work with no network — something a mobile browser simply cannot do.',
 
     /* ---------- 设置：朗读 ---------- */
     '朗读': 'Reading aloud',
@@ -1063,8 +1063,8 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     '，点「试听音色」听听看': ' — tap “Preview voice” to listen',
 
     /* ---------- 设置页说明段落 ---------- */
-    '本机跑 sherpa-onnx + 开源中文模型（AISHELL3 多说话人 VITS）：接近真人的中文语调，不收费、不联网、不用账号、不用 Key。语音库已随成品装好，听书前双击「VoicePack/启动语音引擎.cmd」即可。':
-      'Runs sherpa-onnx plus an open-source Chinese model (AISHELL3 multi-speaker VITS) on this machine: near-human intonation, no fees, no network, no account, no API key. The voice library ships with the app — double-click “VoicePack/启动语音引擎.cmd” before listening.',
+    '本机跑 sherpa-onnx + 三套开源中文模型（小雅 / 超文为 22.05 kHz 男女主角，fanchen-C 为 16 kHz、187 人的配角库）：接近真人的中文语调，不收费、不联网、不用账号、不用 Key。语音库已随成品装好，听书前双击「VoicePack/启动语音引擎.cmd」即可。':
+      'Runs sherpa-onnx plus three open-source Chinese models (XiaoYa / ChaoWen at 22.05 kHz for the two leads, FanChen-C at 16 kHz with 187 supporting voices) on this machine: near-human intonation, no fees, no network, no account, no API key. The voice library ships with the app — double-click “VoicePack/启动语音引擎.cmd” before listening.',
     '开启后，旁白用你选的声线，引号里的对白按人物自动换声——「张三说」和「李四道」是两个不同的声音，同一个人物整本书都是同一个声音。认不出人名时按出场顺序轮换，不会和旁白混成一个声音。只在「免费神经语音」下生效；系统语音不支持分角色。':
       'When on, narration keeps your chosen voice while quoted dialogue switches per character — “Zhang said” and “Li replied” sound different, and each character keeps the same voice for the whole book. Unrecognised speakers rotate in order of appearance, so dialogue never collapses into the narration voice. Works only with the free neural voices; system voices cannot do this.',
     '朗读文字只发给本机的 127.0.0.1 合成，不产生对外网络请求；引擎没启动时自动用系统语音，不影响看书。':
@@ -1599,14 +1599,14 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<h3>Reading aloud</h3>' +
       '<p><b>Read aloud</b> starts from the paragraph at the top of the screen. The bar lets you change voice, speed, skip paragraphs and set a sleep timer; the current paragraph is highlighted and scrolls into view, and the next chapter continues automatically.</p>' +
       '<p><b>Resume listening</b>: listening position is remembered separately from reading position. Back on the shelf, the card shows “▶ Resume · ch. N” — tap it to continue from the exact paragraph. Switching voices mid-sentence restarts the current paragraph with the new voice.</p>' +
-      '<p>Reading works out of the box with system voices. For near-human Chinese, see <b>Settings → Free neural voices</b>: an open-source engine and model ship with the app (174 Chinese speakers), completely offline, free, no account. Otherwise the voice list is grouped as natural / online / local and picks the best available.</p>' +
+      '<p>Reading works out of the box with system voices. For near-human Chinese, see <b>Settings → Free neural voices</b>: an open-source engine and model ship with the app (187 Chinese speakers), completely offline, free, no account. Otherwise the voice list is grouped as natural / online / local and picks the best available.</p>' +
       '<h3>Backup</h3><p><b>Back up</b> writes progress, bookmarks, highlights, notes and settings to a JSON file; tick “include book files” to carry the books themselves. Restore on another device with <b>Restore</b>.</p>',
 
     voice: '<h3>Why voices can sound robotic</h3>' +
       '<p class="kv">Want natural Chinese quickly? See <b>Settings → Free neural voices</b>: install the open-source voice library once and it works offline forever, free of charge.</p>' +
       '<p>Browser speech uses the operating system engine. The built-in Windows voices (Huihui / Kangkang / Yaoyao) are old concatenative synthesis — flat pitch, hard pauses, robot-like. Voices named <code>Online (Natural)</code> are neural: they handle intonation, stress and sentence-final falls, and sound close to a human.</p>' +
       '<h3>Three options</h3><ul>' +
-      '<li><b>⭐ Free offline neural voices (recommended)</b>: sherpa-onnx plus the open-source AISHELL3 multi-speaker VITS model, running on your own CPU. Near-human intonation, <b>no network, no fees, no account, no API key</b>. The model holds 174 Chinese speakers (148 female + 26 male); 11 curated voices are listed by default and role-based reading is supported. Double-click the launcher before listening.</li>' +
+      '<li><b>⭐ Free offline neural voices (recommended)</b>: sherpa-onnx plus three open-source Chinese VITS models — XiaoYa and ChaoWen at 22.05 kHz for the two leads, FanChen-C at 16 kHz for the supporting cast — running on your own CPU. Near-human intonation, <b>no network, no fees, no account, no API key</b>. The supporting library holds 187 Chinese speakers (39 male + 148 female); 21 curated voices are listed by default and role-based reading is supported. Double-click the launcher before listening.</li>' +
       '<li><b>⭐ Natural voices</b>: names containing <code>Natural</code> / <code>Neural</code>, provided by Microsoft Edge. Good quality but <b>needs a connection</b>, and the service is often unreachable from mainland China.</li>' +
       '<li><b>Local voices</b>: fully offline and instant, but clearly mechanical. Use as a fallback.</li></ul>' +
       '<p>The voice list is grouped accordingly and the badge next to it shows “● Free neural voices” or “● Local voice (robotic)”. <b>Preview</b> compares voices without touching your reading position.</p>' +
@@ -1627,15 +1627,15 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<li>Or stop fighting the network and use <b>Free neural voices</b>, which work offline forever.</li></ul>',
 
     local: '<h3>What this is</h3>' +
-      '<p>A <b>completely free, completely offline</b> Chinese neural speech option: the open-source <code>sherpa-onnx</code> engine (Apache-2.0) plus the open-source Chinese multi-speaker VITS model <code>AISHELL3</code>. Intonation, pauses and stress are close to a human — a different league from the built-in Windows voices.</p>' +
+      '<p>A <b>completely free, completely offline</b> Chinese neural speech option: the open-source <code>sherpa-onnx</code> engine (Apache-2.0) plus three open-source Chinese VITS models, <code>XiaoYa</code>, <code>ChaoWen</code> and <code>FanChen-C</code>. Intonation, pauses and stress are close to a human — a different league from the built-in Windows voices.</p>' +
       '<p>Synthesis runs <b>on your own computer</b>: no sign-up, no API key, no network, no per-character billing, not one byte of the book is sent anywhere.</p>' +
       '<h3>Two steps to listen</h3><ol>' +
       '<li>Open the bundled <code>VoicePack</code> folder and double-click <code>启动语音引擎.cmd</code> (the launcher). It starts a small local service and opens the reader in Edge. <b>Nothing to download, install or fill in.</b> The English-named <code>START.cmd</code> in the same folder runs the same script.</li>' +
       '<li>When the badge in the reading bar turns green — “● Free neural voices” — it is connected. Hit <b>Preview voice</b> to confirm sound. Closing that window stops the service and the app falls back to system voices; reading is unaffected.</li></ol>' +
       '<p class="kv">Moving to another computer: copy the whole <code>VoicePack</code> folder (engine and model already inside, about 53 MB). If you only copy the scripts, run <code>安装语音包.cmd</code> on the new machine to download the same files (about 53 MB, from a China-friendly mirror, chunked and parallel). The Windows voice library cannot be reused on other systems. <b>The full Windows EXE has the library appended inside the executable</b>: copy that single file (about 47 MB) and you can listen immediately; it unpacks to the local cache on first run.</p>' +
-      '<h3>Built-in voices · 174 Chinese speakers (148 female + 26 male)</h3>' +
-      '<p>One model contains 174 different Chinese speakers. The dropdown lists the <b>11 hand-picked, named</b> voices by default; to hear more, open <b>Settings → Free neural voices → Voice range</b> and choose “All 174”. The list is then sorted into seven pitch bands (low / mid / bright male; low / mid / clear / high female). Use <b>Preview voice</b> to compare, or switch directly from the dropdown at the left of the reading bar — while reading, the current paragraph restarts with the new voice. Everything is offline neural speech and real-time on an ordinary CPU.</p>' +
-      '<p><b>Why 174 voices cost no space</b>: they all come from the same 29 MB AISHELL3 multi-speaker model — switching only changes a <code>--sid</code> index. The official model ships numbers without nicknames; the “low / clear / bright” labels come from each speaker’s measured median pitch (F0) and exist only to help you tell them apart. <b>Preview and pick the one you like.</b></p>' +
+      '<h3>Built-in voices · 187 Chinese speakers (39 male + 148 female)</h3>' +
+      '<p>One supporting model contains 187 different Chinese speakers. The dropdown lists the <b>21 hand-picked, named</b> voices by default; to hear more, open <b>Settings → Free neural voices → Voice range</b> and choose “All 187”. The list is then sorted into seven pitch bands (low / mid / bright male; low / mid / clear / high female). Use <b>Preview voice</b> to compare, or switch directly from the dropdown at the left of the reading bar — while reading, the current paragraph restarts with the new voice. Everything is offline neural speech and real-time on an ordinary CPU.</p>' +
+      '<p><b>Why 187 supporting voices cost no space</b>: they all come from the same 38 MB FanChen-C multi-speaker model — switching only changes a <code>--sid</code> index. The official model ships numbers without nicknames; the “low / clear / bright” labels come from each speaker’s measured median pitch (F0) and exist only to help you tell them apart. <b>Preview and pick the one you like.</b></p>' +
       '<p class="kv">For long novels the default “Voice 12” (warm, slightly low) is a good start; try “Voice 160” or “Voice 150” for something brighter, “Voice 110” for a male voice. Synthesis is fast (about one second for a 4–7 second sentence). Only installed voices are listed; missing files are hidden automatically.</p>' +
       '<h3>Role-based reading (a different voice per character)</h3>' +
       '<p>Turn on <b>Multi-voice</b> in the reading bar, or in <b>Settings → Multi-voice dialogue</b>: <b>narration keeps your chosen voice, while quoted dialogue switches per character</b>. Each character keeps the same voice for the whole book, and different characters never collide; when a name cannot be recognised, voices rotate in order of appearance so dialogue never merges into the narration.</p>' +
@@ -1650,7 +1650,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<li>Missing model: run <code>安装语音包.cmd</code> again and wait for it to finish.</li>' +
       '<li>A 1–2 second delay on the first sentence is the model loading; later sentences are much faster. On older machines, reduce the pause between sentences.</li>' +
       '<li>Any failure falls back to system voices automatically — nothing hangs, no progress is lost.</li></ul>' +
-      '<h3>License</h3><p><code>sherpa-onnx</code> (Apache-2.0) and the <code>AISHELL3</code> Chinese multi-speaker VITS model are open-source projects used under their own licenses. They are bundled only to be called locally; this reader does not modify them, install system components or redistribute them over the network.</p>',
+      '<h3>License</h3><p><code>sherpa-onnx</code> (Apache-2.0) and the three Chinese VITS models <code>XiaoYa</code>, <code>ChaoWen</code> and <code>FanChen-C</code> are open-source projects used under their own licenses. They are bundled only to be called locally; this reader does not modify them, install system components or redistribute them over the network.</p>',
 
     faq: '<h3>Reading sounds robotic?</h3><p>Use the free offline voice library that ships with the app: double-click <code>VoicePack/启动语音引擎.cmd</code> — nothing to download, fully offline, free, no account. See <b>Free neural voices</b>. You can also open the file in Microsoft Edge and pick a voice from the “⭐ Natural voices” group.</p>' +
       '<h3>Does it cost money? Do I need an account?</h3><p>No and no. The reader, the offline engine and the Chinese model are all free and open source — no account, no key, no metering, and no text is uploaded. Only the Windows / Edge online voices are a Microsoft service: free of charge, but often unreachable in mainland China.</p>' +
@@ -1660,7 +1660,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<h3>Cleared browser data and lost my books?</h3><p>Data lives in IndexedDB; clearing site data deletes it. <b>Back up</b> first, and keep the original files.</p>' +
       '<h3>How do I move to another computer or phone?</h3><p>Export a backup JSON (tick “include book files”), copy it together with this HTML file, then use <b>Restore</b> on the new device. Or just copy the HTML and re-import the books. The offline voice library is Windows-only: copy the <code>VoicePack</code> folder as well.</p>' +
       '<h3>What is “Resume” on the shelf?</h3><p>Listening position is remembered separately from reading position, so the two never interfere. After listening, the book card shows “▶ Resume · ch. N”; tap it to continue from the exact paragraph. To read from your reading position instead, open the book and tap <b>Read aloud</b>. The button only appears for books you have listened to.</p>' +
-      '<h3>Can I change voice halfway through?</h3><p>Use the dropdown at the left of the reading bar — 11 curated voices by default, up to all 174 in Settings. To give dialogue its own voices, tap <b>Multi-voice</b>. The current paragraph is re-read with the new voice; no need to stop or go back to the shelf. <b>Preview voice</b> in Settings lets you compare first.</p>' +
+      '<h3>Can I change voice halfway through?</h3><p>Use the dropdown at the left of the reading bar — 21 curated voices by default, up to all 187 in Settings. To give dialogue its own voices, tap <b>Multi-voice</b>. The current paragraph is re-read with the new voice; no need to stop or go back to the shelf. <b>Preview voice</b> in Settings lets you compare first.</p>' +
       '<h3>How do highlights and notes work?</h3><p>Select text in the page, then choose a colour, add a note, copy, or make a share card. All highlights are listed under <b>Notes</b> in the side panel and stored with the book — they travel with a full backup. Export them as Markdown from that panel; the <b>Reading summary</b> collects them chapter by chapter.</p>' +
       '<h3>Buttons cramped on a phone?</h3><p>They reflow into a multi-row grid by screen width; nothing to switch by hand. Body text is always one column on a phone, even in landscape.</p>' +
       '<h3>How do I get two columns?</h3><p>Tap <b>Type</b> in the reader and look at <b>Reading mode</b>: switch to <b>Pages</b>, and Columns set to <b>Auto</b> gives you two columns on a wide window; <b>Two</b> forces it when the window is wide enough. Narrow windows and phones fall back to a single column rather than squeezing the text.<br>Paged mode turns whole screens, not pixels: tap the left or right edge, use the wheel, space or ← →, or swipe on a phone.</p>' +
@@ -1674,7 +1674,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p class="kv">The full English text ships as the <code>LICENSE</code> file (standard MIT) and is also kept at the repository root — please keep it when redistributing.</p>' +
       '<h3>Third-party components</h3><ul>' +
       '<li><code>sherpa-onnx</code> speech engine — Apache-2.0, by the k2-fsa community; called as a local process only.</li>' +
-      '<li><code>AISHELL3</code> Chinese multi-speaker VITS model — trained on the open AISHELL-3 corpus, used under its publisher’s Apache-2.0 terms.</li>' +
+      '<li><code>XiaoYa</code>, <code>ChaoWen</code> and <code>FanChen-C</code> Chinese VITS models — from the sherpa-onnx model zoo, used under their publishers’ Apache-2.0 terms.</li>' +
       '<li><code>pywebview</code> + <code>pythonnet</code> — BSD-3-Clause / MIT; used only by the Windows desktop shell to host the built-in page.</li>' +
       '<li><code>PyInstaller</code> — GPL-2.0 with the bootloader exception; used only to build the single-file exe and does not affect this project’s MIT licensing.</li>' +
       '<li>Microsoft Edge WebView2 runtime — distributed by Microsoft with the OS; not bundled or modified here, only the installed version is used.</li></ul>' +
@@ -1686,7 +1686,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
 
     disclaimer: '<p>This tool is for reading e-books you lawfully own. It provides, fetches and cracks no copyrighted content and circumvents no digital rights management (DRM). You are responsible for ensuring you have the right to use any file you import, and for any copyright dispute arising from that use.</p>' +
       '<p>Imported books, bookmarks, highlights, notes and progress are stored in this device’s browser database and are never uploaded; neither the author nor this page can access your files. <b>One exception</b>: if you deliberately choose an online voice whose name contains <code>Online (Natural)</code>, the browser sends the text being spoken to that speech service for synthesis. That is the browser speech engine’s behaviour and unrelated to how this tool stores books. Keep your original files and backups safe; the author is not liable for data loss caused by clearing browser data, device failure or file corruption.</p>' +
-      '<p>The <code>sherpa-onnx</code> engine and the AISHELL3 Chinese multi-speaker model used by <b>Free neural voices</b> are third-party open-source software, downloaded and run at your own discretion under their own licenses. This tool only calls them locally; it does not distribute, modify or warrant them. Their services listen on 127.0.0.1 only and expose nothing to the network; use them on a network you trust.</p>' +
+      '<p>The <code>sherpa-onnx</code> engine and the XiaoYa / ChaoWen / FanChen-C Chinese VITS models used by <b>Free neural voices</b> are third-party open-source software, downloaded and run at your own discretion under their own licenses. This tool only calls them locally; it does not distribute, modify or warrant them. Their services listen on 127.0.0.1 only and expose nothing to the network; use them on a network you trust.</p>' +
       '<p>Speech depends on engines provided by the operating system or browser. Voices, availability and phrasing vary by device and are not guaranteed to match a human reading. Do not listen while driving or operating machinery.</p>' +
       '<p>The software is provided “as is”, without any express or implied warranty. To the maximum extent permitted by law, the author is not liable for any direct or indirect loss (including data loss, device damage, or loss of time or income) arising from use of or inability to use this software.</p>' +
       '<p>The name “MoYin / 墨吟”, its interface and documentation are copyright the author. Other product, company and speech-service names mentioned here may be trademarks of their owners and are used for identification only, implying no affiliation, sponsorship or endorsement.</p>' +
@@ -1696,7 +1696,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p>A single-file, offline-first TXT / EPUB reader with text-to-speech. Double-click the HTML and read; works in any modern browser on Windows, Linux, Android and iOS.</p>' +
       '<p>The Chinese name “墨吟” (“ink, and reading aloud”) and the English name are used by this project only. They are <b>not affiliated with</b> any company, voice platform or streamer of a similar name, and imply no commercial endorsement.</p>' +
       '<p>The shelf + reader layout and the speech scheduling were informed by Koodo Reader on this machine, with all code rewritten from zero and no dependencies: EPUB unzipping, OPF / NCX / Nav contents, body and illustration parsing are all built in, with no external scripts or CDN.</p>' +
-      '<p class="kv">Speech can use the free open-source offline neural voices (sherpa-onnx + AISHELL3 multi-speaker VITS): no network, no fees, no account. The model contains 174 Chinese speakers (148 female + 26 male), 11 curated by default, and supports role-based reading. The library ships in <code>VoicePack</code>; the full Windows EXE has it appended inside, so one file is enough.</p>' +
+      '<p class="kv">Speech can use the free open-source offline neural voices (sherpa-onnx + XiaoYa / ChaoWen / FanChen-C VITS): no network, no fees, no account. The supporting library contains 187 Chinese speakers (39 male + 148 female), 21 curated by default, and supports role-based reading. The library ships in <code>VoicePack</code>; the full Windows EXE has it appended inside, so one file is enough.</p>' +
       '<p>Released under the <b>MIT License</b>: use, modify and redistribute freely, including commercially, keeping the copyright and license notice. Full terms under <b>Open source &amp; license</b>.</p>' +
       '<h3>What changed in 1.10.2</h3><ul>' +
       '<li><b>Traditional to Simplified</b>: Settings has a Chinese switch — Original or Simplified. Turn it on for books from Taiwan or old texts; body and contents both convert, and <b>the file itself is never touched</b> — switch back to restore. Built on OpenCC\'s table (2965 one-to-one characters) and a same-length substitution, so highlights, notes and speech positions never drift.</li>' +
@@ -1720,7 +1720,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<h3>What changed in 1.9.5</h3><ul>' +
       '<li><b>Five typefaces became ten</b>: Song, YaHei, Hei, Kai, FangSong, ZhongSong, LiSu, YouYuan, DengXian and Mono. Each button is rendered in its own typeface, so you can compare before choosing.</li>' +
       '<li><b>Richer colours</b>: eight ink swatches (ink black, smoke, deep brown, ochre, navy, ink green, dark red, plum) and eight paper swatches (paper white, cream, parchment, bean green, pale blue, lotus, warm grey, slate). One click applies it; custom pickers remain. Picking a dark paper switches the ink to a light tone automatically.</li>' +
-      '<li><b>Many characters, many voices</b>: the role pool used to be the 11 curated voices, so a big cast started sharing. When characters outnumber the voices on hand it now expands to all 174 — 20 characters got 19 distinct voices in testing. Settings shows how many characters and voices this book is using.</li></ul>' +
+      '<li><b>Many characters, many voices</b>: the role pool used to be the 11 curated voices, so a big cast started sharing. When characters outnumber the voices on hand it now expands to all 187 — 20 characters got 19 distinct voices in testing. Settings shows how many characters and voices this book is using.</li></ul>' +
       '<h3>What changed in 1.9.4</h3><ul>' +
       '<li><b>Font size, line height, typeface and colours are in Settings</b>: they used to live only in the Type panel, with just a link left in Settings. The first screen of Settings now has size A−/A+ plus a slider, a line-height slider, five typefaces (Song / Hei / Kai / FangSong / Mono), two colour pickers for text and paper with a "Use theme" reset, and the six themes. The finer controls (paragraph gap, letter spacing, indent, columns, page animation, measure, brightness, auto-read) stay in the Type panel.</li>' +
       '<li><b>Role-based reading is on by default and actually recognises speakers</b>: previously only "Zhang San said:" style lines were detected — "he looked at me and said:", "I said:", "he suddenly asked me:" were all treated as narration, so the whole passage came out in one voice and the feature looked broken. Those subject patterns are now recognised, and "I said to Yu Houzi" no longer picks the listener as the speaker. Role-based reading is on by default and takes effect when the neural engine is connected; without it the UI says so plainly.</li></ul>' +
@@ -1772,7 +1772,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.13.0';
+  var VER = '1.14.0';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -3909,23 +3909,36 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible' && SPK.playing) wakeKeep(true);
   });
-  /* 免费离线神经语音：本机 sherpa-onnx + 一份 AISHELL3 中文多说话人 VITS 模型。
-     模型内含 174 个说话人，靠 --sid 切换，所以放开到 174 个音色也不增加体积。
+  /* 免费离线神经语音：本机 sherpa-onnx + 三套中文模型。
+     主角各一份单说话人模型（小雅女声、超文男声，均 22.05 kHz），
+     配角库是 187 个说话人的多说话人模型（16 kHz），靠 --sid 切换，
+     所以放开到 187 个音色也不增加体积。
      每项：[音色 key, 显示名, 音高分档]；服务在线时用 /health 返回的全量表，
-     服务没起来时用下面这份精选 11 个兜底（缺文件的音色会自动隐藏）。 */
+     服务没起来时用下面这份精选 23 个兜底（缺文件的音色会自动隐藏）。 */
   var LOCAL_VOICES = [
-    ['x0',   '墨吟 · 中文女声',  '女声 · 清亮'],
-    ['s12',  '声线 12 · 温润',   '女声 · 清亮'],
-    ['s35',  '声线 35 · 柔和',   '女声 · 中音'],
-    ['s140', '声线 140 · 舒展',  '女声 · 偏沉'],
-    ['s160', '声线 160 · 清亮',  '女声 · 清亮'],
-    ['s170', '声线 170 · 明快',  '女声 · 清亮'],
-    ['s20',  '声线 20 · 爽朗',   '女声 · 清亮'],
-    ['s3',   '声线 03 · 甜美',   '女声 · 清亮'],
-    ['s9',   '声线 09 · 清脆',   '女声 · 清亮'],
-    ['s6',   '声线 06 · 沉静',   '女声 · 清亮'],
-    ['s150', '声线 150 · 明亮',  '女声 · 清亮'],
-    ['s110', '声线 110 · 沉稳男声', '男声 · 中音']
+    ['x0',   '墨吟 · 女声',      '女声 · 清亮'],
+    ['c0',   '墨吟 · 男声',      '男声 · 中音'],
+    ['s124', '老生 · 低沉 1',    '男声 · 低沉'],
+    ['s74',  '老生 · 低沉 2',    '男声 · 低沉'],
+    ['s58',  '中年男 1',         '男声 · 中年'],
+    ['s156', '中年男 2',         '男声 · 中年'],
+    ['s167', '中年男 3',         '男声 · 中年'],
+    ['s52',  '青年男 1',         '男声 · 偏高'],
+    ['s110', '青年男 2',         '男声 · 偏高'],
+    ['s102', '青年男 3',         '男声 · 偏高'],
+    ['s32',  '青年男 4',         '男声 · 偏高'],
+    ['s36',  '沉稳女 1',         '女声 · 低音'],
+    ['s169', '沉稳女 2',         '女声 · 低音'],
+    ['s13',  '成年女 1',         '女声 · 成年'],
+    ['s149', '成年女 2',         '女声 · 成年'],
+    ['s106', '成年女 3',         '女声 · 成年'],
+    ['s19',  '成年女 4',         '女声 · 成年'],
+    ['s165', '成年女 5',         '女声 · 成年'],
+    ['s129', '青年女 1',         '女声 · 青年'],
+    ['s120', '青年女 2',         '女声 · 青年'],
+    ['s20',  '青年女 3',         '女声 · 青年'],
+    ['s41',  '童声 1',           '童声 · 高音'],
+    ['s105', '童声 2',           '童声 · 高音']
   ];
   /* 用 /health 的结果构造全量列表：精选排最前，其余按基频从低到高，
      正好自然落进「男低 → 男中 → 男亮 → 女沉 → 女中 → 女清亮 → 女高」7 个档。 */
@@ -3943,7 +3956,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     if (!x) return k;
     return (/号$/.test(x[1]) && x[2]) ? x[1] + '（' + x[2] + '）' : x[1];
   }
-  /* 精选 / 全部：精选只列人工命名过的 11 个；全部则按音高分 7 组列出 174 个 */
+  /* 精选 / 全部：精选只列人工命名过的 21 个；全部则按音高分 7 组列出 187 个 */
   function localVoiceList() {
     var av = (LOCAL.info && LOCAL.info.voices) || null;
     var all = LOCAL.list || LOCAL_VOICES;
@@ -4287,7 +4300,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       : (on ? T('在线合成，需联网。点击看说明') : T('系统本地语音，离线可用但音质较机械。点击看说明'));
   }
   /* 朗读条只放精选声线 + 当前选中的那个（真正在用的必须在条上可见），
-     其余声线进设置页挑，避免条上下拉长到 174 项 */
+     其余声线进设置页挑，避免条上下拉长到 187 项 */
   function localBarList() {
     var all = localVoiceList();
     if (CFG.voiceSet !== 'all') return all;
@@ -4399,8 +4412,9 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   var NAME_STOP = /^(?:他|她|它|我|你|大家|众人|两人|二人|一人|有人|对方|那人|这人|此时|这时|于是|接着|然后|突然|忽然|连忙|急忙|赶紧|立刻|随后|最后|终于|不禁|忍不住|一面|一边|这话|说完|说完话|听了|闻言|见状|心想|心中|心里)$/;
   var FEMALE_HINT = /女|妈|姐妹|奶|婆|姑|姨|嫂|婶|娘|妇|太太|夫人|姑娘|小姐|丫头/;
   var MALE_HINT = /男|爸|哥|弟|爷|叔|伯|舅|兄|先生|老爷|少爷|公子|老头|汉子|他/;
-  /* 对白音色池里额外补的男声：精选 11 个里只有 1 个男声，对话需要更多男声 */
-  var EXTRA_MALE = ['s72', 's124', 's69', 's58', 's21', 's52'];
+  /* 对白音色池里额外补的男声：精选里男声够用，这里再留几个低沉男声备选 */
+  /* 精选之外再补的几个低沉男声：角色多的时候男声不至于不够用 */
+  var EXTRA_MALE = ['s100', 's119', 's40', 's163', 's98', 's175'];
 
   function speakerOf(full, at, after) {
     var pre = full.slice(Math.max(0, at - 26), at).replace(/[\s\n]+/g, '');
@@ -4459,7 +4473,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     if (MALE_HINT.test(who)) return 'm';
     return '';
   }
-  /* 候选声线：精选 11 个 + 补充男声；按「男女混合 / 全女声 / 全男声」过滤 */
+  /* 候选声线：精选 21 个 + 补充男声；按「男女混合 / 全女声 / 全男声」过滤 */
   function rolePool(gender) {
     var all = LOCAL.list || LOCAL_VOICES, band = {};
     all.forEach(function (x) { band[x[0]] = x[2] || ''; });
@@ -4613,8 +4627,8 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   function voiceStat() {
     var all = LOCAL.list || LOCAL_VOICES;
     var cur = (LOCAL.info && LOCAL.info.curated) || [];
-    // x0 是高采样率的默认女声，单独一份模型，不算在 AISHELL3 那 174 个说话人里
-    var lib = all.filter(function (x) { return x[0] !== 'x0'; });
+    // x0 / c0 是主角专用的单说话人模型（22.05 kHz），不算在 187 个配角说话人里
+    var lib = all.filter(function (x) { return x[0] !== 'x0' && x[0] !== 'c0'; });
     var male = lib.filter(function (x) { return String(x[2] || '').indexOf('男声') === 0; }).length;
     return { total: all.length, lib: lib.length,
              female: lib.length - male, male: male,
@@ -4720,7 +4734,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       body = '<p>' + (e.inApp
         ? T('你现在是在微信 / QQ 的内置浏览器里打开，它既不允许下载，也不提供系统朗读。')
         : T('手机浏览器没有系统朗读接口，网页版没法直接念书。')) + '</p>' +
-        '<p>' + T('装安卓版就可以了：174 个离线神经声线随包带走，断网也能听，是手机浏览器给不了的效果。') + '</p>' +
+        '<p>' + T('装安卓版就可以了：187 个离线神经声线随包带走，断网也能听，是手机浏览器给不了的效果。') + '</p>' +
         '<p class="kv" style="word-break:break-all">' + esc(APK_URL) + '</p>' +
         (e.inApp ? '<p>' + T('在微信里请点右上角「…」→「在浏览器打开」，再下载。') + '</p>' : '');
       btns = [
@@ -4898,13 +4912,13 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p><b>网络位置</b>（桌面版）：书架上的「网络位置」可以填局域网共享路径，比如 <code>\\\\192.168.1.10\\Books</code>、映射到网络的盘符 <code>Z:\\书</code>，或本机任意绝对路径。走的是系统自己的网络访问，账号密码由 Windows 记着——只要在资源管理器里能打开，这里就能直接扫、直接读，不用先把书拷过来。手机上不显示这个按钮。</p>' +
       '<h3>朗读</h3><p>点「朗读」从当前屏幕位置开始念。底部条可选语音、语速、上一段 / 下一段、定时停止；正在念的段落会高亮并自动跟随滚动，念完一章自动接下一章。</p>' +
       '<p><b>续听</b>：听到哪会单独记住（与「读到哪」分开记，互不干扰）。回到书架，书本卡片下方会出现「▶ 续听 · 第 N 章」，点一下就从上次听的那一段接着念；想按看书的位置念，点开书再点「朗读」即可。朗读条最左边的下拉可随时换声线，正在念时会用新声线把当前这段重念一遍。</p>' +
-      '<p>不装任何东西也能直接朗读（用系统自带语音）。想要接近真人的中文，可看「阅读设置 → 免费神经语音」：随成品附带的开源语音库已经装好（桌面约 82 MB：默认 22 kHz 女声 60 MB ＋ 174 个中文说话人的音色库 14 MB），之后<b>永久离线、免费、无需账号</b>。不用它时，语音下拉按「自然语音 / 在线 / 本地」分组，默认优先选最好的那个。</p>' +
+      '<p>不装任何东西也能直接朗读（用系统自带语音）。想要接近真人的中文，可看「阅读设置 → 免费神经语音」：随成品附带的开源语音库已经装好（桌面约 90 MB：22 kHz 女主 18 MB ＋ 22 kHz 男主 18 MB ＋ 187 人配角库 38 MB），之后<b>永久离线、免费、无需账号</b>。不用它时，语音下拉按「自然语音 / 在线 / 本地」分组，默认优先选最好的那个。</p>' +
       '<h3>备份</h3><p>书架底部「导出备份」保存进度、书签、设置；勾选「含书籍文件」可把原书一起带走。换设备时用「导入备份」还原。</p>'],
     voice: ['语音与朗读', '<h3>为什么会觉得「机械」</h3>' +
       '<p class="kv">只想尽快听到自然的中文？看「阅读设置 → 免费神经语音」：一次下载开源语音库，之后完全离线、不花一分钱。</p>' +
       '<p>浏览器朗读用的是系统语音引擎。Windows 自带的「慧慧 / 康康 / 瑶瑶」是老式拼接合成，语调平、断句硬，听起来像机器人；名称里带 <code>Online (Natural)</code> 的是神经网络语音，会自己处理语调、重音与句末降调，接近真人朗读。</p>' +
       '<h3>三条路怎么选</h3><ul>' +
-      '<li><b>⭐ 免费离线神经语音（推荐）</b>：本机跑开源的 sherpa-onnx + 中文神经语音模型，语调接近真人，<b>不联网、不收费、不需要账号、不需要 Key</b>。语音库已随成品装好：默认是 22.05 kHz 的「墨吟 · 中文女声」，另带 174 个中文说话人（148 女 + 26 男），精选 11 个直接可选，还能按人物分角色朗读；听书前双击一下启动器。详见「免费神经语音」。</li>' +
+      '<li><b>⭐ 免费离线神经语音（推荐）</b>：本机跑开源的 sherpa-onnx + 中文神经语音模型，语调接近真人，<b>不联网、不收费、不需要账号、不需要 Key</b>。语音库已随成品装好：默认是 22.05 kHz 的「墨吟 · 女声」，另有一份同规格的「墨吟 · 男声」当男主，再带 187 个配角说话人（148 女 + 39 男），精选 21 个直接可选，还能按人物分角色朗读；听书前双击一下启动器。详见「免费神经语音」。</li>' +
       '<li><b>⭐ 自然语音</b>：名称含 <code>Natural</code> / <code>Neural</code>，由 Microsoft Edge 提供，音质好但<b>需要联网</b>，国内网络常常连不上微软语音服务。</li>' +
       '<li><b>本地语音</b>：完全离线、响应快，但机械感明显。断网或临时凑合时用它。</li></ul>' +
       '<p>语音下拉已按这几类分组，旁边的标签会显示当前是「● 免费神经语音」还是「● 本地语音（较机械）」；点「试听」可直接对比不同声音，不影响阅读进度。</p>' +
@@ -4924,15 +4938,15 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<li>换网络（例如手机热点）或换个时段再试。</li>' +
       '<li>不想折腾网络：直接看「免费神经语音」，一次下载后永久离线可用。</li></ul>'],
     local: ['免费离线神经语音', '<h3>这是什么</h3>' +
-      '<p>一个<b>完全免费、完全离线</b>的中文神经网络语音方案：开源引擎 <code>sherpa-onnx</code>（Apache-2.0）＋ 一份开源中文多说话人 VITS 模型 <code>AISHELL3</code>。语调、停顿、重音接近真人，和 Windows 自带的慧慧 / 康康不是一个量级。</p>' +
+      '<p>一个<b>完全免费、完全离线</b>的中文神经网络语音方案：开源引擎 <code>sherpa-onnx</code>（Apache-2.0）＋ 三份开源中文 VITS 模型：22 kHz 女主「小雅」、22 kHz 男主「超文」、16 kHz 187 人配角库 <code>fanchen-C</code>。语调、停顿、重音接近真人，和 Windows 自带的慧慧 / 康康不是一个量级。</p>' +
       '<p>语音合成在<b>你自己的电脑</b>上完成：不需要注册账号、不需要 API Key、不联网、不按字数收费，书里的文字一个字节都不会发出去。</p>' +
       '<h3>两步开始听（本机已经装好）</h3><ol>' +
       '<li>打开随成品附带的 <code>VoicePack</code> 文件夹，双击 <code>启动语音引擎.cmd</code>。它会开一个小窗口跑本机服务，并自动用 Edge 打开阅读器。<b>不用下载、不用安装、不用填任何东西。</b>（同目录的 <code>START.cmd</code> 是同一个脚本的英文名，随便点哪个都行。）</li>' +
       '<li>阅读器右下角标签变成绿色「● 免费神经语音」即已连上；点「试听音色」确认出声。关掉那个小窗口即停止服务，之后会自动退回系统语音，不影响看书。</li></ol>' +
       '<p class="kv">换一台电脑时：把整个 <code>VoicePack</code> 文件夹拷过去（含已装好的引擎与模型，约 53 MB）即可直接用；若只想拷脚本，在新电脑双击 <code>安装语音包.cmd</code> 重新下载（约 53 MB，走国内加速源，自动分段并发）。Windows 版语音库，拷到别的系统不能直接用。<br><b>Windows 桌面完整版 EXE 已把语音库打包进 exe 内</b>：只拷一个 exe 过去就能听（整个软件约 47 MB），首次启动自动释放到本机缓存，不需要 VoicePack 文件夹。</p>' +
-      '<h3>内置音色 · 1 个高采样率女声 ＋ 174 个中文说话人（148 女 + 26 男）</h3>' +
-      '<p>默认的「墨吟 · 中文女声」是 22.05 kHz 的模型，只有这一个女声，胜在清楚——齿音、气口、句尾收束都在。想换口味或听男声，同一份音色库里还有 174 个不同的中文说话人。下拉默认只列人工挑选命名过的 <b>精选 11 个</b>；想听更多，到「阅读设置 → 免费神经语音 → 声线范围」点「全部 174 个」，下拉会按音高分 7 档列出（男声低沉 / 中音 / 偏亮，女声偏沉 / 中音 / 清亮 / 高音）。点「试听音色」逐个对比，也可以直接在朗读条最左边的下拉里换（正在朗读时会用新音色重念当前这段），语速用朗读条滑块控制。全部是离线神经语音，普通电脑 CPU 就能实时合成。</p>' +
-      '<p><b>为什么 174 个声音却不占体积</b>：它们全部来自同一份 AISHELL3 中文多说话人模型（打包时把权重压成 8 位整数，从 29 MB 降到 14 MB），切换只是换一个 <code>--sid</code> 编号，所以放开到 174 个也是<b>零体积成本</b>。压缩的代价是合成慢一些，换口味够用，日常朗读走默认那个 22 kHz 女声。官方只给编号没有花名，「男声低沉 / 女声清亮」是按每个说话人实测的中位基频（F0）分档的，描述词只便于分辨，<b>建议点「试听音色」挑自己最喜欢的那一个</b>。</p>' +
+      '<h3>内置音色 · 2 个高采样率主角（女 / 男）＋ 187 个配角说话人（148 女 + 39 男）</h3>' +
+      '<p>主角是两份 22.05 kHz 的单说话人模型：「墨吟 · 女声」（小雅）与「墨吟 · 男声」（超文），齿音、气口、句尾收束都在，专门给男女主角用。配角另有 187 个中文说话人（16 kHz），男女各档都有。下拉默认只列人工挑选命名过的 <b>精选 21 个</b>；想听更多，到「阅读设置 → 免费神经语音 → 声线范围」点「全部 187 个」，下拉会按音高分 7 档列出（男声低沉 / 中年 / 偏高，女声低音 / 成年 / 青年 / 高音）。点「试听音色」逐个对比，也可以直接在朗读条最左边的下拉里换（正在朗读时会用新音色重念当前这段），语速用朗读条滑块控制。全部是离线神经语音，普通电脑 CPU 就能实时合成。</p>' +
+      '<p><b>为什么 187 个声音却不占体积</b>：它们全部来自同一份 fanchen-C 中文多说话人模型（打包时把权重压成 8 位整数，从 115 MB 降到 38 MB），切换只是换一个 <code>--sid</code> 编号，所以放开到 187 个也是<b>零体积成本</b>。压缩的代价是合成慢一些（同一句话约慢 10 倍），所以它只当配角用，男女主角和旁白走那两份 22 kHz 模型。官方只给编号没有花名，「男声低沉 / 女声清亮」是按每个说话人实测的中位基频（F0）分档的，描述词只便于分辨，<b>建议点「试听音色」挑自己最喜欢的那一个</b>。</p>' +
       '<p class="kv">长篇小说先试默认的「声线 12」（温润偏低），想换亮一点的试「声线 160」或「声线 150」，要男声试「声线 110」。合成很快（一句 4~7 秒音频约 1 秒生成）。下拉只列出本机已装好的音色，缺模型文件会自动隐藏。</p>' +
       '<h3>分角色朗读（多人对话自动换声）</h3>' +
       '<p>点朗读条上的「多角色」按钮，或到「阅读设置 → 分角色朗读」开启：<b>旁白还是用你选的声线，引号里的对白按人物自动换成不同的声音</b>。同一个人物整本书都是同一个声音，不同人物不会串；认不出人名时按出场顺序轮换，也不会和旁白混成一个声音。</p>' +
@@ -4947,7 +4961,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<li>提示模型缺失：重跑一次 <code>安装语音包.cmd</code>，等它显示下载完成。</li>' +
       '<li>第一次点朗读有 1~2 秒延迟是引擎在加载模型，之后会快很多；老机器可把「句间停顿」调小一点。</li>' +
       '<li>任何失败都会自动切回系统语音，不会卡住，也不会丢阅读进度。</li></ul>' +
-      '<h3>许可</h3><p>引擎 <code>sherpa-onnx</code>（Apache-2.0）与 <code>AISHELL3</code> 中文多说话人 VITS 模型均为开源项目，按各自许可证使用；这些开源文件随成品一起放在 VoicePack 文件夹里，只为方便本机调用，可随时整个删除；本阅读器不修改它们、不写系统组件、不联网分发。</p>'],
+      '<h3>许可</h3><p>引擎 <code>sherpa-onnx</code>（Apache-2.0）与 <code>fanchen-C</code>、<code>xiao_ya</code>、<code>chaowen</code> 三个中文 VITS 模型均为开源项目，按各自许可证使用；这些开源文件随成品一起放在 VoicePack 文件夹里，只为方便本机调用，可随时整个删除；本阅读器不修改它们、不写系统组件、不联网分发。</p>'],
     faq: ['常见问题', '<h3>朗读声音像机器人？</h3><p>直接用随成品装好的免费离线语音包：双击 <code>VoicePack/启动语音引擎.cmd</code> 即可，不用下载任何东西。完全离线、免费、无需账号，详见「免费神经语音」。不想下载也可以用 Microsoft Edge 打开本文件，在语音下拉选「⭐ 自然语音」分组里的晓晓或云扬。</p>' +
       '<h3>要钱吗？要注册吗？</h3><p>都不要。阅读器本身、离线语音引擎与中文模型全部免费开源，没有账号、没有 Key、没有按量计费，也不上传任何文字。只有 Windows / Edge 自带的在线语音是微软的服务，与收费无关但国内常常连不上。</p>' +
       '<h3>TXT 打开是乱码？</h3><p>默认自动识别 UTF-8 / GB18030 / UTF-16。若仍乱码，到「阅读设置 → TXT 编码」手动指定（GB18030 / Big5 / UTF-16LE），再重新打开这本书。</p>' +
@@ -4956,7 +4970,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<h3>清了浏览器缓存，书没了？</h3><p>数据存在浏览器 IndexedDB，清理站点数据会一并删除。重要书籍请先「导出备份」，同时保留原始文件。</p>' +
       '<h3>换电脑 / 手机怎么带过去？</h3><p>导出备份 JSON（勾「含书籍文件」），把 JSON 和这个 HTML 一起拷过去，在新设备点「导入备份」即可。也可只拷 HTML + 原书重新导入。离线语音库是 Windows 版，把 VoicePack 文件夹一起拷过去即可用。</p>' +
       '<h3>书架上的「续听」是什么？</h3><p>听到哪会被单独记住，和「读到哪」互不干扰。听完回到书架，书本卡片下方就有「▶ 续听 · 第 N 章」，点一下从上次听的那一段接着念。想按看书的位置念，点开书再点「朗读」即可。没听过这本书时不会出现这个按钮。</p>' +
-      '<h3>念到一半想换个声音？</h3><p>直接点朗读条最左边的下拉，里面是本机精选 11 个声线；设置里「声线范围」可放开到全部 174 个。想把对话也换成不同声音，点旁边的「多角色」。换完会用新声线把当前这一段重念一遍，不用停也不用回书架。想先试听再决定，去「阅读设置 → 免费神经语音 → 试听音色」。</p>' +
+      '<h3>念到一半想换个声音？</h3><p>直接点朗读条最左边的下拉，里面是本机精选 21 个声线；设置里「声线范围」可放开到全部 187 个。想把对话也换成不同声音，点旁边的「多角色」。换完会用新声线把当前这一段重念一遍，不用停也不用回书架。想先试听再决定，去「阅读设置 → 免费神经语音 → 试听音色」。</p>' +
       '<h3>手机上按钮挤？</h3><p>按钮会按屏幕宽度自动换成多行网格，不用手动切。手机上的正文一律单栏，横屏也不会硬分两栏。</p>' +
       '<h3>怎么弄成两栏？</h3><p>点阅读器顶栏的「排版」→「阅读方式」：切到「翻页」，分栏选「自动分栏」在宽屏上就是左右两栏，选「双栏」可以强制（窗口够宽时）；窗口太窄或手机上会自动退回单栏，不会把字挤成一条。<br>顺带一提，翻页模式翻的是整屏而不是滚动：点屏幕左右两侧、滚轮、空格或 ← → 都能翻，手机可以左右滑。</p>' +
       '<h3>自动阅读怎么用？</h3><p>点顶栏「自动」，滚动模式下会匀速往下滚，翻页模式下按你设的秒数自动翻页；再点一次暂停，暂停时会留一个胶囊提示，可以继续或退出。到本章末尾会自动接下一章。朗读和自动阅读不会同时抢滚动。</p>' +
@@ -4968,7 +4982,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p class="kv">完整英文条款随发行包以 <code>LICENSE</code> 文件提供（MIT，标准全文）。仓库根目录同放一份，转载或二次分发时请一并保留。</p>' +
       '<h3>第三方组件</h3><ul>' +
       '<li><code>sherpa-onnx</code> 语音引擎 —— Apache-2.0，作者 k2-fsa 社区，本项目仅在本机以子进程方式调用。</li>' +
-      '<li><code>AISHELL3</code> 中文多说话人 VITS 模型 —— 由开源语料 AISHELL-3 训练，模型与语料按其发布页的 Apache-2.0 条款使用。</li>' +
+      '<li><code>fanchen-C</code> 中文 187 人 VITS 模型 —— 按其在 HuggingFace 发布页的条款使用；主角用的 <code>xiao_ya</code>、<code>chaowen</code> 为 Piper 中文模型，同按其发布页条款使用。</li>' +
       '<li><code>pywebview</code> + <code>pythonnet</code> —— BSD-3-Clause / MIT，仅 Windows 桌面壳使用，用于把内置页面装进系统窗口。</li>' +
       '<li><code>PyInstaller</code> —— GPL-2.0 附 bootloader 例外条款，只用于把脚本打成单文件 exe，不影响本项目的 MIT 授权。</li>' +
       '<li>Microsoft Edge WebView2 运行时 —— 微软随系统分发的运行环境，本项目不打包、不修改，仅调用系统已安装的版本。</li></ul>' +
@@ -4979,7 +4993,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p>本软件不附带任何书籍内容。把软件连同语音模型一起转发时，请一并保留 <code>LICENSE</code> 与本文档；不要移除界面里的作者署名，也不要暗示原作者为你的修改版背书。</p>'],
     disclaimer: ['免责声明', '<p>本工具仅供个人阅读自己合法持有的电子书使用，不提供、不获取、不破解任何受版权保护的内容，不绕过任何数字版权管理（DRM）。使用者需自行确保对所导入文件拥有合法使用权，因使用本工具产生的版权纠纷由使用者自行承担。</p>' +
       '<p>导入的书籍、书签与阅读进度全部保存在本机浏览器数据库中，不会上传到任何服务器；作者与本页面均无法访问你的文件内容。<b>唯一例外</b>：当用户主动选择名称含 <code>Online (Natural)</code> 的在线语音时，浏览器会把当前朗读的文字发送给其语音服务进行合成，该行为由浏览器语音引擎发起，与本工具的书籍存储无关。请自行做好原始文件与备份的保管，因浏览器清理、设备故障、文件损坏造成的数据丢失，本工具不承担责任。</p>' +
-      '<p>「免费神经语音」用到的 sherpa-onnx 引擎与 AISHELL3 中文多说话人模型是第三方开源软件，由用户自行下载、自行决定是否运行，各自遵守其原始许可证；本工具只是本机调用，不分发、不修改、不为其可用性或安全性作担保。相关脚本只在本机 127.0.0.1 监听，不对外提供服务，请在可信网络环境下使用。</p>' +
+      '<p>「免费神经语音」用到的 sherpa-onnx 引擎与三个中文语音模型是第三方开源软件，由用户自行下载、自行决定是否运行，各自遵守其原始许可证；本工具只是本机调用，不分发、不修改、不为其可用性或安全性作担保。相关脚本只在本机 127.0.0.1 监听，不对外提供服务，请在可信网络环境下使用。</p>' +
       '<p>朗读依赖操作系统 / 浏览器提供的语音引擎，音色、可用性、断句效果因设备而异，不保证与人工朗读一致。驾车、操作机械等需要注意力的场合请勿收听。</p>' +
       '<p>本软件按「现状」提供，不附带任何明示或默示担保。在法律允许的最大范围内，作者不对使用或无法使用本软件造成的任何直接或间接损失（含数据丢失、设备损坏、时间或收入损失）承担责任。</p>' +
       '<p>「墨吟」的名称、界面与文档著作权归作者所有；文中提及的其他产品、公司、语音服务名称可能是其各自所有者的商标，仅用于说明用途，不表示任何关联、赞助或背书。</p>' +
@@ -4988,8 +5002,15 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p>一个单文件、默认离线的 TXT / EPUB 阅读器，带朗读。双击 HTML 就能用，Windows / Linux / 安卓 / iOS 浏览器均可。</p>' +
       '<p>「墨吟」取「以墨为文、吟而出声」：把纸上的字念出来。中文名与英文名均为本项目自用，与任何同名公司、配音平台、有声主播<b>没有关联</b>，也不代表任何商业背书。</p>' +
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
-      '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + AISHELL3 多说话人 VITS 模型）：不联网、不收费、无需账号，默认是 22.05 kHz 的「墨吟 · 中文女声」，另带 174 个中文说话人（148 女 + 26 男），精选 11 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
+      '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + 三份中文 VITS 模型）：不联网、不收费、无需账号，主角是 22.05 kHz 的「墨吟 · 女声」与「墨吟 · 男声」，另带 187 个配角说话人（148 女 + 39 男），精选 21 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.14 改了什么</h3><ul>' +
+      '<li><b>男主、女主都换成 22.05 kHz</b>：以前只有女声是高清，男声只能从配角库里挑，听着发闷发远。现在男女主角各有一份 22.05 kHz 的模型，配角库也升到 16 kHz——原来 4 kHz 以上整段是空的，现在是真实的高频。</li>' +
+      '<li><b>187 个配角，按年龄层分组挑</b>：老生、中年男、青年男、沉稳女、成年女、青年女、童声共七档，每档都有几个人可选，档内按音高排好。它们全部来自同一份模型，放开多少个都不增加体积。</li>' +
+      '<li><b>音色库换血</b>：8 kHz 的 174 人库整个删掉，换成 16 kHz 的 187 人库，男声从 26 个变成 37 个。代价要说白：配角合成慢一些，所以它只当配角，男女主角和旁白不受影响。</li>' +
+      '<li><b>安装包反而小了</b>：83.7 MB → 约 70 MB。主角换成的 int8 模型能被压缩，而原来那份 60 MB 的浮点模型几乎压不动，在包里是原样存的。</li>' +
+      '<li><b>修掉一处音色标错</b>：上一版把几个男声标成了「成年女」，因为它按基频推断性别，男低音会被算高一个八度。这一版按音高重新分档，并逐条听过校准。</li>' +
+      '</ul>' +
       '<h3>1.13 改了什么</h3><ul>' +
       '<li><b>换成更清楚的女声</b>：以前的语音是 8 kHz，4 kHz 以上的声音整段被砍掉，听感像电话。现在默认音色换成 22.05 kHz 的模型，采样率高了近三倍，齿音、气口、尾音收束都回来了，句子里哪轻哪重也听得出来。停顿规则原样沿用上一版调好的那套（逗号 0.35 秒、句号 0.74 秒）。</li>' +
       '<li><b>174 个声线一个没少，男声也在</b>：新女声只占「声线范围」里多出来的一个位置，原来的 174 个中文说话人（148 女 + 26 男）全部保留。想换口味或听男声，照旧在设置里放开「全部 174 个」。</li>' +
@@ -5152,7 +5173,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<div class="row"><label>' + T('语音') + '</label><button data-doc="voice">' + T('语音与朗读说明') + '</button><span class="kv">' + T('当前：') +
       esc(voiceLabel(curVoice() || { name: T('系统默认'), lang: 'zh-CN', localService: true })) + '</span></div>' +
       '<h3>' + T('免费神经语音 · 离线开源') + '</h3>' +
-      '<p class="kv">' + T('本机跑 sherpa-onnx + 开源中文神经语音模型（默认 22 kHz 女声，另带 AISHELL3 的 174 个说话人）：接近真人的中文语调，不收费、不联网、不用账号、不用 Key。语音库已随成品装好，听书前双击「VoicePack/启动语音引擎.cmd」即可。') + '</p>' +
+      '<p class="kv">' + T('本机跑 sherpa-onnx + 开源中文神经语音模型（默认 22 kHz 女主与男主，另带 187 个配角说话人）：接近真人的中文语调，不收费、不联网、不用账号、不用 Key。语音库已随成品装好，听书前双击「VoicePack/启动语音引擎.cmd」即可。') + '</p>' +
       '<div class="row"><label>' + T('引擎状态') + '</label><div class="seg">' +
       '<span class="kv" style="align-self:center">' + (localReady() ? T('● 已连接（免费神经语音）') : T('○ 未检测到（当前用系统语音）')) + '</span>' +
       '<button data-act="probe">' + T('重新检测') + '</button>' +
@@ -5161,7 +5182,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<div class="row"><label>' + T('音色') + '</label><select data-set="localVoice">' + localVoiceOptions() +
       '</select><button data-act="tryvoice">' + T('试听音色') + '</button></div>' +
       '<div class="row"><label>' + T('声线范围') + '</label>' + seg('voiceSet', [['curated', T('精选 {n} 个', { n: voiceStat().curated })], ['all', T('全部 {n} 个', { n: voiceStat().total })]]) + '</div>' +
-      '<p class="kv">' + T('模型里另有 {n} 个中文说话人（{f} 女 + {m} 男），共用同一份压缩模型，放开多少个都不增加体积；默认的「墨吟 · 中文女声」是另一份 22.05 kHz 的高采样率模型。「精选」是人工挑过、命名过的 {c} 个；「全部」按音高分 7 档列出，男低 → 女高任你挑。朗读条最左边的下拉里直接就能换，正在朗读时会从当前这段用新音色重念；也可以在这里选好再点「试听音色」对比。缺模型文件的音色会自动隐藏。',
+      '<p class="kv">' + T('模型里另有 {n} 个中文说话人（{f} 女 + {m} 男），共用同一份压缩模型，放开多少个都不增加体积；主角的「墨吟 · 女声」与「墨吟 · 男声」是另两份 22.05 kHz 的高采样率模型。「精选」是人工挑过、命名过的 {c} 个；「全部」按音高分 7 档列出，男低 → 女高任你挑。朗读条最左边的下拉里直接就能换，正在朗读时会从当前这段用新音色重念；也可以在这里选好再点「试听音色」对比。缺模型文件的音色会自动隐藏。',
         { n: voiceStat().lib, f: voiceStat().female, m: voiceStat().male, c: voiceStat().curated }) + '</p>' +
       '<div class="row"><label>' + T('分角色朗读') + '</label><div class="seg">' +
       '<button data-set="bool" data-v="roleOn"' + (CFG.roleOn ? ' class="on"' : '') + '>' + (CFG.roleOn ? T('分角色：开') : T('分角色：关')) + '</button>' +

@@ -35,7 +35,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 APP = 'MoYinReader'
 APP_CN = '墨吟阅读器'
-VER = '1.13.0'
+VER = '1.14.0'
 VOICE_PORT = 8177
 PORTS = (38975, 38976, 0)
 CREATE_NO_WINDOW = 0x08000000
@@ -713,24 +713,29 @@ def cache_dir():
     return os.path.join(base, APP, 'VoicePack')
 
 
-# 判断缓存是否完整：引擎 + 唯一的 AISHELL3 模型 + 服务脚本
+# 判断缓存是否完整：引擎 + 三套模型 + 服务脚本
 BUNDLE_MUST = (
     'tts_server.py',
     'engine/bin/sherpa-onnx-offline-tts.exe',
-    # 默认音色：小雅（22.05 kHz 单女声）
-    'models/xiaoya/zh_CN-xiao_ya-medium.onnx',
-    'models/xiaoya/tokens.txt',
-    'models/xiaoya/lexicon.txt',
-    'models/xiaoya/date.fst',
-    'models/xiaoya/number.fst',
-    'models/xiaoya/phone.fst',
-    # 174 音色库：AISHELL3 的 8 位量化版（8 kHz，按需换口味）
-    'models/aishell3/model.int8.onnx',
-    'models/aishell3/tokens.txt',
-    'models/aishell3/lexicon.txt',
-    'models/aishell3/date.fst',
-    'models/aishell3/number.fst',
-    'models/aishell3/phone.fst',
+    # 女主：小雅 22.05 kHz（官方 int8）
+    'models/xiaoya/model.onnx',
+    # 男主：超文 22.05 kHz（官方 int8）
+    'models/chaowen/model.onnx',
+    # 小雅与超文共用的词表与数字规则
+    'models/shared/lexicon.txt',
+    'models/shared/tokens.txt',
+    'models/shared/date.fst',
+    'models/shared/number.fst',
+    'models/shared/phone.fst',
+    # 配角库：fanchen 187 人（16 kHz int8），自带词典与 jieba 分词表
+    'models/fanchen/model.onnx',
+    'models/fanchen/lexicon.txt',
+    'models/fanchen/tokens.txt',
+    'models/fanchen/dict/jieba.dict.utf8',
+    'models/fanchen/dict/hmm_model.utf8',
+    'models/fanchen/dict/idf.utf8',
+    'models/fanchen/dict/stop_words.utf8',
+    'models/fanchen/dict/user.dict.utf8',
 )
 
 

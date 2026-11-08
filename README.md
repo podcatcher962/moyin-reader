@@ -7,7 +7,7 @@
 🌐 **[在线使用（免安装）](https://podcatcher962.github.io/moyin-reader/)** — 浏览器直接打开，导入的书与进度存在本机，不上传任何服务器。
 
 
-一个单文件、默认离线的中文 TXT / EPUB 阅读器，带朗读、划线批注与阅读总结；版式做到成熟阅读软件的水准——滚动或整屏翻页、宽屏双栏手机单栏、六套主题、自动阅读与沉浸全屏。174 个离线中文说话人（148 女 26 男，精选 11 个直接可选），支持分角色朗读；界面中英双语一键切换。Windows 一个 exe 直接跑，安卓一个 apk，浏览器双击 HTML 也能用。
+一个单文件、默认离线的中文 TXT / EPUB 阅读器，带朗读、划线批注与阅读总结；版式做到成熟阅读软件的水准——滚动或整屏翻页、宽屏双栏手机单栏、六套主题、自动阅读与沉浸全屏。男女主角各有一个 22.05 kHz 高清声线，另有 187 个离线中文说话人（39 男 148 女，精选 21 个直接可选），支持分角色朗读；界面中英双语一键切换。Windows 一个 exe 直接跑，安卓一个 apk，浏览器双击 HTML 也能用。
 
 > 名字取「以墨为文、吟而出声」：把纸上的字念出来。与任何同名公司、配音平台、有声主播无关。
 
@@ -57,7 +57,7 @@
 |---|---|
 | ![笔记](docs/screenshots/notes-panel.png) | ![总结](docs/screenshots/reading-summary.png) |
 
-| 网络位置 · 读局域网共享 | 174 个离线声线 |
+| 网络位置 · 读局域网共享 | 187 个离线声线 |
 |---|---|
 | ![网络位置](docs/screenshots/net-import.png) | ![声线](docs/screenshots/settings-voices.png) |
 
@@ -69,8 +69,8 @@
 
 | 平台 | 怎么用 | 说明 |
 |---|---|---|
-| **Windows** | 下载 `MoYinReader.exe` 双击 | 完整版，174 个离线语音与分角色朗读都在这一版 |
-| **安卓** | 下载 [`MoYinReader.apk`](https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk) 安装 | 页面内嵌，**174 个离线神经声线随包带走**，断网也能听；手机下载见下方说明 |
+| **Windows** | 下载 `MoYinReader.exe` 双击 | 完整版，187 个离线语音与分角色朗读都在这一版 |
+| **安卓** | 下载 [`MoYinReader.apk`](https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk) 安装 | 页面内嵌，**187 个离线神经声线随包带走**，断网也能听；手机下载见下方说明 |
 | **任意系统** | 双击 `MoYinReader.html` | 单文件网页版，功能与桌面版一致 |
 | **Linux / 信创**（统信 UOS、麒麟、openEuler、Deepin） | `sudo dpkg -i moyin-reader_*.deb` 装进应用菜单；或用 `MoYinReader-Linux-*.tar.gz` 解压后双击「墨吟阅读器.sh」 | **x86_64 是 10 MB 独立程序，不用装 Python**（1.10 版在统信 UOS 20 专业版实测安装与启动；1.11 的包内容只换了内嵌页面，deb 归档结构自检通过，若装不上请直接用 tar.gz）。飞腾 / 鲲鹏 / 龙芯会自动走 Python 或网页方式 |
 | **macOS**（Intel / Apple Silicon） | 解压 `MoYinReader-macOS-*.zip`，双击「墨吟阅读器.command」 | 免安装 Python |
@@ -82,7 +82,7 @@
 > 1. 主直链：`https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk`
 > 2. 前一条打不开时，可以先把 apk 存到网盘（夸克 / 蓝奏）再发给对方，或直接用 Release 里的附件
 >
-> 下完先看一眼文件大小（**约 83.7 MB**）。这一版把两套中文语音模型（默认 22 kHz 女声 60 MB ＋ 174 个说话人的音色库 14 MB）和 sherpa-onnx 引擎一起打进了包，所以比 1.10 的 200 KB 大了两个数量级——换来的是手机上也能听 174 个离线神经声线，断网、飞行模式都不影响。如果只下到几 MB、装的时候提示「解析包错误」，就是没下完整，重下一次。
+> 下完先看一眼文件大小（**约 70 MB**）。这一版把三套中文语音模型（小雅女声 22.05 kHz ＋ 超文男声 22.05 kHz ＋ 187 人的 fanchen-C 配角库 16 kHz，共 89 MB 源模型）和 sherpa-onnx 引擎一起打进了包，所以比 1.10 的 200 KB 大了两个数量级——换来的是手机上也能听 187 个离线神经声线，断网、飞行模式都不影响。如果只下到几 MB、装的时候提示「解析包错误」，就是没下完整，重下一次。
 >
 > **为什么半夜更容易失败**：GitHub Pages 的地址段（185.199.108–111.153）在国内移动网络和家宽晚高峰后常被限速或重置，凌晨并不等于网络空闲；手机还会优先解析 IPv6，部分移动网络到 GitHub 的 IPv6 路由更差。换 Wi-Fi / 流量、或换上面的备用 CDN，通常就能下。
 >
@@ -92,15 +92,15 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 
 其余架构（aarch64 / loongarch64）仍走 Python 或网页方式；包里附 `build-linux.sh`，可在本机打自己架构的二进制。macOS 同理附 `build-macos.sh`，打 `.app`。
 
-朗读：Windows 完整版与安卓版都自带神经语音（sherpa-onnx + AISHELL3，174 个中文声线，完全离线）；网页版 / Linux / macOS 走系统语音，也可以把同一份 `VoicePack` 放在旁边连本机引擎（`127.0.0.1:8177`）。
+朗读：Windows 完整版与安卓版都自带神经语音（sherpa-onnx + 小雅 / 超文 / fanchen-C，187 个中文声线，完全离线）；网页版 / Linux / macOS 走系统语音，也可以把同一份 `VoicePack` 放在旁边连本机引擎（`127.0.0.1:8177`）。
 
 ### 功能
 
 | 类别 | 说明 |
 |---|---|
 | 📚 格式 | TXT（自动识别 UTF-8 / GBK / Big5 / UTF-16）、EPUB（内置 ZIP/OPF/NCX/Nav 解析，正文与插图都支持） |
-| 🗣️ 朗读 | 默认 22.05 kHz 女声 1 个；另有 174 个离线中文说话人共用一份 14 MB 压缩模型，按实测音高分 7 档，朗读条随时切换 |
-| 🎭 分角色 | **默认开启**：旁白用所选声线，对白按人物换声，同一人物全书同一声音。认识「张三说」「他盯我一眼，说」「我说」「他突然问我」，不会把「我对某人说」的听话人当说话人；人物多时声线池自动从 11 个扩到全部 174 个 |
+| 🗣️ 朗读 | 男女主角各 1 个 22.05 kHz 高清声线；另带 187 个离线中文说话人（16 kHz，共用一份 38 MB 模型），按实测音高分 7 档，精选 21 个直接可选，朗读条随时切换 |
+| 🎭 分角色 | **默认开启**：旁白用所选声线，对白按人物换声，同一人物全书同一声音。认识「张三说」「他盯我一眼，说」「我说」「他突然问我」，不会把「我对某人说」的听话人当说话人；人物多时声线池自动从 21 个扩到全部 187 个 |
 | ⏯️ 听书 | 段落高亮自动跟随、念完自动接下一章、定时停止、语速调节、整句朗读保语调 |
 | 🖍️ 划线批注 | 选中正文四色高亮、随手写笔记；「笔记」页按章汇总，可跳转 / 改色 / 编辑 / 删除 |
 | 📤 导出分享 | 笔记一键导出 Markdown；划线生成带书名与署名的分享图（PNG），也可只复制文字 |
@@ -129,7 +129,7 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 |---|---|---|
 | `MoYinReader.exe` | 约 87 MB | **Windows 完整版**，语音库打包在 exe 尾部，只拷这一个文件就能听，首次启动自动释放到缓存 |
 | `MoYinReader_Lite.exe` | 约 17 MB | Windows 轻量版，需同目录放 `VoicePack` 文件夹（约 90 MB） |
-| `MoYinReader.apk` | 约 83.7 MB | 安卓完整版，页面 + 两套语音模型（默认女声 + 174 声线音色库）与引擎全在包里 |
+| `MoYinReader.apk` | 约 70 MB | 安卓完整版，页面 + 三套语音模型（男女主角 + 187 声线配角库）与引擎全在包里 |
 | `MoYinReader.html` | 约 408 KB | 单文件网页版，双击即用，任何系统都能跑 |
 | `moyin-reader_*_amd64.deb` | 约 9.8 MB | 统信 / 麒麟 / openEuler，**双击安装即进应用菜单**，卸载走系统正常流程 |
 | `MoYinReader-Linux-*.tar.gz` | 约 9.8 MB | 免安装版：解压双击「墨吟阅读器.sh」，U 盘带走也能用 |
@@ -150,13 +150,13 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 
 ### 语音是怎么来的
 
-朗读用的是开源引擎 [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)，全部在本机 CPU 上跑：不联网、不收费、不需要账号和 Key。模型有两份：默认的「墨吟 · 中文女声」是 22.05 kHz 的单说话人 VITS（60 MB），齿音、气口、尾音收束都在；AISHELL3 中文多说话人 VITS 提供 174 个说话人，打包时把权重压成 8 位整数（29 MB → 14 MB），切换说话人编号就能换声线，所以**放开到 174 个也几乎不增加体积**。压缩的代价是合成慢一些，只当换口味和听男声用。
+朗读用的是开源引擎 [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)，全部在本机 CPU 上跑：不联网、不收费、不需要账号和 Key。模型有三套：「墨吟 · 女声」（小雅）与「墨吟 · 男声」（超文）各是一份 22.05 kHz 的单说话人 VITS，齿音、气口、尾音收束都在，专门给男女主角和旁白用；fanchen-C 中文多说话人 VITS 以 16 kHz 提供 187 个配角声线，切换说话人编号就能换声，所以**放开到 187 个也几乎不增加体积**。配角库合成慢一些（同样一句话约慢十倍），所以它只当配角，主角和旁白走前两份快模型。顺带修掉上一版按基频推断性别导致男低音被标成「成年女」的问题：这一版按音高重新分档，并逐条听过校准（39 男 / 148 女）。
 
-![174 个离线声线](docs/screenshots/settings-voices.png)
+![187 个离线声线](docs/screenshots/settings-voices.png)
 
 ### 从源码构建
 
-仓库只放源码，`exe` 和语音模型不入库（体积大，且模型是第三方资产）。唯一的例外是 `docs/download/MoYinReader.apk`——83.7 MB 的成品，放在 Pages 上只为给手机一个不用访问 github.com 的下载口，正式版仍以 Release 为准。克隆后按下面两步即可复现：
+仓库只放源码，`exe` 和语音模型不入库（体积大，且模型是第三方资产）。唯一的例外是 `docs/download/MoYinReader.apk`——约 70 MB 的成品，放在 Pages 上只为给手机一个不用访问 github.com 的下载口，正式版仍以 Release 为准。克隆后按下面两步即可复现：
 
 ```bash
 # 0) 版本号一处改、全局同步（页面 / exe / Linux / deb / APK / 推送脚本共 10 处）
@@ -167,7 +167,7 @@ python _bump.py 1.13.0                # 全部改到 1.13.0，安卓 versionCode
 # 1) 生成单文件网页版（纯 Python 标准库，无需依赖）
 python build.py                       # → MoYinReader.html
 
-# 2) 拉语音引擎与模型（约 80 MB，走 GitHub Release，带 gh-proxy 备用线路）
+# 2) 拉语音引擎与模型（约 90 MB，走 GitHub Release，带 gh-proxy 备用线路）
 python VoicePack/install.py           # → VoicePack/engine + VoicePack/models
 
 # 可选：打包 Windows exe（需要 pip install pyinstaller pywebview pythonnet）
@@ -185,9 +185,9 @@ python _pkg_apk/build_apk.py          # → MoYinReader.apk
 app.js  shell.html  zipcore.js     前端（无框架，build.py 内联成一个 HTML）
 build.py                           单文件 HTML 打包器（同时输出 docs/index.html 供 Pages）
 docs/index.html                    GitHub Pages 在线版入口
-VoicePack/tts_server.py            本机语音服务（127.0.0.1:8177，174 声线）
+VoicePack/tts_server.py            本机语音服务（127.0.0.1:8177，187 声线）
 VoicePack/install.py               引擎与模型下载器
-VoicePack/voice_table.json         174 个说话人的实测音高表
+VoicePack/voice_table.json         187 个说话人的实测音高表
 _pkg_win/app.py                    Windows 外壳（pywebview + 内嵌 HTTP）
 _pkg_win/build_exe.py              exe 打包 + 验收
 _pkg_apk/TtsBridge.java            安卓 TTS 桥（系统语音）
@@ -207,7 +207,7 @@ _unit_zip.js                       ZIP 解压内核单测（482 项）
 
 ### 许可与致谢
 
-本项目以 **MIT 许可证**发布，版权 © 2026 永远的兰兰（Lanlan Eternal）。第三方组件（sherpa-onnx、AISHELL3 模型、pywebview、pythonnet、PyInstaller）各自遵循其原始许可证，详见 [LICENSE](LICENSE) 与 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)（也写在软件内「开源与许可」）。
+本项目以 **MIT 许可证**发布，版权 © 2026 永远的兰兰（Lanlan Eternal）。第三方组件（sherpa-onnx、小雅 / 超文 / fanchen-C 模型、pywebview、pythonnet、PyInstaller）各自遵循其原始许可证，详见 [LICENSE](LICENSE) 与 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)（也写在软件内「开源与许可」）。
 
 ### 免责
 
@@ -217,7 +217,7 @@ _unit_zip.js                       ZIP 解压内核单测（482 项）
 
 ## English
 
-**MoYin Reader** (Chinese: 墨吟, pinyin *mó yín* — "ink" + "to chant") is a single-file, offline-first Chinese TXT / EPUB reader with text-to-speech, highlights, notes and reading summaries — and typography that can hold its own: scroll or turn whole pages, two columns on wide screens and one on phones, six themes, auto reading and immersive full screen. 174 offline Chinese speakers (148 female, 26 male; 11 curated by default), with role-based reading that switches voices per character in dialogue. The whole interface toggles between Chinese and English. One portable exe on Windows, one apk on Android, or just double-click the HTML.
+**MoYin Reader** (Chinese: 墨吟, pinyin *mó yín* — "ink" + "to chant") is a single-file, offline-first Chinese TXT / EPUB reader with text-to-speech, highlights, notes and reading summaries — and typography that can hold its own: scroll or turn whole pages, two columns on wide screens and one on phones, six themes, auto reading and immersive full screen. a pair of 22.05 kHz leads plus 187 offline Chinese speakers (39 male, 148 female; 21 curated by default), with role-based reading that switches voices per character in dialogue. The whole interface toggles between Chinese and English. One portable exe on Windows, one apk on Android, or just double-click the HTML.
 
 Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 
@@ -247,14 +247,14 @@ Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 |---|---|
 | ![notes](docs/screenshots/notes-panel.png) | ![summary](docs/screenshots/reading-summary.png) |
 
-| English interface | 174 offline voices |
+| English interface | 187 offline voices |
 |---|---|
 | ![english](docs/screenshots/shelf-en.png) | ![voices](docs/screenshots/settings-voices.png) |
 
 ### Features
 
 - **Formats** — TXT (auto-detects UTF-8 / GBK / Big5 / UTF-16) and EPUB, with a built-in ZIP / OPF / NCX / Nav parser and image support.
-- **Speech** — a 22 kHz high-fidelity voice by default, plus 174 offline Chinese speakers sharing a single 14 MB quantised model, grouped by measured pitch; switch voices right from the playback bar, even mid-sentence.
+- **Speech** — a pair of 22.05 kHz high-fidelity leads (one female, one male), plus 187 offline Chinese speakers sharing a single 38 MB quantised model, grouped into seven measured-pitch bands; 21 hand-picked voices up front, switch any of them right from the playback bar, even mid-sentence.
 - **Role reading** — narration keeps your chosen voice while quoted dialogue switches per character, consistently for the whole book.
 - **Listening** — paragraph highlight with auto-scroll, auto-advance to the next chapter, sleep timer, speed control.
 - **Resume** — listening position is tracked separately from reading position; one click on a shelf card resumes "chapter N".
@@ -296,7 +296,7 @@ The Linux binary only needs `libc` / `libz` / `libpthread` / `libdl` (glibc 2.28
 | `MoYinReader.exe` | ~87 MB | Full build, voice pack appended inside the exe |
 | `MoYinReader_Lite.exe` | ~17 MB | Needs a `VoicePack` folder (~90 MB) next to it |
 | `MoYinReader.html` | ~408 KB | Standalone web build |
-| `MoYinReader.apk` | ~83.7 MB | Android full build: page + neural TTS engine with two model sets (default voice + 174-speaker library) |
+| `MoYinReader.apk` | ~70 MB | Android full build: page + neural TTS engine with all three model sets (two leads + 187-speaker library) |
 | `moyin-reader_*_amd64.deb` | ~9.7 MB | UOS / Kylin / openEuler, installs into the app menu |
 | `MoYinReader-Linux-*.tar.gz` | ~9.8 MB | Portable build, same x86_64 binary, unzip and run |
 | `MoYinReader-macOS-*.zip` | ~157 KB | Source + `build-macos.sh`; run it once on your Mac to get a `.app` |
@@ -305,7 +305,7 @@ Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/re
 
 ### Build from source
 
-Only source lives in this repo — `exe` and the speech model are not committed (they are large, and the model is a third-party asset). The one exception is `docs/download/MoYinReader.apk`, a 38.8 MB build kept on Pages purely so phones get a download link that never touches `github.com` (which is slow or unreachable on many Chinese mobile networks); Releases remain the canonical source.
+Only source lives in this repo — `exe` and the speech model are not committed (they are large, and the model is a third-party asset). The one exception is `docs/download/MoYinReader.apk`, a ~70 MB build kept on Pages purely so phones get a download link that never touches `github.com` (which is slow or unreachable on many Chinese mobile networks); Releases remain the canonical source.
 
 > **Android download stalls?** The GitHub button redirects through `github.com`, which often hangs for 10+ seconds on mobile networks in China. Use the direct link instead:
 >
@@ -316,7 +316,7 @@ Only source lives in this repo — `exe` and the speech model are not committed 
 ```bash
 python _bump.py --check         # verify the version number is identical in all 10 places
 python build.py                 # bundle the web app  → MoYinReader.html
-python VoicePack/install.py     # fetch engine + model (~55 MB, GitHub Releases)
+python VoicePack/install.py     # fetch engine + model (~90 MB, GitHub Releases)
 python _pkg_win/build_exe.py    # optional Windows exe (needs pyinstaller, pywebview, pythonnet)
 python _pkg_apk/build_apk.py    # optional Android apk (needs JDK 17 + build-tools 34;
                                 #   set MOYIN_ANDROID_BUILD and MOYIN_KS_PASS first)

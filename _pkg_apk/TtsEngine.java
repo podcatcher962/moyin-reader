@@ -18,75 +18,98 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * 墨吟 · 手机端离线神经语音
  *
- * 两套模型并存，与桌面端 VoicePack/tts_server.py 的编排一致：
- *   · 小雅（默认，x0）：Piper 中文单说话人 VITS，22.05 kHz。只有一个女声，
- *     但采样率是 AISHELL3 的近三倍，齿音、气口、尾音收束都在。
- *   · AISHELL3 音色库（s0…s173）：174 个说话人共用一份 8 位量化模型（14 MB），
- *     靠 sid 切声线，体积不随音色数量增长。量化版推理慢，只当换口味用。
+ * 三套模型并存，与桌面端 VoicePack/tts_server.py 的编排一致：
+ *   · 女主（默认，x0）：小雅，Piper 中文单说话人 VITS，22.05 kHz，官方 int8。
+ *   · 男主（c0）：超文，同架构中文男声，22.05 kHz，官方 int8。与女主共用词表。
+ *   · 配角库（s0…s186）：fanchen，16 kHz，187 个说话人共用一份 int8 模型（38 MB），
+ *     靠 sid 切声线，体积不随音色数量增长。推理慢，只当配角用。
  *
  * 模型放在 apk 的 assets 里，首次启动解压到应用私有目录，之后直接用绝对路径，
  * onnxruntime 可以正常 mmap，不必每次把几十 MB 读进内存。
  */
 public final class TtsEngine {
 
-    /** 主模型（小雅）：音色 key 固定 x0，不分说话人。 */
-    static final String MAIN_ASSET_DIR = "tts/xiaoya";
-    static final String MAIN_FILE_DIR = "tts/xiaoya";
-    static final String MAIN_MODEL = "zh_CN-xiao_ya-medium.onnx";
-    static final String MAIN_VOICE = "x0";
-    static final String MAIN_LABEL = "墨吟 · 中文女声";
-    static final int MAIN_F0 = 259;
-    static final String[] MAIN_ASSETS = {
-            MAIN_MODEL, "lexicon.txt", "tokens.txt",
-            "date.fst", "number.fst", "phone.fst"
+    /** 主角 · 女主（小雅）：Piper 中文单说话人 VITS，22.05 kHz，官方 int8 版。 */
+    static final String GIRL_VOICE = "x0";
+    static final String GIRL_LABEL = "墨吟 · 女声";
+    static final int GIRL_F0 = 266;
+    static final String GIRL_DIR = "tts/xiaoya";
+    static final String GIRL_MODEL = "model.onnx";
+
+    /** 主角 · 男主（超文）：同为 22.05 kHz 单说话人，官方 int8 版。 */
+    static final String BOY_VOICE = "c0";
+    static final String BOY_LABEL = "墨吟 · 男声";
+    static final int BOY_F0 = 163;
+    static final String BOY_DIR = "tts/chaowen";
+    static final String BOY_MODEL = "model.onnx";
+
+    /** 配角库（fanchen）：16 kHz 187 个说话人共用一份模型，音色 key s0…s186。 */
+    static final String LIB_DIR = "tts/fanchen";
+    static final String LIB_MODEL = "model.onnx";
+
+    /* 小雅与超文共用同一套词表和数字规则（两者 lexicon/tokens/fst 逐字节相同），
+       所以只在 xiaoya 目录解压一份，超文直接指过来。 */
+    static final String[] WORD_FILES = {
+            "lexicon.txt", "tokens.txt", "date.fst", "number.fst", "phone.fst"
+    };
+    static final String[] GIRL_ASSETS = {
+            GIRL_MODEL, "lexicon.txt", "tokens.txt", "date.fst", "number.fst", "phone.fst"
+    };
+    static final String[] BOY_ASSETS = { BOY_MODEL };
+    static final String[] LIB_ASSETS = {
+            LIB_MODEL, "lexicon.txt", "tokens.txt",
+            "dict/jieba.dict.utf8", "dict/hmm_model.utf8", "dict/idf.utf8",
+            "dict/stop_words.utf8", "dict/user.dict.utf8"
     };
 
-    /** 备用音色库（AISHELL3 量化版）：音色 key s0…s173。 */
-    static final String LEGACY_ASSET_DIR = "tts/aishell3";
-    static final String LEGACY_FILE_DIR = "tts/aishell3";
-    static final String LEGACY_MODEL = "model.int8.onnx";
-    static final String[] LEGACY_ASSETS = {
-            LEGACY_MODEL, "lexicon.txt", "tokens.txt",
-            "date.fst", "number.fst", "phone.fst"
-    };
-
-    private static final int MODEL_VER = 2;
+    /* 模型换代了就换版本号，老用户首次启动会重新解压，不会拿旧文件跑新代码。 */
+    private static final int MODEL_VER = 3;
 
     /** sid → 中位基频（Hz），离线逐人实测。手机端与桌面共用同一份分组依据。 */
     static final int[] SID_F0 = {
-            250, 258, 235, 242, 211, 296, 242, 205, 258, 235, 143, 242,
-            235, 200, 276, 154, 242, 258, 229, 222, 258, 143, 250, 205,
-            222, 154, 250, 205, 258, 195, 222, 267, 174, 296, 258, 229,
-            200, 235, 222, 296, 145, 242, 296, 258, 286, 286, 140, 205,
-            186, 276, 267, 258, 154, 267, 250, 205, 229, 211, 138, 200,
-            143, 229, 235, 250, 250, 182, 320, 258, 267, 127, 195, 235,
-             91, 267, 108, 163, 148, 235, 276, 242, 195, 235, 200, 178,
-            235, 258, 267, 242, 211, 267, 242, 258, 286, 229, 222, 148,
-            211, 258, 140, 229, 138, 229, 170, 258, 229, 276, 235, 154,
-            235, 258, 129, 276, 258, 205, 222, 296, 296, 258, 267, 119,
-            258, 286, 250, 242, 113, 286, 242, 276, 267, 235, 250, 229,
-            267, 235, 258, 222, 119, 267, 222, 250, 186, 235, 250, 174,
-            200, 250, 250, 235, 186, 222, 258, 182, 267, 148, 267, 250,
-            157, 267, 229, 250, 242, 276, 205, 136, 242, 235, 250, 154,
-            267, 195, 258, 174, 258, 276,
+            260, 278, 273, 251, 226, 286, 243, 224, 278, 234, 151, 238,
+            243, 217, 299, 153, 254, 288, 252, 232, 265, 172, 257, 205,
+            249, 152, 273, 218, 265, 201, 250, 276, 189, 303, 283, 252,
+            204, 247, 219, 291, 139, 251, 314, 314, 313, 275, 153, 223,
+            194, 276, 280, 249, 168, 290, 251, 247, 237, 219, 146, 220,
+            146, 260, 244, 258, 270, 175, 303, 286, 269, 128, 275, 268,
+            192, 279, 121, 181, 167, 246, 256, 244, 218, 240, 245, 194,
+            239, 263, 299, 272, 224, 256, 247, 243, 293, 231, 220, 172,
+            218, 295, 161, 272, 138, 257, 174, 262, 236, 316, 222, 164,
+            268, 256, 169, 277, 248, 232, 234, 251, 300, 241, 287, 131,
+            256, 298, 257, 256, 118, 278, 270, 283, 260, 249, 263, 226,
+            249, 257, 288, 280, 134, 256, 236, 280, 219, 283, 254, 163,
+            211, 273, 245, 236, 191, 220, 282, 176, 275, 153, 256, 260,
+            160, 279, 244, 271, 257, 254, 220, 150, 251, 238, 272, 162,
+            262, 213, 259, 176, 263, 277, 182, 154, 213, 198, 239, 280,
+            256, 168, 291, 169, 248, 266, 229,
     };
 
-    /** 人工挑过、命名过的 11 个声线，列表里排最前（与桌面端 curation 一致）。 */
-    static final int[] CURATED_SID = {12, 35, 140, 160, 170, 20, 3, 9, 6, 150, 110};
+    /** 用户逐条试听敲定的 21 个配角声线（与桌面端 curation 一致）。 */
+    static final int[] CURATED_SID = {
+            124, 74, 58, 156, 167, 52, 110, 102, 32,
+            36, 169, 13, 149, 106, 19, 165, 129, 120, 20, 41, 105
+    };
     static final String[] CURATED_LABEL = {
-            "声线 12 · 温润", "声线 35 · 柔和", "声线 140 · 舒展", "声线 160 · 清亮",
-            "声线 170 · 明快", "声线 20 · 爽朗", "声线 3 · 甜美", "声线 9 · 清脆",
-            "声线 6 · 沉静", "声线 150 · 明亮", "声线 110 · 沉稳男声"
+            "老生 · 低沉 1", "老生 · 低沉 2",
+            "中年男 1", "中年男 2", "中年男 3",
+            "青年男 1", "青年男 2", "青年男 3", "青年男 4",
+            "沉稳女 1", "沉稳女 2",
+            "成年女 1", "成年女 2", "成年女 3", "成年女 4", "成年女 5",
+            "青年女 1", "青年女 2", "青年女 3",
+            "童声 1", "童声 2"
     };
 
-    /** 与桌面 tts_server.py 的 band_of 完全一致，同一批音色在两端分档相同。 */
-    static String bandOf(int hz) {
-        if (hz < 120) return "男声 · 低沉";
-        if (hz < 145) return "男声 · 中音";
-        if (hz < 165) return "男声 · 偏亮";
-        if (hz < 200) return "女声 · 偏沉";
-        if (hz < 235) return "女声 · 中音";
-        if (hz < 265) return "女声 · 清亮";
+    /** 与桌面 tts_server.py 的 band_of 完全一致，195 Hz 是男女分界。
+     *  41 号（童声 1）中位基频 251 Hz 会落进「女声 · 青年」，试听后单独指定档位。 */
+    static String bandOf(int hz, int sid) {
+        if (sid == 41) return "女声 · 高音";
+        if (hz < 140) return "男声 · 低沉";
+        if (hz < 165) return "男声 · 中年";
+        if (hz < 195) return "男声 · 偏高";
+        if (hz < 215) return "女声 · 低音";
+        if (hz < 240) return "女声 · 成年";
+        if (hz < 270) return "女声 · 青年";
         return "女声 · 高音";
     }
 
@@ -94,59 +117,65 @@ public final class TtsEngine {
         for (int i = 0; i < CURATED_SID.length; i++) {
             if (CURATED_SID[i] == sid) return CURATED_LABEL[i];
         }
-        return sid + " 号";
+        return "音色 " + sid;
     }
 
-    /** 解析 "s12" / "12" / ""，非法一律回落到 s12。 */
+    /** 该音色是否走配角库（s0…s186）。 */
+    static boolean isFanchen(String voice) {
+        if (voice == null) return false;
+        String v = voice.trim();
+        return v.startsWith("s") || v.startsWith("S");
+    }
+
+    /** 该音色是否是男主。 */
+    static boolean isBoy(String voice) {
+        return voice != null && BOY_VOICE.equals(voice.trim());
+    }
+
+    /** 解析 "s124" / "124"，非法一律回落到第一个精选音色。 */
     static int sidOf(String voice) {
-        if (voice == null) return 12;
+        if (voice == null) return CURATED_SID[0];
         String v = voice.trim();
         if (v.startsWith("s") || v.startsWith("S")) v = v.substring(1);
         try {
             int sid = Integer.parseInt(v);
             if (sid >= 0 && sid < SID_F0.length) return sid;
         } catch (Exception ignored) { }
-        return 12;
+        return CURATED_SID[0];
     }
 
-    /** 该音色是否走 AISHELL3 音色库（s0…s173）；其余一律走小雅。 */
-    static boolean isLegacy(String voice) {
-        if (voice == null) return false;
-        String v = voice.trim();
-        return v.startsWith("s") || v.startsWith("S");
-    }
-
-    /** /health 的音色表：小雅 1 个 + 音色库 174 个。 */
+    /** /health 的音色表：女主 1 + 男主 1 + 配角库 187。 */
     String healthJson(boolean engineOk) {
-        int n = SID_F0.length + 1;
+        int n = SID_F0.length + 2;
         StringBuilder sb = new StringBuilder(18432);
         sb.append("{\"ok\":").append(engineOk).append(",");
         sb.append("\"engine\":\"").append(engineOk ? "sherpa-onnx 2.0.1 · 安卓" : "模型加载中").append("\",");
         sb.append("\"ready\":").append(engineOk).append(",");
         sb.append("\"count\":").append(n).append(",");
-        sb.append("\"version\":4,\"curated\":[\"").append(MAIN_VOICE).append("\"");
+        sb.append("\"version\":6,\"curated\":[\"").append(GIRL_VOICE).append("\",\"")
+                .append(BOY_VOICE).append("\"");
         for (int i = 0; i < CURATED_SID.length; i++) {
             sb.append(",\"s").append(CURATED_SID[i]).append("\"");
         }
-        sb.append("],\"voices\":{\"").append(MAIN_VOICE).append("\":").append(engineOk);
+        sb.append("],\"voices\":{\"").append(GIRL_VOICE).append("\":").append(engineOk)
+                .append(",\"").append(BOY_VOICE).append("\":").append(engineOk);
         for (int i = 0; i < SID_F0.length; i++) {
-            if (i > 0) sb.append(',');
-            sb.append("\"s").append(i).append("\":").append(engineOk);
+            sb.append(",\"s").append(i).append("\":").append(engineOk);
         }
-        sb.append("},\"labels\":{\"").append(MAIN_VOICE).append("\":\"").append(MAIN_LABEL).append("\",");
+        sb.append("},\"labels\":{\"").append(GIRL_VOICE).append("\":\"").append(GIRL_LABEL)
+                .append("\",\"").append(BOY_VOICE).append("\":\"").append(BOY_LABEL).append("\"");
         for (int i = 0; i < SID_F0.length; i++) {
-            if (i > 0) sb.append(',');
-            sb.append("\"s").append(i).append("\":\"").append(labelOf(i)).append("\"");
+            sb.append(",\"s").append(i).append("\":\"").append(labelOf(i)).append("\"");
         }
-        sb.append("},\"groups\":{\"").append(MAIN_VOICE).append("\":\"").append(bandOf(MAIN_F0)).append("\",");
+        sb.append("},\"groups\":{\"").append(GIRL_VOICE).append("\":\"").append(bandOf(GIRL_F0, -1))
+                .append("\",\"").append(BOY_VOICE).append("\":\"").append(bandOf(BOY_F0, -1)).append("\"");
         for (int i = 0; i < SID_F0.length; i++) {
-            if (i > 0) sb.append(',');
-            sb.append("\"s").append(i).append("\":\"").append(bandOf(SID_F0[i])).append("\"");
+            sb.append(",\"s").append(i).append("\":\"").append(bandOf(SID_F0[i], i)).append("\"");
         }
-        sb.append("},\"f0\":{\"").append(MAIN_VOICE).append("\":").append(MAIN_F0).append(",");
+        sb.append("},\"f0\":{\"").append(GIRL_VOICE).append("\":").append(GIRL_F0)
+                .append(",\"").append(BOY_VOICE).append("\":").append(BOY_F0);
         for (int i = 0; i < SID_F0.length; i++) {
-            if (i > 0) sb.append(',');
-            sb.append("\"s").append(i).append("\":").append(SID_F0[i]);
+            sb.append(",\"s").append(i).append("\":").append(SID_F0[i]);
         }
         sb.append("}}");
         return sb.toString();
@@ -154,20 +183,24 @@ public final class TtsEngine {
 
     private final ReentrantLock lock = new ReentrantLock();
     private Context appCtx;
-    private OfflineTts main;          // 小雅，默认音色
-    private OfflineTts legacy;        // AISHELL3 音色库，按需加载
-    private int mainRate = 22050;
-    private int legacyRate = 8000;
+    private OfflineTts girl;          // 女主，默认音色
+    private OfflineTts boy;           // 男主，按需加载
+    private OfflineTts lib;           // 配角库，按需加载
+    private int girlRate = 22050;
+    private int boyRate = 22050;
+    private int libRate = 16000;
     private String lastError = "";
 
-    /** 只要能合成就算就绪（主模型装好即可，音色库缺了不影响听书）。 */
+    /** 女主装好就算就绪——男主和配角库都是按需加载的，缺了不影响默认听书。 */
     public boolean ready() {
-        return main != null || legacy != null;
+        return girl != null;
     }
 
-    /** 默认音色的采样率，供 JS 侧初始化时用。 */
     public int sampleRate() {
-        return main != null ? mainRate : legacyRate;
+        if (girl != null) return girlRate;
+        if (boy != null) return boyRate;
+        if (lib != null) return libRate;
+        return 22050;
     }
 
     public String lastError() {
@@ -175,14 +208,14 @@ public final class TtsEngine {
     }
 
     public static String mainVoice() {
-        return MAIN_VOICE;
+        return GIRL_VOICE;
     }
 
-    /** 解压模型目录；已解压过且版本一致就直接返回。 */
+    /** 解压模型目录；同目录可以有多个 stamp（词表和模型分开解压，避免互相覆盖）。 */
     private String ensureAssets(Context ctx, String assetDir, String fileDir,
-                                String[] files) throws IOException {
+                                String[] files, String tag) throws IOException {
         File base = new File(ctx.getFilesDir(), fileDir);
-        File stamp = new File(base, ".v" + MODEL_VER);
+        File stamp = new File(base, ".v" + MODEL_VER + "_" + tag);
         if (stamp.isFile()) return base.getAbsolutePath();
         if (!base.isDirectory() && !base.mkdirs()) {
             throw new IOException("mkdir failed: " + base);
@@ -190,6 +223,8 @@ public final class TtsEngine {
         AssetManager am = ctx.getAssets();
         for (String name : files) {
             File out = new File(base, name);
+            File parent = out.getParentFile();
+            if (parent != null && !parent.isDirectory()) parent.mkdirs();
             InputStream in = am.open(assetDir + "/" + name);
             FileOutputStream os = new FileOutputStream(out);
             byte[] buf = new byte[1 << 16];
@@ -205,13 +240,15 @@ public final class TtsEngine {
         return base.getAbsolutePath();
     }
 
-    private OfflineTts build(Context ctx, String d, String model) {
+    /** 建一套 VITS 引擎：modelPath 是模型绝对路径，wordDir 放词表，dictDir 可空，ruleDir 放 fst。 */
+    private OfflineTts build(Context ctx, String modelPath, String wordDir,
+                             String dictDir, String ruleDir) {
         OfflineTtsVitsModelConfig vits = new OfflineTtsVitsModelConfig(
-                d + "/" + model,            // model
-                d + "/lexicon.txt",         // lexicon
-                d + "/tokens.txt",          // tokens
+                modelPath,                  // model
+                wordDir + "/lexicon.txt",   // lexicon
+                wordDir + "/tokens.txt",    // tokens
                 "",                         // dataDir
-                "",                         // dictDir
+                dictDir,                    // dictDir：配角库带 jieba 分词表
                 0.667f,                     // noiseScale
                 0.8f,                       // noiseScaleW
                 1.0f);                      // lengthScale
@@ -220,9 +257,11 @@ public final class TtsEngine {
                 2,                          // numThreads
                 false,                      // debug
                 "cpu");                     // provider
+        String fsts = ruleDir.isEmpty() ? ""
+                : ruleDir + "/date.fst," + ruleDir + "/number.fst," + ruleDir + "/phone.fst";
         OfflineTtsConfig cfg = new OfflineTtsConfig(
                 mc,
-                d + "/date.fst," + d + "/number.fst," + d + "/phone.fst",
+                fsts,
                 "",
                 1,                          // maxNumSentences
                 // 片段内部压紧（0.35）。停顿不靠这个倍率——它会把字间空隙
@@ -232,56 +271,92 @@ public final class TtsEngine {
         return new OfflineTts(ctx.getAssets(), cfg);
     }
 
-    /** 载入默认音色（小雅）。可重复调用，已载入则直接返回。 */
+    /** 载入默认音色（女主）。可重复调用，已载入则直接返回。 */
     public boolean load(Context ctx) {
         appCtx = ctx.getApplicationContext();
-        if (main != null) return true;
+        return ensureGirl();
+    }
+
+    /* 小雅与超文共用的词表：单独一个 stamp，只解压 5 个文件（约 2 MB）。 */
+    private String ensureWordDir() throws IOException {
+        return ensureAssets(appCtx, GIRL_DIR, GIRL_DIR, WORD_FILES, "word");
+    }
+
+    private boolean ensureGirl() {
+        if (girl != null) return true;
+        if (appCtx == null) return false;
         lock.lock();
         try {
-            if (main != null) return true;
-            String d = ensureAssets(ctx, MAIN_ASSET_DIR, MAIN_FILE_DIR, MAIN_ASSETS);
-            OfflineTts t = build(ctx, d, MAIN_MODEL);
+            if (girl != null) return true;
+            String d = ensureAssets(appCtx, GIRL_DIR, GIRL_DIR, GIRL_ASSETS, "girl");
+            OfflineTts t = build(appCtx, d + "/" + GIRL_MODEL, d, "", d);
             int sr = t.sampleRate();
             if (sr <= 0) {
                 t.free();
-                lastError = "sampleRate=0";
+                lastError = "girl sampleRate=0";
                 return false;
             }
-            mainRate = sr;
-            main = t;
+            girlRate = sr;
+            girl = t;
             return true;
         } catch (Throwable e) {
             lastError = e.getClass().getSimpleName() + ": " + e.getMessage();
-            main = null;
+            girl = null;
             return false;
         } finally {
             lock.unlock();
         }
     }
 
-    /** 按需载入音色库（第一次选 s* 时）。调用方可能已持有 lock，可重入。 */
-    private boolean ensureLegacy() {
-        if (legacy != null) return true;
+    /** 按需载入男主（第一次选 c0 时）。 */
+    private boolean ensureBoy() {
+        if (boy != null) return true;
         if (appCtx == null) return false;
         lock.lock();
         try {
-            if (legacy != null) return true;
-            String d = ensureAssets(appCtx, LEGACY_ASSET_DIR, LEGACY_FILE_DIR,
-                    LEGACY_ASSETS);
-            OfflineTts t = build(appCtx, d, LEGACY_MODEL);
+            if (boy != null) return true;
+            String w = ensureWordDir();
+            String d = ensureAssets(appCtx, BOY_DIR, BOY_DIR, BOY_ASSETS, "boy");
+            OfflineTts t = build(appCtx, d + "/" + BOY_MODEL, w, "", w);
             int sr = t.sampleRate();
             if (sr <= 0) {
                 t.free();
-                lastError = "legacy sampleRate=0";
+                lastError = "boy sampleRate=0";
                 return false;
             }
-            legacyRate = sr;
-            legacy = t;
+            boyRate = sr;
+            boy = t;
             return true;
         } catch (Throwable e) {
-            lastError = "audio library: " + e.getClass().getSimpleName()
-                    + ": " + e.getMessage();
-            legacy = null;
+            lastError = "boy: " + e.getClass().getSimpleName() + ": " + e.getMessage();
+            boy = null;
+            return false;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /** 按需载入配角库（第一次选 s* 时）。187 人共用一份模型，解压约 40 MB。 */
+    private boolean ensureLib() {
+        if (lib != null) return true;
+        if (appCtx == null) return false;
+        lock.lock();
+        try {
+            if (lib != null) return true;
+            String d = ensureAssets(appCtx, LIB_DIR, LIB_DIR, LIB_ASSETS, "lib");
+            OfflineTts t = build(appCtx, d + "/" + LIB_MODEL, d, d + "/dict", "");
+            int sr = t.sampleRate();
+            if (sr <= 0) {
+                t.free();
+                lastError = "lib sampleRate=0";
+                return false;
+            }
+            libRate = sr;
+            lib = t;
+            return true;
+        } catch (Throwable e) {
+            lastError = "lib: " + e.getClass().getSimpleName() + ": " + e.getMessage();
+            lib = null;
             return false;
         } finally {
             lock.unlock();
@@ -295,12 +370,18 @@ public final class TtsEngine {
      *  与桌面端 VoicePack/tts_server.py 的 PAUSE 表保持一致。 */
     public byte[] synth(String text, String voice, float speed) {
         if (text == null) return null;
-        boolean lib = isLegacy(voice);
-        OfflineTts tts = lib ? legacy : main;
-        if (tts == null && lib && !ensureLegacy()) return null;
-        tts = lib ? legacy : main;
+        boolean useLib = isFanchen(voice);
+        boolean useBoy = isBoy(voice);
+        if (useLib) {
+            if (lib == null && !ensureLib()) return null;
+        } else if (useBoy) {
+            if (boy == null && !ensureBoy()) return null;
+        } else {
+            if (girl == null && !ensureGirl()) return null;
+        }
+        OfflineTts tts = useLib ? lib : (useBoy ? boy : girl);
         if (tts == null) return null;
-        int sid = lib ? sidOf(voice) : 0;
+        int sid = useLib ? sidOf(voice) : 0;
         String s = text.trim();
         if (s.length() == 0) return null;
         if (s.length() > 600) s = s.substring(0, 600);
@@ -314,7 +395,7 @@ public final class TtsEngine {
 
             java.util.ArrayList<float[]> parts = new java.util.ArrayList<>();
             java.util.ArrayList<Float> gaps = new java.util.ArrayList<>();
-            int sr = lib ? legacyRate : mainRate;
+            int sr = useLib ? libRate : (useBoy ? boyRate : girlRate);
 
             // 模型常驻内存，每段只要几十毫秒，串行就够了（这个类本来也靠 lock 串行）。
             // 某段没出声时把它的文本连标点一起带到下一段重念，书里就不会出现空白。
@@ -579,13 +660,17 @@ public final class TtsEngine {
     public void close() {
         lock.lock();
         try {
-            if (main != null) {
-                try { main.free(); } catch (Throwable ignored) { }
-                main = null;
+            if (girl != null) {
+                try { girl.free(); } catch (Throwable ignored) { }
+                girl = null;
             }
-            if (legacy != null) {
-                try { legacy.free(); } catch (Throwable ignored) { }
-                legacy = null;
+            if (boy != null) {
+                try { boy.free(); } catch (Throwable ignored) { }
+                boy = null;
+            }
+            if (lib != null) {
+                try { lib.free(); } catch (Throwable ignored) { }
+                lib = null;
             }
         } finally {
             lock.unlock();

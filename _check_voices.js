@@ -69,8 +69,8 @@ async function main() {
   ok(h.ready === true, '页面探到本机语音引擎', h.badge);
   const voices = (h.info && h.info.voices) || {};
   const keys = Object.keys(voices);
-  ok(keys.length === 175, '服务报告 175 个音色（x0 + 174 说话人）', keys.length);
-  ok(Object.values(voices).every(Boolean), '175 个声线全部文件就绪');
+  ok(keys.length === 189, '服务报告 189 个音色（x0 + c0 + 187 说话人）', keys.length);
+  ok(Object.values(voices).every(Boolean), '189 个声线全部文件就绪');
 
   console.log('=== 下拉结构（朗读条）');
   const dd = await ev(`(function(){
@@ -86,11 +86,11 @@ async function main() {
   })()`);
   console.log('  分组:', JSON.stringify(dd.labels));
   console.log('  当前值:', dd.cur, ' 禁用:', dd.disabled);
-  const localOpts = dd.all.filter(o => /^local:(s\d+|x0)$/.test(o.v));
-  ok(localOpts.length === 12, '朗读条下拉里有 12 个本机声线', localOpts.length);
+  const localOpts = dd.all.filter(o => /^local:(s\d+|x0|c0)$/.test(o.v));
+  ok(localOpts.length === 23, '朗读条下拉里有 23 个本机声线', localOpts.length);
   console.log('  本机声线:', localOpts.map(o => o.t).join(' | '));
-  const female = localOpts.filter(o => !/男声/.test(o.t)).length;
-  ok(female === 11, '其中女声 11 个（x0 + 10 个 s 声线）', female);
+  const male = localOpts.filter(o => /男|老生/.test(o.t)).length;
+  ok(male === 10, '其中男声 10 个（c0 + 老生 2 + 中年 3 + 青年 4）', male);
   ok(dd.disabled === false, '连上本机引擎后下拉仍可切换');
   ok(dd.cur === 'local:x0', '默认停在新音色 x0 上', dd.cur);
   ok(/本机神经语音/.test(dd.labels.join(' ')), '本机声线有独立分组标题', dd.labels[0]);
@@ -112,7 +112,7 @@ async function main() {
     return out;
   })()`);
   synth.forEach(r => console.log('  ' + r.v.padEnd(5) + (r.err ? ' ERR ' + r.err : ' ' + r.size + ' B / ' + r.head + ' / ' + r.ms + ' ms')));
-  ok(synth.length === 12 && synth.every(r => !r.err && r.head === 'RIFF' && r.size > 20000), '12 个声线都合成了真实 WAV');
+  ok(synth.length === 23 && synth.every(r => !r.err && r.head === 'RIFF' && r.size > 20000), '23 个声线都合成了真实 WAV');
 
   console.log('=== 页面朗读（走本机声线）');
   const b64 = fs.readFileSync(path.join(HERE, '_samples', 'test_utf8.txt')).toString('base64');
@@ -123,9 +123,9 @@ async function main() {
     await MY.importBuffer(arr.buffer, 'test_utf8.txt', 'txt');
     const id = MY.BOOKS[MY.BOOKS.length-1].id;
     await MY.openBook(id);
-    MY.CFG.localVoice = 's35'; MY.saveCfg();
+    MY.CFG.localVoice = 'c0'; MY.saveCfg();
     MY.startSpeak();
-    await new Promise(r=>setTimeout(r, 4200));
+    await new Promise(r=>setTimeout(r, 7000));
     const a = MY.SPK.audio;
     const st = {on:MY.SPK.on, tag:document.getElementById('spPlay').textContent.trim(), src:(a&&a.src||'').slice(0,10), dur:(a&&a.duration)||0, err:(a&&a.error&&a.error.code)||0, badge:document.getElementById('spQuality').textContent};
     return st;
@@ -141,16 +141,16 @@ async function main() {
   const sw = await ev(`(async()=>{
     var sel = document.getElementById('spVoice');
     var before = MY.CFG.localVoice;
-    sel.value = 'local:s9';
+    sel.value = 'local:x0';
     sel.dispatchEvent(new Event('change'));
-    await new Promise(r=>setTimeout(r, 3000));
+    await new Promise(r=>setTimeout(r, 9000));
     var a = MY.SPK.audio;
     return {before: before, after: MY.CFG.localVoice, on: MY.SPK.on, playing: MY.SPK.playing,
             src:(a&&a.src||'').slice(0,5), dur:(a&&a.duration)||0, selVal: sel.value,
             toast: (document.getElementById('toast')||{}).textContent||''};
   })()`);
   console.log('  ', JSON.stringify(sw));
-  ok(sw.after === 's9', '换了声线，配置已更新', sw.after);
+  ok(sw.after === 'x0', '换了声线，配置已更新', sw.after);
   ok(sw.on === true && sw.playing === true, '换声线后朗读没断', sw);
   ok(sw.dur > 0.3, '新声线音频已开始播放', sw.dur);
   await ev("MY.stopSpeak()");
@@ -162,7 +162,7 @@ async function main() {
     var chip = document.querySelector('.bk .resume');
     var out = {chip: !!chip, label: chip ? chip.textContent.trim() : '', saved: JSON.stringify({lCh:(MY.BOOKS[0]||{}).lCh, lPi:(MY.BOOKS[0]||{}).lPi})};
     if (chip) chip.click();
-    await new Promise(r=>setTimeout(r, 6000));
+    await new Promise(r=>setTimeout(r, 15000));
     out.on = MY.SPK.on; out.playing = MY.SPK.playing;
     out.ch = MY.BK ? MY.BK.ch : -1; out.pi = MY.SPK.pi;
     var a = MY.SPK.audio;
@@ -185,9 +185,9 @@ async function main() {
   await sleep(300);
   await shot('shot_14_settings_voices.png');
   const txt = await ev("(document.getElementById('modalBody')||{}).textContent||''");
-  ok(/174 个中文说话人/.test(txt), '设置面板写明 174 个说话人', (txt.match(/模型里一共[^）]{0,30}/) || [''])[0]);
-  ok(/148 女/.test(txt) && /26 男/.test(txt), '设置面板写明男女声数量', (txt.match(/\(148 女[^）]{0,20}/) || [''])[0]);
-  ok(/精选 12 个/.test(txt), '设置面板写明精选 12 个');
+  ok(/187 个中文说话人/.test(txt), '设置面板写明 187 个说话人', (txt.match(/模型里一共[^）]{0,30}/) || [''])[0]);
+  ok(/148 女/.test(txt) && /39 男/.test(txt), '设置面板写明男女声数量', (txt.match(/\(148 女[^）]{0,20}/) || [''])[0]);
+  ok(/精选 23 个/.test(txt), '设置面板写明精选 23 个');
 
   console.log('=== 运行时错误');
   ok(errors.length === 0, '无 JS 异常', errors.slice(0, 3));

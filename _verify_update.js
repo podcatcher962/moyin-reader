@@ -41,11 +41,11 @@ const fakeDoc = (ver) => ({
     {
       id: 'moyin-reader', name: '墨吟阅读器', version: ver, featured: true, published: '2026-11-09',
       builds: [
-        { file: 'MoYinReader.apk', size: 87760896, sha256: 'b'.repeat(64), urls: [{ m: 'ghproxy', u: 'https://example.com/mo.apk' }, { m: 'ghfast', u: 'https://example.com/mo2.apk' }] },
-        { file: 'MoYinReader.exe', size: 91400000, sha256: 'c'.repeat(64), urls: [{ m: 'ghproxy', u: 'https://example.com/mo.exe' }] },
-        { file: 'MoYinReader_Lite.exe', size: 17900000, sha256: 'd'.repeat(64), urls: [{ m: 'ghproxy', u: 'https://example.com/mol.exe' }] },
-        { file: 'MoYinReader.html', size: 413150, sha256: 'e'.repeat(64), urls: [{ m: 'ghproxy', u: 'https://example.com/mo.html' }] },
-        { file: 'MoYinReader-Linux-1.14.0.tar.gz', size: 10200000, sha256: 'f'.repeat(64), urls: [{ m: 'ghproxy', u: 'https://example.com/mo.tgz' }] }
+        { file: 'MoYinReader.apk', size: 73394481, sha256: 'b'.repeat(64), urls: [{ m: 'ghproxy', u: 'https://example.com/mo.apk' }, { m: 'ghfast', u: 'https://example.com/mo2.apk' }] },
+        { file: 'MoYinReader.exe', size: 81210285, sha256: 'c'.repeat(64), urls: [{ m: 'ghproxy', u: 'https://example.com/mo.exe' }] },
+        { file: 'MoYinReader_Lite.exe', size: 17947291, sha256: 'd'.repeat(64), urls: [{ m: 'ghproxy', u: 'https://example.com/mol.exe' }] },
+        { file: 'MoYinReader.html', size: 421312, sha256: 'e'.repeat(64), urls: [{ m: 'ghproxy', u: 'https://example.com/mo.html' }] },
+        { file: 'MoYinReader-Linux-1.15.0.tar.gz', size: 10200000, sha256: 'f'.repeat(64), urls: [{ m: 'ghproxy', u: 'https://example.com/mo.tgz' }] }
       ]
     }
   ]
@@ -129,14 +129,14 @@ const fakeDoc = (ver) => ({
 
   // ── ③ 发现新版本（安卓尺寸 → 该给 apk）────────────────────────
   P('\n【发现新版本 · 手机】');
-  let st = await withDoc('1.14.0', true);
+  let st = await withDoc('1.15.0', true);
   ok(st.open, '弹窗打开了');
   ok(/发现新版本/.test(st.title), '标题是「发现新版本」', st.title);
-  ok(/1\.14\.0/.test(st.body), '正文里有新版本号 1.14.0');
+  ok(/1\.15\.0/.test(st.body), '正文里有新版本号 1.15.0');
   ok(/你这台设备/.test(st.body), '有「你这台设备」分区');
   ok(/MoYinReader\.apk/.test(st.body), '手机给的是 APK');
   ok(!/MoYinReader\.exe/.test(st.body.split('其它平台')[0]), '手机不会把 exe 排在前面');
-  ok(/83\.7 MB/.test(st.body), '写清了体积（83.7 MB）', (st.body.match(/[\d.]+ MB/) || [])[0]);
+  ok(/70\.0 MB/.test(st.body), '写清了体积（70.0 MB）', (st.body.match(/[\d.]+ MB/) || [])[0]);
   ok(/sha256\s+b{8}/.test(st.body), '写了 sha256 便于核对');
   ok(/去下载/.test(st.btns.join()), '有「去下载」按钮', st.btns);
   ok(/复制链接/.test(st.btns.join()), '有「复制链接」按钮', st.btns);
@@ -197,8 +197,8 @@ const fakeDoc = (ver) => ({
   await sleep(400);
   /* 桌面壳场景：host 不是 127.0.0.1（这里是 file://），所以走「网页版」分支拿 html；
      要验桌面分支得把 speakEnv().apk 骗成 true —— 直接测 updMine 的行为更直接 */
-  st = await withDoc('1.14.0', true);
-  ok(/1\.13\.0/.test(st.body), '桌面尺寸下也能读到新版本');
+  st = await withDoc('1.15.0', true);
+  ok(/1\.15\.0/.test(st.body), '桌面尺寸下也能读到新版本');
   ok(/MoYinReader\.html/.test(st.body), '网页版给的是单文件 HTML');
   P('    （桌面壳分支依赖 host=127.0.0.1，headless 下用 file:// 无法复现，改由下面的人工核对覆盖）');
 

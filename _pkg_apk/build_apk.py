@@ -53,7 +53,7 @@ HTML = os.path.join(ROOT, 'MoYinReader.html')
 FINAL = os.path.join(ROOT, 'MoYinReader.apk')
 STAGE = os.path.join(PKG_DIR, 'stage_' + time.strftime('%H%M%S'))
 
-# ── 手机端离线神经语音：sherpa-onnx Android AAR + AISHELL3 中文多说话人模型 ──
+# ── 手机端离线神经语音：sherpa-onnx Android AAR + 小雅/超文/fanchen 三套中文模型 ──
 # 引擎与模型只在打包时用，不进仓库。缺了也能打，只是 APK 里没有神经语音。
 SHERPA = os.environ.get('MOYIN_SHERPA') or r'D:\Workuddy\_tools\sherpa_android'
 SHERPA_AAR = os.path.join(SHERPA, 'aar')
@@ -62,13 +62,21 @@ KOTLIN_JAR = os.path.join(SHERPA, 'kotlin-stdlib.jar')
 SHERPA_ABI = 'arm64-v8a'
 SHERPA_LIBS = ['libonnxruntime.so', 'libsherpa-onnx-c-api.so',
                'libsherpa-onnx-cxx-api.so', 'libsherpa-onnx-jni.so']
-# 两套模型：小雅（默认音色，22.05 kHz）+ AISHELL3 量化音色库（174 人，8 kHz）
-VOICE_MAIN = os.path.join(ROOT, 'VoicePack', 'models', 'xiaoya')
-VOICE_MAIN_FILES = ['zh_CN-xiao_ya-medium.onnx', 'lexicon.txt', 'tokens.txt',
+# 三套模型：女主小雅（22.05 kHz）+ 男主超文（22.05 kHz）+ 配角库 fanchen（187 人，16 kHz）
+VOICE_GIRL = os.path.join(ROOT, 'VoicePack', 'models', 'xiaoya')
+VOICE_GIRL_FILES = ['model.onnx', 'lexicon.txt', 'tokens.txt',
                     'date.fst', 'number.fst', 'phone.fst']
-VOICE_LIB = os.path.join(ROOT, 'VoicePack', 'models', 'aishell3')
-VOICE_LIB_FILES = ['model.int8.onnx', 'lexicon.txt', 'tokens.txt',
-                   'date.fst', 'number.fst', 'phone.fst']
+VOICE_BOY = os.path.join(ROOT, 'VoicePack', 'models', 'chaowen')
+VOICE_BOY_FILES = ['model.onnx']
+# 小雅与超文共用一套词表与数字规则（两份模型逐字节同源），桌面端放在 models/shared，
+# 入包时合并进 assets/tts/xiaoya/，手机端只需认一个目录。
+VOICE_SHARED = os.path.join(ROOT, 'VoicePack', 'models', 'shared')
+VOICE_SHARED_FILES = ['lexicon.txt', 'tokens.txt',
+                      'date.fst', 'number.fst', 'phone.fst']
+VOICE_LIB = os.path.join(ROOT, 'VoicePack', 'models', 'fanchen')
+VOICE_LIB_FILES = ['model.onnx', 'lexicon.txt', 'tokens.txt',
+                   'dict/jieba.dict.utf8', 'dict/hmm_model.utf8', 'dict/idf.utf8',
+                   'dict/stop_words.utf8', 'dict/user.dict.utf8']
 NEURO = '--no-neuro' not in sys.argv
 
 os.environ['JAVA_HOME'] = JDK
@@ -78,8 +86,8 @@ os.makedirs(STAGE, exist_ok=True)
 MANIFEST = '''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="%s"
-    android:versionCode="11300"
-    android:versionName="1.13.0">
+    android:versionCode="11400"
+    android:versionName="1.14.0">
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
     <!-- 只有两条：WebView 访问本机 127.0.0.1 需要明文 http；
          不申请麦克风、定位、通讯录、存储，读书不需要这些。 -->
@@ -251,7 +259,9 @@ def neuro_available():
         p = os.path.join(SHERPA_AAR, 'jni', SHERPA_ABI, lib)
         if not os.path.isfile(p):
             return False, '缺 so：' + p
-    for src_dir, files in ((VOICE_MAIN, VOICE_MAIN_FILES),
+    for src_dir, files in ((VOICE_GIRL, [VOICE_GIRL_FILES[0]]),
+                           (VOICE_SHARED, VOICE_SHARED_FILES),
+                           (VOICE_BOY, VOICE_BOY_FILES),
                            (VOICE_LIB, VOICE_LIB_FILES)):
         for f in files:
             p = os.path.join(src_dir, f)
@@ -286,19 +296,30 @@ def prepare_sources():
 
 
 def stage_voice_model(assets):
-    """两套模型分别拷进 assets/tts/xiaoya 与 assets/tts/aishell3，
-    首次启动由 TtsEngine 解压到私有目录（音色库等真正选中时才解压）。"""
+    """三套模型分别拷进 assets/tts/xiaoya、/chaowen、/fanchen，
+    首次启动由 TtsEngine 解压到私有目录（男主和配角库等真正选中时才解压）。
+    小雅的词表在 models/shared，入包时与 model.onnx 并进同一个目录。"""
+    plan = (
+        ('xiaoya', ((VOICE_GIRL, [VOICE_GIRL_FILES[0]]),
+                    (VOICE_SHARED, VOICE_SHARED_FILES))),
+        ('chaowen', ((VOICE_BOY, VOICE_BOY_FILES),)),
+        ('fanchen', ((VOICE_LIB, VOICE_LIB_FILES),)),
+    )
     total = 0
-    for sub, src_dir, files in (('xiaoya', VOICE_MAIN, VOICE_MAIN_FILES),
-                                ('aishell3', VOICE_LIB, VOICE_LIB_FILES)):
+    for sub, groups in plan:
         dst = os.path.join(assets, 'tts', sub)
         os.makedirs(dst, exist_ok=True)
         n = 0
-        for f in files:
-            src = os.path.join(src_dir, f)
-            shutil.copy2(src, os.path.join(dst, f))
-            total += os.path.getsize(src)
-            n += 1
+        for src_dir, files in groups:
+            for f in files:
+                src = os.path.join(src_dir, f)
+                out = os.path.join(dst, f)
+                parent = os.path.dirname(out)
+                if parent and not os.path.isdir(parent):
+                    os.makedirs(parent, exist_ok=True)
+                shutil.copy2(src, out)
+                total += os.path.getsize(src)
+                n += 1
         print('  %-9s 入包 %d 个文件' % (sub, n), flush=True)
     print('  语音模型合计：%.1f MB' % (total / 1048576), flush=True)
     return total
@@ -426,14 +447,17 @@ def audit(allcls, dexfile, has_neuro):
     ok &= ck('classes.dex' in names, 'dex 已打包')
     if has_neuro:
         allowed = ({'assets/index.html'}
-                   | {'assets/tts/xiaoya/' + f for f in VOICE_MAIN_FILES}
-                   | {'assets/tts/aishell3/' + f for f in VOICE_LIB_FILES})
+                   | {'assets/tts/xiaoya/' + f for f in VOICE_GIRL_FILES}
+                   | {'assets/tts/chaowen/' + f for f in VOICE_BOY_FILES}
+                   | {'assets/tts/fanchen/' + f for f in VOICE_LIB_FILES})
         extra = sorted(set(n for n in names if n.startswith('assets/')) - allowed)
-        ok &= ck(not extra, 'assets 只有页面与两套语音模型，多余项 %r' % extra[:3])
-        ok &= ck(all('assets/tts/xiaoya/' + f in names for f in VOICE_MAIN_FILES),
-                 '默认音色（小雅）7 个文件齐全')
-        ok &= ck(all('assets/tts/aishell3/' + f in names for f in VOICE_LIB_FILES),
-                 '音色库（AISHELL3 量化）6 个文件齐全')
+        ok &= ck(not extra, 'assets 只有页面与三套语音模型，多余项 %r' % extra[:3])
+        ok &= ck(all('assets/tts/xiaoya/' + f in names for f in VOICE_GIRL_FILES),
+                 '女主（小雅）6 个文件齐全')
+        ok &= ck(all('assets/tts/chaowen/' + f in names for f in VOICE_BOY_FILES),
+                 '男主（超文）模型齐全')
+        ok &= ck(all('assets/tts/fanchen/' + f in names for f in VOICE_LIB_FILES),
+                 '配角库（fanchen 187 人）8 个文件齐全')
         libs = [n for n in names if n.startswith('lib/')]
         ok &= ck(len(libs) == len(SHERPA_LIBS) and
                  all(n.startswith('lib/%s/' % SHERPA_ABI) for n in libs),
@@ -463,7 +487,7 @@ def audit(allcls, dexfile, has_neuro):
     size = os.path.getsize(FINAL)
     if has_neuro:
         ok &= ck(20 * 1048576 < size < 90 * 1048576,
-                 'APK 体积 %.1f MB（含 78 MB 语音模型与 sherpa 引擎）' % (size / 1048576))
+                 'APK 体积 %.1f MB（含 89 MB 语音模型与 sherpa 引擎）' % (size / 1048576))
     else:
         # 不带模型时 dex 里仍有 sherpa + kotlin 的类，所以下限放宽到 8 MB 以内
         ok &= ck(50 * 1024 < size < 8 * 1024 * 1024, 'APK 体积 %.1f MB' % (size / 1048576))

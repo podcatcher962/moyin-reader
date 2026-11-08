@@ -180,7 +180,7 @@
     '稍等一下再点朗读就行，先看字也不耽误。': 'Give it a moment and tap Read aloud again; reading the page meanwhile is fine.',
     '语音引擎没能启动': 'The speech engine did not start',
     '这一次神经语音没加载起来，可以把下面这行发给作者；也可以先用手机系统自带的中文语音顶上。': 'The neural voice failed to load this time. Send the line below to the author, or fall back to the phone system voice for now.',
-    '装安卓版就可以了：174 个离线神经声线随包带走，断网也能听，是手机浏览器给不了的效果。': 'Install the Android build: all 174 offline neural voices travel inside the package and work with no network — something a mobile browser simply cannot do.',
+    '装安卓版就可以了：187 个离线神经声线随包带走，断网也能听，是手机浏览器给不了的效果。': 'Install the Android build: all 187 offline neural voices travel inside the package and work with no network — something a mobile browser simply cannot do.',
 
     /* ---------- 设置：朗读 ---------- */
     '朗读': 'Reading aloud',
@@ -234,8 +234,8 @@
     '，点「试听音色」听听看': ' — tap “Preview voice” to listen',
 
     /* ---------- 设置页说明段落 ---------- */
-    '本机跑 sherpa-onnx + 开源中文模型（AISHELL3 多说话人 VITS）：接近真人的中文语调，不收费、不联网、不用账号、不用 Key。语音库已随成品装好，听书前双击「VoicePack/启动语音引擎.cmd」即可。':
-      'Runs sherpa-onnx plus an open-source Chinese model (AISHELL3 multi-speaker VITS) on this machine: near-human intonation, no fees, no network, no account, no API key. The voice library ships with the app — double-click “VoicePack/启动语音引擎.cmd” before listening.',
+    '本机跑 sherpa-onnx + 三套开源中文模型（小雅 / 超文为 22.05 kHz 男女主角，fanchen-C 为 16 kHz、187 人的配角库）：接近真人的中文语调，不收费、不联网、不用账号、不用 Key。语音库已随成品装好，听书前双击「VoicePack/启动语音引擎.cmd」即可。':
+      'Runs sherpa-onnx plus three open-source Chinese models (XiaoYa / ChaoWen at 22.05 kHz for the two leads, FanChen-C at 16 kHz with 187 supporting voices) on this machine: near-human intonation, no fees, no network, no account, no API key. The voice library ships with the app — double-click “VoicePack/启动语音引擎.cmd” before listening.',
     '开启后，旁白用你选的声线，引号里的对白按人物自动换声——「张三说」和「李四道」是两个不同的声音，同一个人物整本书都是同一个声音。认不出人名时按出场顺序轮换，不会和旁白混成一个声音。只在「免费神经语音」下生效；系统语音不支持分角色。':
       'When on, narration keeps your chosen voice while quoted dialogue switches per character — “Zhang said” and “Li replied” sound different, and each character keeps the same voice for the whole book. Unrecognised speakers rotate in order of appearance, so dialogue never collapses into the narration voice. Works only with the free neural voices; system voices cannot do this.',
     '朗读文字只发给本机的 127.0.0.1 合成，不产生对外网络请求；引擎没启动时自动用系统语音，不影响看书。':

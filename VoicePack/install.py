@@ -5,8 +5,17 @@
 从 sherpa-onnx 官方 GitHub Release 下载开源引擎与中文神经语音模型，
 解压到本目录的 engine/ 与 models/。全程免费、无需账号、无需 Key。
 
+三套模型：
+  models/xiaoya/model.onnx    女主「墨吟 · 女声」22.05 kHz（小雅，官方 int8）
+  models/chaowen/model.onnx   男主「墨吟 · 男声」22.05 kHz（超文，官方 int8）
+  models/fanchen/…            配角库 16 kHz，187 个说话人（fanchen-C）
+  models/shared/…             两份 piper 模型共用的词表与数字规则
+
 已装好的文件会自动跳过；换电脑时把整个 VoicePack 文件夹拷过去即可直接用。
 下载走国内加速源，并对大文件做分段并发，避免单连接限速。
+
+fanchen-C 官方只发 fp32（121 MB）。若本机装了 onnxruntime，安装器会自动量化成
+int8（约 38 MB）；没装就保留 fp32——能听，只是多占 80 MB。手动量化见文末提示。
 """
 import concurrent.futures
 import io
@@ -26,18 +35,40 @@ EXE = 'sherpa-onnx-offline-tts.exe'
 ENGINE_DLL = ['onnxruntime.dll', 'onnxruntime_providers_shared.dll',
               'sherpa-onnx-c-api.dll', 'sherpa-onnx-cxx-api.dll']
 
-# 只用一份 AISHELL3 多说话人模型（174 个声线共用）。
-# 包里有个 172 MB 的 rule.far 规则文件，朗读不需要，只取小文件。
-AISHELL3_FILES = ['model.onnx', 'tokens.txt', 'lexicon.txt',
-                  'date.fst', 'number.fst', 'phone.fst']
-
-# (本地存档名, 官方相对路径, 包内子目录, 目标目录, 要拷出的文件, 类型)
-ARCS = [
-    ('engine.tar.bz2', 'v2.0.1/sherpa-onnx-v2.0.1-win-x64-shared-MD-Release.tar.bz2',
-     None, None, [], 'engine'),
-    ('voice_aishell3.tar.bz2', 'tts-models/vits-icefall-zh-aishell3.tar.bz2',
-     'vits-icefall-zh-aishell3', 'aishell3', AISHELL3_FILES, 'model'),
+# 每个包：(存档名, Release 相对路径, 包内根目录, [(包内相对路径, models/ 下目标相对路径)])
+# 包内根目录留空表示自动在解压树里找；源文件找不到时也会按文件名递归搜一次。
+PKGS = [
+    ('engine.tar.bz2',
+     'v2.0.1/sherpa-onnx-v2.0.1-win-x64-shared-MD-Release.tar.bz2',
+     None, []),
+    # 女主小雅：官方 int8（13.4 MB 压缩包）。词表与数字规则两个 piper 模型通用，取一份进 shared。
+    ('v_xiaoya.tar.bz2',
+     'tts-models/vits-piper-zh_CN-xiao_ya-medium-int8.tar.bz2',
+     'vits-piper-zh_CN-xiao_ya-medium-int8',
+     [('zh_CN-xiao_ya-medium.onnx', 'xiaoya/model.onnx'),
+      ('lexicon.txt', 'shared/lexicon.txt'),
+      ('tokens.txt', 'shared/tokens.txt'),
+      ('date.fst', 'shared/date.fst'),
+      ('number.fst', 'shared/number.fst'),
+      ('phone.fst', 'shared/phone.fst')]),
+    # 男主超文：同规格 22.05 kHz，只取模型本体。
+    ('v_chaowen.tar.bz2',
+     'tts-models/vits-piper-zh_CN-chaowen-medium-int8.tar.bz2',
+     'vits-piper-zh_CN-chaowen-medium-int8',
+     [('zh_CN-chaowen-medium.onnx', 'chaowen/model.onnx')]),
+    # 配角库：187 个说话人共用一份模型，自带词表与 jieba 词典（多音字靠它）。
+    ('v_fanchen.tar.bz2',
+     'tts-models/vits-zh-hf-fanchen-C.tar.bz2',
+     'vits-zh-hf-fanchen-C',
+     [('lexicon.txt', 'fanchen/lexicon.txt'),
+      ('tokens.txt', 'fanchen/tokens.txt'),
+      ('dict/jieba.dict.utf8', 'fanchen/dict/jieba.dict.utf8'),
+      ('dict/hmm_model.utf8', 'fanchen/dict/hmm_model.utf8'),
+      ('dict/idf.utf8', 'fanchen/dict/idf.utf8'),
+      ('dict/stop_words.utf8', 'fanchen/dict/stop_words.utf8'),
+      ('dict/user.dict.utf8', 'fanchen/dict/user.dict.utf8')]),
 ]
+FANCHEN_ONNX = 'fanchen/model.onnx'      # 单独处理：可能要量化
 PARTS = 8
 
 
@@ -50,18 +81,24 @@ def engine_ok():
     return all(os.path.isfile(os.path.join(b, f)) for f in [EXE] + ENGINE_DLL)
 
 
-def model_ok(dst, files):
-    d = os.path.join(HERE, 'models', dst)
-    return all(os.path.isfile(os.path.join(d, f)) for f in files)
+def pkg_ok(name):
+    """这一个包要落的文件是不是都在了。fanchen 的 model.onnx 不在 plan 里
+    （要量化，单独装），所以额外判一下。"""
+    if name == 'engine.tar.bz2':
+        return engine_ok()
+    pkg = [p for p in PKGS if p[0] == name][0]
+    for _s, d in pkg[3]:
+        if not os.path.isfile(os.path.join(HERE, 'models', os.sep.join(d.split('/')))):
+            return False
+    if name == 'v_fanchen.tar.bz2':
+        return os.path.isfile(os.path.join(HERE, 'models', 'fanchen', 'model.onnx'))
+    return True
 
 
 def need():
     if not engine_ok():
         return True
-    for a in ARCS:
-        if a[5] in ('model', 'raw') and not model_ok(a[3], a[4]):
-            return True
-    return False
+    return any(not pkg_ok(p[0]) for p in PKGS)
 
 
 def remote_size(rel):
@@ -151,23 +188,62 @@ def extract(arc, out):
             t.extractall(out)
 
 
+def find_file(root, rel):
+    """先按给定相对路径找，找不到就按文件名在整棵树里搜一次（兼容包内改名）。"""
+    p = os.path.join(root, rel)
+    if os.path.isfile(p):
+        return p
+    want = os.path.basename(rel)
+    for dp, _dn, fn in os.walk(root):
+        if want in fn:
+            return os.path.join(dp, want)
+    return None
+
+
+def find_model(root):
+    """名字对不上时，取整棵树里最大的 .onnx —— 那就是模型本体。"""
+    best = None
+    for dp, _dn, fn in os.walk(root):
+        for f in fn:
+            if f.endswith('.onnx'):
+                p = os.path.join(dp, f)
+                if not best or os.path.getsize(p) > os.path.getsize(best):
+                    best = p
+    return best
+
+
+def quantize(src, dst):
+    """fanchen 官方只发 fp32；有 onnxruntime 就压成 int8，省 80 MB 磁盘和一半内存。"""
+    try:
+        from onnxruntime.quantization import quantize_dynamic, QuantType
+    except Exception:
+        return False, '没装 onnxruntime'
+    try:
+        say('    量化中（121 MB → 约 38 MB，通常 1~2 分钟）…')
+        quantize_dynamic(src, dst, weight_type=QuantType.QInt8)
+    except Exception as e:
+        return False, str(e)
+    if not os.path.isfile(dst) or os.path.getsize(dst) > os.path.getsize(src) * 0.7:
+        return False, '量化结果异常'
+    return True, ''
+
+
 def install():
-    say('=' * 56)
+    say('=' * 60)
     say('  墨吟 · 免费离线中文神经语音包')
-    say('  引擎 sherpa-onnx (Apache-2.0) + AISHELL3（174 个声线，约 55 MB）')
+    say('  引擎 sherpa-onnx (Apache-2.0)')
+    say('  女主小雅 22.05 kHz ＋ 男主超文 22.05 kHz ＋ 187 人配角库 16 kHz')
     say('  全部开源免费，不注册、不联网听书、不按字数收费')
-    say('=' * 56)
+    say('=' * 60)
     if not need():
         say('\n语音库已经装好了，无需重复下载。')
         say('直接双击「启动语音引擎.cmd」即可。\n')
         return True
     os.makedirs(TMP, exist_ok=True)
     paths = {}
-    for name, rel, _sub, dst, files, kind in ARCS:
-        if kind == 'engine' and engine_ok():
-            continue
-        if kind in ('model', 'raw') and model_ok(dst, files):
-            say('  已完成：%s' % dst)
+    for name, rel, _root, _plan in PKGS:
+        if pkg_ok(name):
+            say('  已完成：%s' % name)
             continue
         out = os.path.join(TMP, name)
         if os.path.isfile(out) and os.path.getsize(out) > 1000000:
@@ -204,27 +280,47 @@ def install():
             if os.path.isfile(src):
                 shutil.copy2(src, os.path.join(bindst, f))
 
-    for name, _rel, sub, dst, files, kind in ARCS:
-        if kind == 'raw':
-            target = os.path.join(HERE, 'models', dst)
-            os.makedirs(target, exist_ok=True)
-            shutil.copy2(paths[name], os.path.join(target, os.path.basename(name)))
+    fan_src = None
+    for name, _rel, root_name, plan in PKGS:
+        if name == 'engine.tar.bz2' or name not in paths:
             continue
-        if kind != 'model' or name not in paths:
-            continue
-        tmp_model = os.path.join(TMP, 'm_' + dst)
-        os.makedirs(tmp_model, exist_ok=True)
-        extract(paths[name], tmp_model)
-        src = os.path.join(tmp_model, sub)
-        if not os.path.isdir(src):
-            cands = [os.path.join(dp, sub) for dp, dn, _fn in os.walk(tmp_model) if sub in dn]
-            src = cands[0] if cands else src
-        target = os.path.join(HERE, 'models', dst)
-        os.makedirs(target, exist_ok=True)
-        for f in files:
-            p = os.path.join(src, f)
-            if os.path.isfile(p):
-                shutil.copy2(p, os.path.join(target, f))
+        tmp = os.path.join(TMP, 'm_' + os.path.splitext(name)[0])
+        os.makedirs(tmp, exist_ok=True)
+        extract(paths[name], tmp)
+        base = os.path.join(tmp, root_name) if root_name else tmp
+        if not os.path.isdir(base):
+            base = tmp
+        for src_rel, dst_rel in plan:
+            p = find_file(base, src_rel)
+            if not p and src_rel.endswith('.onnx'):
+                p = find_model(base)
+            dst = os.path.join(HERE, 'models', dst_rel.replace('/', os.sep))
+            if not p:
+                say('  [注意] 包里没找到 %s，跳过' % src_rel)
+                continue
+            parent = os.path.dirname(dst)
+            if parent and not os.path.isdir(parent):
+                os.makedirs(parent, exist_ok=True)
+            shutil.copy2(p, dst)
+        if name == 'v_fanchen.tar.bz2':
+            fan_src = find_file(base, 'model.onnx')
+
+    # fanchen 的模型本体：先试量化，成功就只留 int8
+    fan_dst = os.path.join(HERE, 'models', FANCHEN_ONNX.replace('/', os.sep))
+    if fan_src and not os.path.isfile(fan_dst):
+        os.makedirs(os.path.dirname(fan_dst), exist_ok=True)
+        tmp_i8 = fan_dst + '.i8'
+        ok, why = quantize(fan_src, tmp_i8)
+        if ok:
+            os.replace(tmp_i8, fan_dst)
+            say('    量化完成：%.1f MB' % (os.path.getsize(fan_dst) / 1048576))
+        else:
+            try:
+                os.remove(tmp_i8)
+            except OSError:
+                pass
+            shutil.copy2(fan_src, fan_dst)
+            say('    保留 fp32（%s）。想省 80 MB 可以装好 onnxruntime 后重跑本脚本。' % why)
 
     try:
         shutil.rmtree(TMP)

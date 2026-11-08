@@ -322,7 +322,7 @@ async function main() {
   ok(lc.ready === true, '本机引擎探测成功', lc.ready);
   ok(lc.req >= 1, '已向本机服务发起合成请求', lc.req);
   ok(String(lc.port).indexOf('127.0.0.1:8177/tts') >= 0, '只请求 127.0.0.1 本机', lc.port);
-  ok(lc.voice === 's12', '音色参数正确', lc.voice);
+  ok(lc.voice === 'x0', '音色参数正确（默认主角 x0）', lc.voice);
   ok(lc.audio >= 1, '本机音频已播放', lc.audio);
   ok(lc.blob === 0, '音频为本地 blob，无外部链接', lc.blob);
   ok(lc.badge.indexOf('免费神经语音') >= 0, '标签显示免费神经语音', lc.badge);
@@ -346,9 +346,9 @@ async function main() {
   await ev("document.getElementById('btnCfg').click()");
   await shot('11_free_voice_settings');
   ok(await ev("!!document.querySelector('#modalBody [data-act=\"probe\"]')") === true, '设置含引擎重新检测');
-  ok(await ev("(function(){const s=document.querySelector('#modalBody [data-set=\"localVoice\"]');return s?s.options.length:0;})()") === 12, '设置含 12 个精选免费音色（x0 + 11）');
+  ok(await ev("(function(){const s=document.querySelector('#modalBody [data-set=\"localVoice\"]');return s?s.options.length:0;})()") === 23, '设置含 23 个精选免费音色（x0 + c0 + 21）');
   ok(await ev("(function(){return document.querySelectorAll('#modalBody [data-set=\"localVoice\"] optgroup').length;})()") === 1, '服务未连接时用内置精选声线（单组）');
-  ok(await ev("(function(){return document.querySelector('#modalBody [data-set=\"localVoice\"]').textContent.indexOf('声线 12') >= 0;})()") === true, '下拉含 AISHELL3 多声线女声');
+  ok(await ev("(function(){return document.querySelector('#modalBody [data-set=\"localVoice\"]').textContent.indexOf('老生 · 低沉 1') >= 0;})()") === true, '下拉含配角库精选声线（老生 · 低沉 1）');
   ok(await ev("!!document.querySelector('#modalBody [data-set=\"localPort\"]')") === true, '设置含本机端口');
   ok(await ev("(function(){return document.querySelectorAll('#modalBody input[type=password]').length;})()") === 0, '设置中已无 API Key 输入框');
   await ev("document.getElementById('modalX').click()");
@@ -363,7 +363,7 @@ async function main() {
     "document.getElementById('modalX').click();MY.LOCAL.info=null;MY.CFG.localVoice='s12';MY.saveCfg();return {v:v,n:n};})()");
   ok(hv.v !== 's20' && hv.n >= 2, '缺模型的音色自动隐藏并回退到可用音色', hv);
   await ev("(function(){MY.showDoc('local');return 1;})()");
-  ok(await ev("document.getElementById('modalBody').textContent.indexOf('174 个中文说话人')") >= 0, '免费语音说明已列出全部说话人');
+  ok(await ev("document.getElementById('modalBody').textContent.indexOf('187 个中文说话人')") >= 0, '免费语音说明已列出全部说话人');
   ok(await ev("document.getElementById('modalBody').textContent.indexOf('分角色朗读')") >= 0, '免费语音说明已写明分角色朗读');
   await ev("document.getElementById('modalX').click()");
   await ev("(function(){window.__localFail=false;window.__localOn=false;MY.CFG.localOn=0;MY.CFG.pause=120;MY.stopSpeak(true);return 1;})()");

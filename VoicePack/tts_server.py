@@ -71,296 +71,344 @@ if not HERE.isascii():
         pass
 # ---------------- 三套引擎 ----------------
 #
-# xiaoya（默认）：Piper 中文单说话人 VITS，22.05 kHz，60 MB。只有一个女声，
-#   但采样率是 AISHELL3 的近三倍，齿音、气口、尾音收束都在。
+# xiaoya（女主 · 默认）：Piper 中文单说话人 VITS，22.05 kHz。装的是官方 int8 版：
+#   17.8 MB，而 fp32 原版 60.3 MB 且几乎压不动（进 APK 就是 60.3 MB）。代价是
+#   合成慢 2.5 倍，谱质心 893→841 Hz、4 kHz 以上 2.9%→2.7%，听不出损失。
 #
-# aishell3（174 音色库，与小雅共存）：174 个说话人共用一份模型，只靠 --sid
-#   切声线，体积不随音色数量增长。装的是 8 位量化版（14 MB，原版 29 MB），
-#   说话人编号与原版完全一致；代价是推理慢约 15 倍，所以它只当「换口味」和
-#   男声用，日常朗读走小雅。
+# chaowen（男主）：同架构中文男声，22.05 kHz，同为官方 int8，17.8 MB。与小雅
+#   共用一套词典和数字规则——两者的 lexicon.txt、tokens.txt、三个 fst 逐字节
+#   相同（2026-11-08 比对 md5 一致），所以只放一份在 models/shared。
+#
+# fanchen（配角库）：16 kHz 多说话人 VITS，38 MB 官方 int8。187 个说话人共用
+#   一份模型，只靠 --sid 切声线，体积不随音色数量增长。自带词典与 jieba 分词
+#   表，多音字读法更准。推理慢约 10 倍，所以只当配角。
+#
+# 男女分界（重要）：按音高 195 Hz 分，男声 37 / 女声 150。这个口径是用户逐条
+#   试听校出来的。不要用说话人嵌入 emb_g 判性别——它编码的是音色类别，195 Hz
+#   以上那批样本与边界差的中位只有 0.03（正常样本 0.30），用它分类会把成批
+#   女声判成男声，2026-11-08 已经踩过一次。
 #
 # matcha（保留，可回退）：flow-matching 中文模型 + hifigan_v2 声码器，22.05 kHz，
-#   韵律最自然，但 77 MB 且只有一个女声。模型放回 models/matcha 即启用。
+#   韵律最自然，但 77 MB 且只有一个女声。把模型放回 models/matcha 即启用。
 MATCHA_DIR = 'matcha'
 MATCHA_MODEL = 'model-steps-3.onnx'
 MATCHA_VOCODER = 'hifigan_v2.onnx'
 MATCHA_F0 = 245                        # 离线实测中位基频，用于分档显示
 
-AISHELL3_FSTS = ['date.fst', 'number.fst', 'phone.fst']
+# 小雅与超文共用的词表与数字规则，单独放 shared，省下一份重复的 2 MB。
+SHARED_DIR = 'shared'
+SHARED_FSTS = ['date.fst', 'number.fst', 'phone.fst']
 
-# 小雅：与 AISHELL3 共用同一批词表文件名（词典、数字规则），但目录独立。
-XIAOYA_DIR = 'xiaoya'
-XIAOYA_MODEL = 'zh_CN-xiao_ya-medium.onnx'
-XIAOYA_F0 = 259                        # 离线实测中位基频，用于分档显示
-
-# 174 音色库优先用 8 位量化版：说话人编号不变，体积从 29 MB 降到 14 MB。
-_A3_INT8 = 'model.int8.onnx'
-AISHELL3_MODEL = (_A3_INT8
-                  if os.path.isfile(os.path.join(MODEL_DIR, 'aishell3', _A3_INT8))
-                  else 'model.onnx')
+XIAOYA_DIR = 'xiaoya'                  # 女主，模型文件统一叫 model.onnx
+XIAOYA_F0 = 266                        # 2026-11-08 实测中位
+CHAOWEN_DIR = 'chaowen'                # 男主
+CHAOWEN_F0 = 163                       # 2026-11-08 实测中位
+FANCHEN_DIR = 'fanchen'                # 187 人配角库
 
 SID_F0 = {
-      0: 250,
-      1: 258,
-      2: 235,
-      3: 242,
-      4: 211,
-      5: 296,
-      6: 242,
-      7: 205,
-      8: 258,
-      9: 235,
-     10: 143,
-     11: 242,
-     12: 235,
-     13: 200,
-     14: 276,
-     15: 154,
-     16: 242,
-     17: 258,
-     18: 229,
-     19: 222,
-     20: 258,
-     21: 143,
-     22: 250,
+      0: 260,
+      1: 278,
+      2: 273,
+      3: 251,
+      4: 226,
+      5: 286,
+      6: 243,
+      7: 224,
+      8: 278,
+      9: 234,
+     10: 151,
+     11: 238,
+     12: 243,
+     13: 217,
+     14: 299,
+     15: 153,
+     16: 254,
+     17: 288,
+     18: 252,
+     19: 232,
+     20: 265,
+     21: 172,
+     22: 257,
      23: 205,
-     24: 222,
-     25: 154,
-     26: 250,
-     27: 205,
-     28: 258,
-     29: 195,
-     30: 222,
-     31: 267,
-     32: 174,
-     33: 296,
-     34: 258,
-     35: 229,
-     36: 200,
-     37: 235,
-     38: 222,
-     39: 296,
-     40: 145,
-     41: 242,
-     42: 296,
-     43: 258,
-     44: 286,
-     45: 286,
-     46: 140,
-     47: 205,
-     48: 186,
+     24: 249,
+     25: 152,
+     26: 273,
+     27: 218,
+     28: 265,
+     29: 201,
+     30: 250,
+     31: 276,
+     32: 189,
+     33: 303,
+     34: 283,
+     35: 252,
+     36: 204,
+     37: 247,
+     38: 219,
+     39: 291,
+     40: 139,
+     41: 251,
+     42: 314,
+     43: 314,
+     44: 313,
+     45: 275,
+     46: 153,
+     47: 223,
+     48: 194,
      49: 276,
-     50: 267,
-     51: 258,
-     52: 154,
-     53: 267,
-     54: 250,
-     55: 205,
-     56: 229,
-     57: 211,
-     58: 138,
-     59: 200,
-     60: 143,
-     61: 229,
-     62: 235,
-     63: 250,
-     64: 250,
-     65: 182,
-     66: 320,
-     67: 258,
-     68: 267,
-     69: 127,
-     70: 195,
-     71: 235,
-     72:  91,
-     73: 267,
-     74: 108,
-     75: 163,
-     76: 148,
-     77: 235,
-     78: 276,
-     79: 242,
-     80: 195,
-     81: 235,
-     82: 200,
-     83: 178,
-     84: 235,
-     85: 258,
-     86: 267,
-     87: 242,
-     88: 211,
-     89: 267,
-     90: 242,
-     91: 258,
-     92: 286,
-     93: 229,
-     94: 222,
-     95: 148,
-     96: 211,
-     97: 258,
-     98: 140,
-     99: 229,
+     50: 280,
+     51: 249,
+     52: 168,
+     53: 290,
+     54: 251,
+     55: 247,
+     56: 237,
+     57: 219,
+     58: 146,
+     59: 220,
+     60: 146,
+     61: 260,
+     62: 244,
+     63: 258,
+     64: 270,
+     65: 175,
+     66: 303,
+     67: 286,
+     68: 269,
+     69: 128,
+     70: 275,
+     71: 268,
+     72: 192,
+     73: 279,
+     74: 121,
+     75: 181,
+     76: 167,
+     77: 246,
+     78: 256,
+     79: 244,
+     80: 218,
+     81: 240,
+     82: 245,
+     83: 194,
+     84: 239,
+     85: 263,
+     86: 299,
+     87: 272,
+     88: 224,
+     89: 256,
+     90: 247,
+     91: 243,
+     92: 293,
+     93: 231,
+     94: 220,
+     95: 172,
+     96: 218,
+     97: 295,
+     98: 161,
+     99: 272,
     100: 138,
-    101: 229,
-    102: 170,
-    103: 258,
-    104: 229,
-    105: 276,
-    106: 235,
-    107: 154,
-    108: 235,
-    109: 258,
-    110: 129,
-    111: 276,
-    112: 258,
-    113: 205,
-    114: 222,
-    115: 296,
-    116: 296,
-    117: 258,
-    118: 267,
-    119: 119,
-    120: 258,
-    121: 286,
-    122: 250,
-    123: 242,
-    124: 113,
-    125: 286,
-    126: 242,
-    127: 276,
-    128: 267,
-    129: 235,
-    130: 250,
-    131: 229,
-    132: 267,
-    133: 235,
-    134: 258,
-    135: 222,
-    136: 119,
-    137: 267,
-    138: 222,
-    139: 250,
-    140: 186,
-    141: 235,
-    142: 250,
-    143: 174,
-    144: 200,
-    145: 250,
-    146: 250,
-    147: 235,
-    148: 186,
-    149: 222,
-    150: 258,
-    151: 182,
-    152: 267,
-    153: 148,
-    154: 267,
-    155: 250,
-    156: 157,
-    157: 267,
-    158: 229,
-    159: 250,
-    160: 242,
-    161: 276,
-    162: 205,
-    163: 136,
-    164: 242,
-    165: 235,
-    166: 250,
-    167: 154,
-    168: 267,
-    169: 195,
-    170: 258,
-    171: 174,
-    172: 258,
-    173: 276
+    101: 257,
+    102: 174,
+    103: 262,
+    104: 236,
+    105: 316,
+    106: 222,
+    107: 164,
+    108: 268,
+    109: 256,
+    110: 169,
+    111: 277,
+    112: 248,
+    113: 232,
+    114: 234,
+    115: 251,
+    116: 300,
+    117: 241,
+    118: 287,
+    119: 131,
+    120: 256,
+    121: 298,
+    122: 257,
+    123: 256,
+    124: 118,
+    125: 278,
+    126: 270,
+    127: 283,
+    128: 260,
+    129: 249,
+    130: 263,
+    131: 226,
+    132: 249,
+    133: 257,
+    134: 288,
+    135: 280,
+    136: 134,
+    137: 256,
+    138: 236,
+    139: 280,
+    140: 219,
+    141: 283,
+    142: 254,
+    143: 163,
+    144: 211,
+    145: 273,
+    146: 245,
+    147: 236,
+    148: 191,
+    149: 220,
+    150: 282,
+    151: 176,
+    152: 275,
+    153: 153,
+    154: 256,
+    155: 260,
+    156: 160,
+    157: 279,
+    158: 244,
+    159: 271,
+    160: 257,
+    161: 254,
+    162: 220,
+    163: 150,
+    164: 251,
+    165: 238,
+    166: 272,
+    167: 162,
+    168: 262,
+    169: 213,
+    170: 259,
+    171: 176,
+    172: 263,
+    173: 277,
+    174: 182,
+    175: 154,
+    176: 213,
+    177: 198,
+    178: 239,
+    179: 280,
+    180: 256,
+    181: 168,
+    182: 291,
+    183: 169,
+    184: 248,
+    185: 266,
+    186: 229,
 }
 
-# 人工挑过、命名过的 11 个声线，列表里排在最前（试听对比以这批为准）
-CURATED = {
-    's12': '声线 12 · 温润',
-    's35': '声线 35 · 柔和',
-    's140': '声线 140 · 舒展',
-    's160': '声线 160 · 清亮',
-    's170': '声线 170 · 明快',
-    's20': '声线 20 · 爽朗',
-    's3': '声线 3 · 甜美',
-    's9': '声线 9 · 清脆',
-    's6': '声线 6 · 沉静',
-    's150': '声线 150 · 明亮',
-    's110': '声线 110 · 沉稳男声',
-}
+# 用户逐条试听敲定的 20 个配角声线（2026-11-08），列表里排在最前，按年龄层从低到高：
+# 老生 2、中年男 3、青年男 4、沉稳女 2、成年女 5、青年女 3、童声 2。
+CURATED = [
+    ('s124', '老生 · 低沉 1'),
+    ('s74',  '老生 · 低沉 2'),
+    ('s58',  '中年男 1'),
+    ('s156', '中年男 2'),
+    ('s167', '中年男 3'),
+    ('s52',  '青年男 1'),
+    ('s110', '青年男 2'),
+    ('s102', '青年男 3'),
+    ('s32',  '青年男 4'),
+    ('s36',  '沉稳女 1'),
+    ('s169', '沉稳女 2'),
+    ('s13',  '成年女 1'),
+    ('s149', '成年女 2'),
+    ('s106', '成年女 3'),
+    ('s19',  '成年女 4'),
+    ('s165', '成年女 5'),
+    ('s129', '青年女 1'),
+    ('s120', '青年女 2'),
+    ('s20',  '青年女 3'),
+    ('s41',  '童声 1'),
+    ('s105', '童声 2'),
+]
+CURATED_LABEL = dict(CURATED)
 
-# 音高分档：<165 Hz 判为男声（AISHELL3 男女声分布天然分界明显）
+# 音高分档：195 Hz 是男女分界，与上面 CURATED 的命名口径一致。
 BANDS = [
-    ('男声 · 低沉', 0,   120),
-    ('男声 · 中音', 120, 145),
-    ('男声 · 偏亮', 145, 165),
-    ('女声 · 偏沉', 165, 200),
-    ('女声 · 中音', 200, 235),
-    ('女声 · 清亮', 235, 265),
-    ('女声 · 高音', 265, 999),
+    ('男声 · 低沉', 0,   140),
+    ('男声 · 中年', 140, 165),
+    ('男声 · 偏高', 165, 195),
+    ('女声 · 低音', 195, 215),
+    ('女声 · 成年', 215, 240),
+    ('女声 · 青年', 240, 270),
+    ('女声 · 高音', 270, 999),
 ]
 
 
-def band_of(hz):
+# 人工校正：音高分档分不准的个别声线，档位单独指定。只加试听确认过的，别凭猜。
+BAND_OVERRIDE = {
+    41: '女声 · 高音',   # 童声 1：中位基频 251 Hz 会落进「女声 · 青年」，实际听感是童声
+}
+
+
+def band_of(hz, sid=None):
+    if sid is not None and sid in BAND_OVERRIDE:
+        return BAND_OVERRIDE[sid]
     for name, lo, hi in BANDS:
         if lo <= hz < hi:
             return name
-    return '女声 · 中音'
+    return '女声 · 高音'
+
+
+def _shared_files():
+    """小雅与超文共用的词表与数字规则（tokens, lexicon, 三个 fst）。"""
+    return [os.path.join(MODEL_DIR, SHARED_DIR, n)
+            for n in ('tokens.txt', 'lexicon.txt') + tuple(SHARED_FSTS)]
 
 
 def _v(sid, label, hz):
-    return {'kind': 'vits', 'dir': 'aishell3', 'model': AISHELL3_MODEL,
-            'files': [AISHELL3_MODEL, 'tokens.txt', 'lexicon.txt'] + AISHELL3_FSTS,
-            'sid': sid, 'fsts': AISHELL3_FSTS, 'label': label,
-            'band': band_of(hz), 'f0': hz}
+    """fanchen 的一个说话人：三个库文件共用，靠 sid 切声线。"""
+    d = os.path.join(MODEL_DIR, FANCHEN_DIR)
+    files = [os.path.join(d, 'model.onnx'), os.path.join(d, 'tokens.txt'),
+             os.path.join(d, 'lexicon.txt')]
+    return {'kind': 'vits', 'model': files[0], 'files': files, 'sid': sid,
+            'dict_dir': os.path.join(d, 'dict'),
+            'label': label, 'band': band_of(hz, sid), 'f0': hz}
 
 
-MATCHA_FILES = [MATCHA_MODEL, MATCHA_VOCODER, 'tokens.txt', 'lexicon.txt'] + AISHELL3_FSTS
+def _single(d, f0, label):
+    """单说话人主角：模型在各自目录，词表与规则取自 shared。"""
+    model = os.path.join(MODEL_DIR, d, 'model.onnx')
+    return {'kind': 'vits', 'model': model, 'files': [model] + _shared_files(),
+            'sid': None, 'label': label, 'band': band_of(f0), 'f0': f0}
+
+
+def _matcha_files():
+    d = os.path.join(MODEL_DIR, MATCHA_DIR)
+    return ([os.path.join(d, MATCHA_MODEL), os.path.join(d, MATCHA_VOCODER)]
+            + _shared_files())
 
 
 def matcha_ready():
-    d = os.path.join(MODEL_DIR, MATCHA_DIR)
-    return all(os.path.isfile(os.path.join(d, n)) for n in MATCHA_FILES)
+    return all(os.path.isfile(p) for p in _matcha_files())
 
 
 def _m():
-    return {'kind': 'matcha', 'dir': MATCHA_DIR, 'model': MATCHA_MODEL,
-            'vocoder': MATCHA_VOCODER, 'files': MATCHA_FILES, 'sid': None,
-            'fsts': AISHELL3_FSTS, 'label': '墨吟 · 中文女声',
+    return {'kind': 'matcha', 'model': _matcha_files()[0],
+            'vocoder': MATCHA_VOCODER, 'files': _matcha_files(), 'sid': None,
+            'fsts': SHARED_FSTS, 'label': '墨吟 · 中文女声',
             'band': band_of(MATCHA_F0), 'f0': MATCHA_F0}
 
 
-XIAOYA_FILES = [XIAOYA_MODEL, 'tokens.txt', 'lexicon.txt'] + AISHELL3_FSTS
-
-
-def xiaoya_ready():
-    d = os.path.join(MODEL_DIR, XIAOYA_DIR)
-    return all(os.path.isfile(os.path.join(d, n)) for n in XIAOYA_FILES)
-
-
-def _x():
-    return {'kind': 'vits', 'dir': XIAOYA_DIR, 'model': XIAOYA_MODEL,
-            'files': XIAOYA_FILES, 'sid': None,
-            'fsts': AISHELL3_FSTS, 'label': '墨吟 · 中文女声',
-            'band': band_of(XIAOYA_F0), 'f0': XIAOYA_F0}
+def single_ready(d):
+    return (os.path.isfile(os.path.join(MODEL_DIR, d, 'model.onnx'))
+            and all(os.path.isfile(p) for p in _shared_files()))
 
 
 VOICES = {}
-if xiaoya_ready():
-    VOICES['x0'] = _x()
-elif matcha_ready():
+if single_ready(XIAOYA_DIR):
+    VOICES['x0'] = _single(XIAOYA_DIR, XIAOYA_F0, '墨吟 · 女声')
+if single_ready(CHAOWEN_DIR):
+    VOICES['c0'] = _single(CHAOWEN_DIR, CHAOWEN_F0, '墨吟 · 男声')
+if not VOICES and matcha_ready():
     VOICES['m0'] = _m()
 
-# 174 个备用音色与小雅共存：小雅负责好听，它们负责换口味和男声。
-if os.path.isdir(os.path.join(MODEL_DIR, 'aishell3')):
+# 187 个配角音色与主角共存：主角负责好听，它们负责不同年龄段的配角。
+if os.path.isfile(os.path.join(MODEL_DIR, FANCHEN_DIR, 'model.onnx')):
     for _sid in sorted(SID_F0):
-        _hz = SID_F0[_sid]
         _key = 's%d' % _sid
-        VOICES[_key] = _v(_sid, CURATED.get(_key) or ('%d 号' % _sid), _hz)
+        VOICES[_key] = _v(_sid, CURATED_LABEL.get(_key) or ('音色 %d' % _sid), SID_F0[_sid])
 
-# 默认音色：小雅优先；没装就退回 matcha，再没有就用调过的 12 号女声。
+# 默认音色：女主优先；没装就退回 matcha，再没有就用挑过的 12 号。
 DEFAULT_VOICE = ('x0' if 'x0' in VOICES
                  else 'm0' if 'm0' in VOICES else 's12')
 
@@ -417,29 +465,33 @@ def find_exe():
 
 
 def voice_files(voice):
-    """返回 (模型目录, 该音色必需的全部文件路径)。"""
+    """返回 (模型文件, 该音色必需的全部文件路径)。files 里存的已是绝对路径，
+    因为小雅、超文的词表在 shared，与模型不在同一个目录。"""
     s = VOICES[voice]
-    d = os.path.join(MODEL_DIR, s['dir'])
-    return d, [os.path.join(d, n) for n in s['files']]
+    return s['model'], list(s['files'])
 
 
 _ready_cache = {}
 
 
 def voice_ready(voice):
-    """174 个音色共用同一份模型，按目录缓存一次，避免每次探测做上千次 stat。"""
+    """187 个配角共用同一份模型，按模型路径缓存一次，避免每次探测做上千次 stat。"""
     s = VOICES[voice]
-    d = os.path.join(MODEL_DIR, s['dir'])
-    ok = _ready_cache.get(d)
+    key = s['model']
+    ok = _ready_cache.get(key)
     if ok is None:
-        ok = all(os.path.isfile(os.path.join(d, n)) for n in s['files'])
-        _ready_cache[d] = ok
+        ok = all(os.path.isfile(p) for p in s['files'])
+        _ready_cache[key] = ok
     return ok
 
 
 def health():
     exe = find_exe()
     voices = {v: voice_ready(v) for v in VOICES}
+    order = []
+    for v in ['x0', 'c0'] + [k for k, _l in CURATED]:
+        if v in VOICES and v not in order:
+            order.append(v)
     return {
         'ok': bool(exe) and any(voices.values()),
         'engine': 'sherpa-onnx 2.0.1' if exe else 'missing',
@@ -447,11 +499,9 @@ def health():
         'labels': {v: VOICES[v]['label'] for v in VOICES},
         'groups': {v: VOICES[v]['band'] for v in VOICES},
         'f0': {v: VOICES[v]['f0'] for v in VOICES},
-        'curated': ((([DEFAULT_VOICE] if DEFAULT_VOICE in VOICES else [])
-                     + [k for k in CURATED if k in VOICES and k != DEFAULT_VOICE])
-                    or list(VOICES)),
+        'curated': order or list(VOICES),
         'count': len(VOICES),
-        'version': 5,
+        'version': 6,
         'engineKind': VOICES[DEFAULT_VOICE]['kind'] if DEFAULT_VOICE in VOICES else 'vits',
     }
 
@@ -474,8 +524,12 @@ def build_args(voice, out, length_scale=1.0, silence_scale=None):
     a = ['--vits-model=' + f[0], '--vits-tokens=' + f[1], '--vits-lexicon=' + f[2]]
     if s.get('sid') is not None:
         a.append('--sid=' + str(s['sid']))
-    if s.get('fsts'):
+    # fanchen 有自己的词典，没有配数字规则 fst，所以按实际长度判断而不是看键。
+    if len(f) > 3:
         a.append('--tts-rule-fsts=' + ','.join(f[3:]))
+    # 配角库带 jieba 分词表，多音字（长/重/行/了）读法比纯词典准。
+    if s.get('dict_dir'):
+        a.append('--vits-dict-dir=' + s['dict_dir'])
     a.append('--tts-silence-scale=%s'
              % (SILENCE_SCALE if silence_scale is None else silence_scale))
     # 语速交给引擎（改音素时长、不动音高），而不是让浏览器变速——
