@@ -141,7 +141,7 @@ footer a{color:var(--dim)}
     { m: 'ghnet', u: 'https://ghproxy.net/https://github.com/podcatcher962/moyin-reader/releases/latest/download/MoYinReader.apk' }
   ];
 
-  function fmt(n) { return (n / 1048576).toFixed(1) + ' MB'; }
+  function fmt(n) { return (n / 1000000).toFixed(1) + ' MB'; }   // 按 10^6 算，和手机「文件」详情里显示的一致
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
   function badge() {
     var b = el('span', 'badge', '第三方');
