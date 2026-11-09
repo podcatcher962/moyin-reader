@@ -30,7 +30,7 @@
     '版式': 'Layout',
     '使用说明': 'Guide',
     '常见问题': 'FAQ',
-    '免责声明': 'Terms',
+    '免责声明': 'Disclaimer',
     '关于': 'About',
     '导出备份': 'Back up',
     '导入备份': 'Restore',

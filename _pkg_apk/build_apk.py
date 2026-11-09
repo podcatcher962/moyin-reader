@@ -28,7 +28,7 @@ if not os.path.isfile(KS) and os.path.isdir(AB):
 KS_PASS = os.environ.get('MOYIN_KS_PASS', '')
 if not KS_PASS:
     # 口令不必每次手输，也不用塞进环境变量：放在构建目录下的 .kspass 里即可。
-    # 这个文件在 D:\Workuddy\android-build\（不是仓库目录），不会被提交。
+    # 这个文件在构建目录下（仓库之外），不会被提交。
     _p = os.path.join(AB, '.kspass')
     if os.path.isfile(_p):
         KS_PASS = io.open(_p, encoding='utf-8').read().strip()
@@ -59,7 +59,17 @@ STAGE = os.path.join(PKG_DIR, 'stage_' + time.strftime('%H%M%S'))
 
 # ── 手机端离线神经语音：sherpa-onnx Android AAR + 小雅/超文/fanchen 三套中文模型 ──
 # 引擎与模型只在打包时用，不进仓库。缺了也能打，只是 APK 里没有神经语音。
-SHERPA = os.environ.get('MOYIN_SHERPA') or r'D:\Workuddy\_tools\sherpa_android'
+SHERPA = os.environ.get('MOYIN_SHERPA') or ''
+if not SHERPA:
+    # 依次找：构建目录 → 仓库旁的 _tools → 家目录下的 _tools；都没有就按构建目录算（后续会提示缺件）
+    for _c in (os.path.join(AB, 'sherpa_android'),
+               os.path.join(os.path.dirname(ROOT), '_tools', 'sherpa_android'),
+               os.path.join(os.path.expanduser('~'), '_tools', 'sherpa_android')):
+        if os.path.isdir(_c):
+            SHERPA = _c
+            break
+    else:
+        SHERPA = os.path.join(AB, 'sherpa_android')
 SHERPA_AAR = os.path.join(SHERPA, 'aar')
 SHERPA_JAR = os.path.join(SHERPA_AAR, 'classes.jar')
 KOTLIN_JAR = os.path.join(SHERPA, 'kotlin-stdlib.jar')

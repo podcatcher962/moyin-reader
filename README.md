@@ -181,6 +181,14 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 
 ![187 个离线声线](docs/screenshots/settings-voices.png)
 
+### 隐私
+
+**不收集、不上传、不需要账号。** 没有统计、没有埋点、没有广告 SDK、没有崩溃上报。书、书架、书签、进度、设置全部留在本机（浏览器 IndexedDB / localStorage；桌面版在 `%LOCALAPPDATA%` 下的 WebView 数据目录；安卓在应用私有目录），卸载或清数据即消失，作者这边看不到任何内容。
+
+会联网的只有三件事，且都要你主动触发：① 检查更新（一个普通 GET 取 `versions.json`，不带书名、不带设备标识）；② 下载安装包与语音模型（GitHub Releases，国内线路不通时走第三方镜像 `gh-proxy.com`——那是第三方服务，其运营方能看到你的 IP 与 UA）；③ 你自己选了名称含 `Online (Natural)` 的在线音色时，当前那句文字会交给浏览器/系统的语音服务合成，这与本软件的书籍存储无关。
+
+安卓包只声明 `INTERNET` 与 `ACCESS_NETWORK_STATE` 两个权限，没有存储、位置、通讯录、相机、麦克风权限，不读 IMEI / Android ID / MAC / 广告 ID。语音引擎只监听 `127.0.0.1`，不对外网开放。局域网共享的登录凭据交给 Windows 凭据管理器，本软件不保存。完整说明见 [PRIVACY.md](PRIVACY.md)。
+
 ### 从源码构建
 
 仓库只放源码，`exe` 和语音模型不入库（体积大，且模型是第三方资产）。唯一的例外是 `docs/download/MoYinReader.apk`——约 70 MB 的成品，放在 Pages 上只为给手机一个不用访问 github.com 的下载口，正式版仍以 Release 为准。克隆后按下面两步即可复现：

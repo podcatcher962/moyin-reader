@@ -51,7 +51,7 @@ versionCode = 主 × 10000 + 次 × 100 + 修
 版本号在 10 个地方出现，手工改必然漏。**只用一个脚本改**：
 
 ```bash
-cd D:\Workuddy\2026-11-06-16-19-16\MoYinReader
+cd <仓库根目录>
 
 python _bump.py            # 看现在各处的版本号（只读）
 python _bump.py 1.12.0     # 全部改到 1.12.0（versionCode 自动算）
@@ -154,7 +154,7 @@ MoYinReader.apk                 ← 安卓只能用固定名，版本在里面
 
 | 东西 | 位置 | 说明 |
 |---|---|---|
-| 密钥库 | `D:\Workuddy\android-build\lanlan.keystore` | 唯一一份，丢了就再也签不出「能覆盖升级」的包 |
+| 密钥库 | `<构建目录>\lanlan.keystore`（仓库外，可用环境变量 `MOYIN_KEYSTORE` 指定） | 唯一一份，丢了就再也签不出「能覆盖升级」的包 |
 | 口令 | 同目录 `.kspass`（一行） | `build_apk.py` 自动读，不用手输、不进 git |
 | 证书指纹 | `CN=Lanlan Eternal`，SHA-256 `FA:02:37:37:…:25:0E:54:B7` | 每次打完用下面的命令核对 |
 

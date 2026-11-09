@@ -859,7 +859,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     '版式': 'Layout',
     '使用说明': 'Guide',
     '常见问题': 'FAQ',
-    '免责声明': 'Terms',
+    '免责声明': 'Disclaimer',
     '关于': 'About',
     '导出备份': 'Back up',
     '导入备份': 'Restore',
@@ -1690,6 +1690,8 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p>Speech depends on engines provided by the operating system or browser. Voices, availability and phrasing vary by device and are not guaranteed to match a human reading. Do not listen while driving or operating machinery.</p>' +
       '<p>The software is provided “as is”, without any express or implied warranty. To the maximum extent permitted by law, the author is not liable for any direct or indirect loss (including data loss, device damage, or loss of time or income) arising from use of or inability to use this software.</p>' +
       '<p>The name “MoYin / 墨吟”, its interface and documentation are copyright the author. Other product, company and speech-service names mentioned here may be trademarks of their owners and are used for identification only, implying no affiliation, sponsorship or endorsement.</p>' +
+      '<p><b>Network and permissions.</b> Apart from the update check (a plain GET returning version numbers — no book titles, no device identifiers) and downloading the installer or models (GitHub, falling back to the third-party mirror <code>gh-proxy.com</code>, whose operator can see your IP and User-Agent), the app makes no network requests: no analytics, no tracking, no ad SDK, no crash reporting. The Android build requests only <code>INTERNET</code> and <code>ACCESS_NETWORK_STATE</code> — no storage, location, contacts, camera or microphone, and no IMEI / Android ID / MAC. The full policy ships as <code>PRIVACY.md</code>.</p>' +
+      '<p><b>About the voices.</b> The 187 supporting voices come from an open multi-speaker model trained on public data; the two lead voices come from open Piper Chinese models. They are synthetic timbres, not used for speaker verification and not representing any real person. The app does not clone voices and never records or uploads audio. Voice names in the UI are product labels, not references to or endorsements by anyone.</p>' +
       '<p>If you are a rights holder and believe this tool or its bundled content infringes your rights, contact the author through the address in the bundled README; verified issues will be handled promptly.</p>',
 
     about: '<p style="font-size:1.2em"><b>MoYin Reader · 墨吟</b></p>' +
@@ -5721,6 +5723,8 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p>朗读依赖操作系统 / 浏览器提供的语音引擎，音色、可用性、断句效果因设备而异，不保证与人工朗读一致。驾车、操作机械等需要注意力的场合请勿收听。</p>' +
       '<p>本软件按「现状」提供，不附带任何明示或默示担保。在法律允许的最大范围内，作者不对使用或无法使用本软件造成的任何直接或间接损失（含数据丢失、设备损坏、时间或收入损失）承担责任。</p>' +
       '<p>「墨吟」的名称、界面与文档著作权归作者所有；文中提及的其他产品、公司、语音服务名称可能是其各自所有者的商标，仅用于说明用途，不表示任何关联、赞助或背书。</p>' +
+      '<p><b>关于联网与权限</b>：除了上面说的检查更新（一个普通 GET 取版本号，不带书名也不带设备标识）和下载安装包 / 语音模型（GitHub，国内线路不通时走第三方镜像 <code>gh-proxy.com</code>，该镜像运营方能看到你的 IP 与浏览器标识）之外，软件不发起任何网络请求——没有统计、没有埋点、没有广告 SDK、没有崩溃上报。安卓包只申请 <code>INTERNET</code> 与 <code>ACCESS_NETWORK_STATE</code> 两个权限，不读存储、位置、通讯录、相机、麦克风，也不读 IMEI / Android ID / MAC。完整隐私说明随发行包以 <code>PRIVACY.md</code> 提供。</p>' +
+      '<p><b>关于声音</b>：187 个配角声线来自公开多说话人数据集训练的开源模型，主角两份来自公开 Piper 中文模型。它们只是合成音色，不用于声纹识别，也不代表任何真实人物；软件不提供声音克隆，不采集、不上传你本人的录音。界面里的声线名字是产品内的档位名，不是对任何人的称呼或代言。</p>' +
       '<p>若你是权利人，认为本工具或其随附内容侵犯了你的权益，请通过发行包内 README 所示方式联系作者，核实后会及时处理。</p>'],
     about: ['关于', '<p style="font-size:1.2em"><b>墨吟 · MoYin Reader</b></p>' +
       '<p>一个单文件、默认离线的 TXT / EPUB 阅读器，带朗读。双击 HTML 就能用，Windows / Linux / 安卓 / iOS 浏览器均可。</p>' +

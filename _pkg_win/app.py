@@ -1167,8 +1167,8 @@ def selftest(out=None):
         if IS_WIN:
             ok &= ck(norm_net_path('//192.168.1.10/Books') == '\\\\192.168.1.10\\Books', '斜杠写的共享路径能纠正成 UNC')
             ok &= ck(norm_net_path('192.168.1.10/Books') == '\\\\192.168.1.10\\Books', '省略开头的 \\\\ 也能认')
-            ok &= ck(norm_net_path('D:/Desktop') == 'D:\\Desktop', '本地路径的斜杠也纠正')
-            ok &= ck(is_net_path('\\\\nas\\books') and not is_net_path('D:\\Desktop'), '网络位置判定正确')
+            ok &= ck(norm_net_path('D:/Books') == 'D:\\Books', '本地路径的斜杠也纠正')
+            ok &= ck(is_net_path('\\\\nas\\books') and not is_net_path('D:\\Books'), '网络位置判定正确')
         else:
             # Linux / macOS：网络位置是挂载点，路径必须原样保留（换成反斜杠会直接失效）
             ok &= ck(norm_net_path('/mnt/nas/books/') == '/mnt/nas/books', '挂载点路径原样保留、去掉尾斜杠')

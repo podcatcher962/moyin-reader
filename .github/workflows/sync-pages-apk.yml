@@ -1,0 +1,69 @@
+name: Sync Pages APK
+
+# 把 Release 里的安卓包搬到 Pages 的直链目录，免得本地往仓库推 70 MB 的二进制。
+# 触发方式：发版自动（release published），或在 Actions 页面手动 Run workflow。
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag（留空 = latest）'
+        required: false
+        default: ''
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-pages-apk
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Resolve tag
+        id: t
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$TAG" ]; then TAG="${{ github.event.release.tag_name }}"; fi
+          if [ -z "$TAG" ]; then TAG="latest"; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "will fetch: $TAG"
+
+      - name: Download APK from release
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.t.outputs.tag }}"
+          if [ "$TAG" = "latest" ]; then
+            URL="https://github.com/${{ github.repository }}/releases/latest/download/MoYinReader.apk"
+          else
+            URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/MoYinReader.apk"
+          fi
+          echo "GET $URL"
+          curl -fL --retry 3 --retry-delay 3 -o /tmp/MoYinReader.apk "$URL"
+          SZ=$(stat -c%s /tmp/MoYinReader.apk)
+          echo "downloaded bytes: $SZ"
+          test "$SZ" -gt 50000000 || { echo "::error::包体积异常（$SZ 字节），中止"; exit 1; }
+          sha256sum /tmp/MoYinReader.apk
+
+      - name: Commit to docs/download if changed
+        run: |
+          set -euo pipefail
+          mkdir -p docs/download
+          cp /tmp/MoYinReader.apk docs/download/MoYinReader.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f docs/download/MoYinReader.apk
+          if git diff --cached --quiet; then
+            echo "Pages 上的包已是最新，无需提交"
+            exit 0
+          fi
+          git commit -m "docs: 同步 Release ${{ steps.t.outputs.tag }} 的安卓包到 Pages 直链"
+          git push origin HEAD:main

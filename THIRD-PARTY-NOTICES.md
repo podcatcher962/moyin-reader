@@ -30,6 +30,18 @@ PyInstaller 本身是 GPL-2.0，但其 **bootloader 例外条款**明确允许�
 （`VoicePack/models/piper-en/`）同样不入仓库、不随安装包分发，由用户自行放置；没有它也能正常朗读中文，
 纯英文段落会交给系统英文语音或按长度留白。
 
+### 关于声音
+
+配角声线来自公开的中文多说话人数据集（AISHELL-3，Apache-2.0）训练出的开源模型，主角两份声线来自公开的 Piper 中文模型。
+这些声音是**合成音色**，本项目：
+
+- 只把音色用于朗读文字，不做声纹识别、不做身份识别，也不声称任何声音对应某位具体的人；
+- 不提供「克隆我的声音」功能，不采集、不上传用户本人的录音；
+- 界面里给声音起的名字（如「墨吟 · 女声」）是产品内的档位名，不是对真人的称呼或代言。
+
+自然人声音参照肖像权受法律保护。若你是数据集中的说话人或其权利人，认为某个音色的使用不妥，请通过仓库 Issue 联系，
+核实后会从声线列表中移除。
+
 ## 免责
 
 本软件不附带任何书籍内容，仅供阅读自己合法持有的电子书使用；不提供、不获取、不破解任何受版权保护的
@@ -52,3 +64,11 @@ on demand by `VoicePack/install.py` from the upstream GitHub release. The option
 (Piper `en_US` + espeak-ng data) is neither bundled nor auto-downloaded; drop it into
 `VoicePack/models/piper-en/` yourself. Chinese narration works without it — English passages fall
 back to the system English voice, or to a timed pause.
+
+**About the voices.** The supporting voices come from an open multi-speaker Chinese model trained on
+AISHELL-3 (Apache-2.0); the two lead voices come from open Piper Chinese models. They are synthetic
+timbres used only to read text aloud: no speaker verification, no identity inference, no claim that a
+voice belongs to any particular person. The app does not clone your voice and never records or
+uploads audio. Voice names shown in the UI are product labels, not endorsements by real people.
+If you are a speaker in the dataset and object to a timbre being used, open an issue and it will be
+removed.

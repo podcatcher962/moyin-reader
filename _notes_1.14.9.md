@@ -66,4 +66,4 @@
 
 - `MoYinReader.exe` 98.2 MB（内置常驻引擎）
 - `MoYinReader_Lite.exe` 37.9 MB
-- 已放 `D:\Desktop\墨吟阅读器-1.14.9.exe` 与 `D:\Workuddy\_发行包`
+- 已放入发行包目录
