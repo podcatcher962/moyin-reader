@@ -85,8 +85,8 @@ _push_via_api.py
 _apply_repo_meta.py
 _token.txt
 
-# ---- Pages 上的安卓直链（体积小，给手机一个不经过 github.com 的下载口） ----
-!docs/download/*.apk
+# ---- Pages 只放下载页，安卓包一律走 Release（70 MB 的二进制放 Pages 会让部署超时） ----
+docs/download/*.apk
 
 # 试听对比样本（临时产物，不入库）
 _voice_compare/

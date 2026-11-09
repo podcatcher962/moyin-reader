@@ -70,23 +70,25 @@
 | 平台 | 怎么用 | 说明 |
 |---|---|---|
 | **Windows** | 下载 `MoYinReader.exe` 双击 | 完整版，187 个离线语音与分角色朗读都在这一版 |
-| **安卓** | 下载 [`MoYinReader.apk`](https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk) 安装 | 页面内嵌，**187 个离线神经声线随包带走**，断网也能听；手机下载见下方说明 |
+| **安卓** | 打开[下载页](https://podcatcher962.github.io/moyin-reader/download/)选源下载 | 页面内嵌，**187 个离线神经声线随包带走**，断网也能听；下载页会列出官方直链与可选镜像，手机下载见下方说明 |
 | **任意系统** | 双击 `MoYinReader.html` | 单文件网页版，功能与桌面版一致 |
 | **Linux / 信创**（统信 UOS、麒麟、openEuler、Deepin） | `sudo dpkg -i moyin-reader_*.deb` 装进应用菜单；或用 `MoYinReader-Linux-*.tar.gz` 解压后双击「墨吟阅读器.sh」 | **x86_64 是 10 MB 独立程序，不用装 Python**（1.10 版在统信 UOS 20 专业版实测安装与启动；1.11 的包内容只换了内嵌页面，deb 归档结构自检通过，若装不上请直接用 tar.gz）。飞腾 / 鲲鹏 / 龙芯会自动走 Python 或网页方式 |
 | **macOS**（Intel / Apple Silicon） | 解压 `MoYinReader-macOS-*.zip`，双击「墨吟阅读器.command」 | 免安装 Python |
 
 > **手机上装安卓版，下载卡住怎么办**
 >
-> GitHub 的下载按钮会先跳 `github.com`，再跳 `objects.githubusercontent.com`，这两跳在国内手机网络里经常十几秒不动或直接被掐断（电脑上能下，多是因为走了代理）。所以安卓包另外给两条**不经过 github.com** 的入口，按顺序试：
+> 统一走下载页：**`https://podcatcher962.github.io/moyin-reader/download/`**。页面上并排给出几条路，自己挑：
 >
-> 1. 主直链：`https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk`
-> 2. 前一条打不开时，可以先把 apk 存到网盘（夸克 / 蓝奏）再发给对方，或直接用 Release 里的附件
+> 1. **官方直链**——直接把请求发给 GitHub，中间没有别的服务器（推荐，先试这条）
+> 2. **加速镜像**——`gh-proxy.com` 这类前缀是第三方反向代理在替你取文件，**对方能看到你的 IP 与浏览器标识**，只在直连不通时用
 >
-> 下完先看一眼文件大小（**约 70 MB**）。这一版把三套中文语音模型（小雅女声 22.05 kHz ＋ 超文男声 22.05 kHz ＋ 187 人的 fanchen-C 配角库 16 kHz，共 89 MB 源模型）和 sherpa-onnx 引擎一起打进了包，所以比 1.10 的 200 KB 大了两个数量级——换来的是手机上也能听 187 个离线神经声线，断网、飞行模式都不影响。如果只下到几 MB、装的时候提示「解析包错误」，就是没下完整，重下一次。
+> 页面顶部带当前版本、字节数与 sha256，下完可以自己核对（安卓包里 187 个声线 + 引擎共占 70 MB 左右，只下到几 MB 就是没下完）。
 >
-> **为什么半夜更容易失败**：GitHub Pages 的地址段（185.199.108–111.153）在国内移动网络和家宽晚高峰后常被限速或重置，凌晨并不等于网络空闲；手机还会优先解析 IPv6，部分移动网络到 GitHub 的 IPv6 路由更差。换 Wi-Fi / 流量、或换上面的备用 CDN，通常就能下。
+> 为什么直连会卡：GitHub 的下载先跳 `github.com`、再跳 `objects.githubusercontent.com`，这两跳在国内手机网络里经常十几秒不动或直接被掐断（电脑上能下，多是因为走了代理）；GitHub Pages 的地址段（185.199.108–111.153）在晚高峰后也常被限速，凌晨不等于网络空闲，手机还会优先走 IPv6、部分移动网络到 GitHub 的 IPv6 路由更差。换 Wi-Fi / 流量，或退回镜像，通常就能下。
 >
 > 三点注意：① 一定要在**系统浏览器**里打开，微信 / QQ 的内置浏览器会直接拦掉 apk，请在右上角「…」→「在浏览器打开」；② 小米 / 华为浏览器可能提示「该文件可能有害」，选「仍要下载」；③ 装之前系统会提示「未知来源」，允许「墨吟」安装即可。
+
+> **为什么安卓包不放在 Pages 上**：70 MB 的二进制每次发版都要整包同步到 CDN，Pages 的部署会在 `syncing_files` 卡到超时（实测 10 分钟被掐断）。所以 Pages 只放一个轻量下载页，包里文件仍由 Release 提供——仓库因此也瘦，克隆不用拖 70 MB。
 
 Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF，只依赖系统自带的 libc / libz / libpthread / libdl（glibc 2.28+），UOS 20、银河麒麟 V10、openEuler 20.03 及更新版本都能直接运行。窗口用系统浏览器内核的「应用模式」打开——没有地址栏和标签页，是个独立窗口，关掉即退出。
 
@@ -191,7 +193,7 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 
 ### 从源码构建
 
-仓库只放源码，`exe` 和语音模型不入库（体积大，且模型是第三方资产）。唯一的例外是 `docs/download/MoYinReader.apk`——约 70 MB 的成品，放在 Pages 上只为给手机一个不用访问 github.com 的下载口，正式版仍以 Release 为准。克隆后按下面两步即可复现：
+仓库只放源码，`exe`、`apk` 和语音模型都不入库（体积大，且模型是第三方资产）。`docs/download/` 下只有一个下载页，安卓包本身仍由 Release 提供——70 MB 的二进制放在 Pages 上，每次发版都要整包同步到 CDN，部署会卡到超时。克隆后按下面两步即可复现：
 
 ```bash
 # 0) 版本号一处改、全局同步（页面 / exe / Linux / deb / APK / 推送脚本共 10 处）
@@ -352,11 +354,9 @@ Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/re
 
 ### Build from source
 
-Only source lives in this repo — `exe` and the speech model are not committed (they are large, and the model is a third-party asset). The one exception is `docs/download/MoYinReader.apk`, a ~70 MB build kept on Pages purely so phones get a download link that never touches `github.com` (which is slow or unreachable on many Chinese mobile networks); Releases remain the canonical source.
+Only source lives in this repo — `exe`, `apk` and the speech model are not committed (they are large, and the model is a third-party asset). `docs/download/` holds a lightweight download page only; the APK itself comes from Releases, because a 70 MB binary on Pages has to be re-synced to the CDN on every release and the deployment times out.
 
-> **Android download stalls?** The GitHub button redirects through `github.com`, which often hangs for 10+ seconds on mobile networks in China. Use the direct link instead:
->
-> `https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk`
+> **Android download stalls?** Use the download page — `https://podcatcher962.github.io/moyin-reader/download/`. It offers the official GitHub link (no third party in between) side by side with optional mirrors (`gh-proxy.com` and friends are third-party reverse proxies: **they can see your IP and User-Agent**, so use them only when the direct link fails). The page shows the version, byte count and sha256 so you can verify the file yourself.
 >
 > Open it in a real browser — WeChat / QQ in-app browsers block apk downloads (tap "open in browser"). Allow "unknown sources" when the system asks.
 

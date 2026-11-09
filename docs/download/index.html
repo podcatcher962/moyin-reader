@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>下载安卓版 · 墨吟阅读器</title>
+<meta name="description" content="墨吟阅读器安卓版下载：官方直链与可选镜像，附 sha256 校验值。">
+<meta name="author" content="永远的兰兰">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --bg:#1B1C1F; --card:#24262A; --line:#3A3D43; --tx:#E6E4E1;
+  --dim:#9AA0A6; --acc:#4A9EFF; --ok:#3FC08A; --warn:#E8A33D;
+}
+@media (prefers-color-scheme: light){
+  :root{ --bg:#F2F3F5; --card:#FFFFFF; --line:#D6D9DF; --tx:#1D1F23;
+         --dim:#5F6570; --acc:#1668C4; --ok:#1F8F63; --warn:#9A6512; }
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--tx); overflow-x:hidden;
+  font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","Microsoft YaHei",sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:680px;margin:0 auto;padding:28px 20px 56px;width:100%}
+.top{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--dim);margin-bottom:26px}
+.top a{color:var(--dim);text-decoration:none}
+.top a:hover{color:var(--acc)}
+h1{font-size:26px;line-height:1.35;margin:0 0 10px;font-weight:700;letter-spacing:.5px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px}
+.tag{font-size:13px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;color:var(--dim)}
+.tag.hi{color:var(--acc);border-color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px}
+.card h2{font-size:15px;margin:0 0 14px;font-weight:600;color:var(--dim);letter-spacing:1px;text-transform:uppercase}
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:15px 18px;border-radius:11px;border:1px solid var(--line);
+  background:transparent;color:var(--tx);font:inherit;font-size:16px;font-weight:600;
+  cursor:pointer;text-decoration:none;transition:border-color .15s,background .15s;
+}
+.btn:hover{border-color:var(--acc);color:var(--acc)}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.pri:hover{filter:brightness(1.08);color:#fff}
+.btn .sub{font-size:12px;font-weight:400;opacity:.8}
+.mirrors{display:grid;gap:10px;margin-top:10px}
+.mirror{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 14px;border:1px solid var(--line);border-radius:10px;
+  text-decoration:none;color:var(--tx);font-size:15px;min-width:0}
+.mirror:hover{border-color:var(--acc)}
+.mirror b{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mirror span{font-size:12px;color:var(--dim)}
+.badge{font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--warn);color:var(--warn);white-space:nowrap}
+.badge.off{color:var(--ok);border-color:var(--ok)}
+@media (max-width:420px){ .badge-x{display:none} .mirror{padding:11px 12px;font-size:14px} }
+.note{font-size:13px;color:var(--dim);margin:12px 0 0;line-height:1.7}
+.note b{color:var(--tx);font-weight:600}
+ol{padding-left:20px;margin:0}
+ol li{margin:7px 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;
+  background:rgba(128,128,128,.14);padding:2px 6px;border-radius:5px;word-break:break-all}
+.sha{display:flex;gap:10px;align-items:flex-start;margin-top:6px}
+.sha code{flex:1;min-width:0}
+.copy{border:1px solid var(--line);background:transparent;color:var(--dim);
+  border-radius:8px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}
+.copy:hover{border-color:var(--acc);color:var(--acc)}
+.plats{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+.plats a{font-size:14px;color:var(--acc);text-decoration:none;border-bottom:1px dashed rgba(74,158,255,.4)}
+footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--dim);line-height:1.9}
+footer a{color:var(--dim)}
+.warnbox{border-left:3px solid var(--warn);padding:2px 0 2px 12px;margin:14px 0 0;font-size:13px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="../">← 墨吟阅读器</a></div>
+
+  <h1>下载安卓版</h1>
+  <div class="meta">
+    <span class="tag hi" id="ver">v1.14.11</span>
+    <span class="tag" id="size">73.4 MB</span>
+    <span class="tag">Android 7.0+ · arm64</span>
+    <span class="tag">187 个离线声线随包带走</span>
+  </div>
+
+  <div class="card">
+    <h2>官方直链</h2>
+    <a class="btn pri" id="main" href="https://github.com/podcatcher962/moyin-reader/releases/latest/download/MoYinReader.apk" rel="noreferrer">
+      从 GitHub 下载
+      <span class="sub" id="mainSub">· 不经第三方</span>
+    </a>
+    <p class="note">这一条直接把请求发给 GitHub，中间没有别的服务器。国内速度看所在网络，慢或断的话用下面的镜像。</p>
+    <div class="mirrors" id="mirrors"></div>
+    <p class="note"><b>关于镜像</b>：加 <code>gh-proxy.com</code> 这类前缀的地址，是第三方反向代理在替你取文件——<b>它们能看到你的 IP 和浏览器标识</b>。只在直连不通时用，用完不必留下什么。</p>
+  </div>
+
+  <div class="card">
+    <h2>下载完核对一下</h2>
+    <p class="note" style="margin-top:0">文件应当正好 <b id="bytes">73,419,057</b> 字节，sha256 为：</p>
+    <div class="sha">
+      <code id="sha">562d513c7135fea3fe9737af715138b0d94e3cfdd9beda52170077e4a45b37b1</code>
+      <button class="copy" id="copy" type="button">复制</button>
+    </div>
+    <p class="note">手机上可以用「MT 管理器」或「文件」详情里看 sha256，和上面一致就没被换过。对不上就别装，重新下一次。</p>
+  </div>
+
+  <div class="card">
+    <h2>安装</h2>
+    <ol>
+      <li>用<b>系统浏览器</b>（Chrome / Edge / 手机自带）打开本页下载。微信、QQ 的内置浏览器会拦 apk，点右上角「在浏览器打开」。</li>
+      <li>系统提示「未知来源」时，允许该浏览器安装应用。</li>
+      <li>第一次点朗读会准备语音引擎（十几 MB 的模型要在本机解压），等一会儿就好；之后再打开就是秒开。</li>
+    </ol>
+    <div class="warnbox">装完不需要登录、不需要联网朗读。书和进度都存在手机本地，卸载即清空。</div>
+  </div>
+
+  <div class="card">
+    <h2>其他平台</h2>
+    <div class="plats">
+      <a href="https://github.com/podcatcher962/moyin-reader/releases/latest" rel="noreferrer">Windows / Linux / macOS →</a>
+      <a href="../">在线使用（免安装）→</a>
+    </div>
+  </div>
+
+  <footer>
+    © 2026 永远的兰兰（Lanlan Eternal）· MIT 开源<br>
+    <a href="https://github.com/podcatcher962/moyin-reader/blob/main/PRIVACY.md" rel="noreferrer">隐私说明</a> ·
+    <a href="https://github.com/podcatcher962/moyin-reader/blob/main/LICENSE" rel="noreferrer">许可</a> ·
+    <a href="https://github.com/podcatcher962/moyin-reader" rel="noreferrer">源码</a><br>
+    本页只在打开时读一次本站的 versions.json 取版本号，不加载任何外部脚本或统计。
+  </footer>
+</div>
+
+<script>
+(function () {
+  var MIRROR_NAME = { ghproxy: 'gh-proxy.com', ghfast: 'ghfast.top', ghnet: 'ghproxy.net', release: 'GitHub 官方' };
+  var ORDER = ['release', 'ghproxy', 'ghfast', 'ghnet'];
+  var FALLBACK = [
+    { m: 'ghproxy', u: 'https://gh-proxy.com/https://github.com/podcatcher962/moyin-reader/releases/latest/download/MoYinReader.apk' },
+    { m: 'ghfast', u: 'https://ghfast.top/https://github.com/podcatcher962/moyin-reader/releases/latest/download/MoYinReader.apk' },
+    { m: 'ghnet', u: 'https://ghproxy.net/https://github.com/podcatcher962/moyin-reader/releases/latest/download/MoYinReader.apk' }
+  ];
+
+  function fmt(n) { return (n / 1048576).toFixed(1) + ' MB'; }
+  function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
+  function badge() {
+    var b = el('span', 'badge', '第三方');
+    b.appendChild(el('span', 'badge-x', ' · 会看到你的 IP'));
+    return b;
+  }
+
+  function render(build, version) {
+    var urls = (build.urls || []).slice().sort(function (a, b) {
+      return ORDER.indexOf(a.m) - ORDER.indexOf(b.m);
+    });
+    var box = document.getElementById('mirrors');
+    box.textContent = '';
+    urls.forEach(function (x) {
+      if (x.m === 'release') return;               // 官方那条已经是主按钮
+      var a = el('a', 'mirror');
+      a.href = x.u; a.rel = 'noreferrer';
+      a.appendChild(el('b', null, MIRROR_NAME[x.m] || x.m));
+      a.appendChild(badge());
+      box.appendChild(a);
+    });
+    if (urls.length < 2) renderFallback();
+    if (build.size) {
+      document.getElementById('size').textContent = fmt(build.size);
+      document.getElementById('bytes').textContent = build.size.toLocaleString('en-US');
+    }
+    if (build.sha256) document.getElementById('sha').textContent = build.sha256;
+    if (version) {
+      document.getElementById('ver').textContent = 'v' + version;
+      var rel = 'https://github.com/podcatcher962/moyin-reader/releases/download/v' + version + '/MoYinReader.apk';
+      document.getElementById('main').href = rel;
+    }
+  }
+
+  function renderFallback() {
+    var box = document.getElementById('mirrors');
+    if (box.childElementCount) return;
+    FALLBACK.forEach(function (x) {
+      var a = el('a', 'mirror');
+      a.href = x.u; a.rel = 'noreferrer';
+      a.appendChild(el('b', null, MIRROR_NAME[x.m] || x.m));
+      a.appendChild(badge());
+      box.appendChild(a);
+    });
+  }
+
+  var copy = document.getElementById('copy');
+  copy.addEventListener('click', function () {
+    var t = document.getElementById('sha').textContent;
+    var done = function () { copy.textContent = '已复制'; setTimeout(function () { copy.textContent = '复制'; }, 1400); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(done, function () {});
+    } else {
+      var s = document.createElement('textarea');
+      s.value = t; document.body.appendChild(s); s.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(s);
+    }
+  });
+
+  // 同源读一次版本清单（站点根上的 versions.json）；读不到就用静态值与上面的兜底镜像，页面照常能用
+  fetch('/versions.json', { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      if (!d || !d.tools) { renderFallback(); return; }
+      var t = null;
+      for (var i = 0; i < d.tools.length; i++) if (d.tools[i].id === 'moyin-reader') t = d.tools[i];
+      if (!t) { renderFallback(); return; }
+      var b = null;
+      (t.builds || []).forEach(function (x) { if (x.os === 'android') b = x; });
+      if (b) render(b, t.version);
+      renderFallback();
+    })
+    .catch(function () { renderFallback(); });
+})();
+</script>
+</body>
+</html>

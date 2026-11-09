@@ -28,6 +28,7 @@ import tarfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TMP = os.path.join(HERE, '_download_tmp')
+# 直连优先：能自己连上就不把请求转给第三方（gh-proxy 会看到你的 IP）。直连失败才退到镜像。
 GH = 'https://gh-proxy.com/https://github.com/k2-fsa/sherpa-onnx/releases/download/'
 GH_DIRECT = 'https://github.com/k2-fsa/sherpa-onnx/releases/download/'
 
@@ -102,7 +103,7 @@ def need():
 
 
 def remote_size(rel):
-    for base in (GH, GH_DIRECT):
+    for base in (GH_DIRECT, GH):
         try:
             r = subprocess.run(['curl', '-sIL', '--max-time', '30', base + rel],
                                capture_output=True, text=True, timeout=40)
@@ -120,7 +121,7 @@ def part_job(job):
     if os.path.isfile(path) and os.path.getsize(path) == want:
         return i, True
     for attempt in range(3):
-        for base in (GH, GH_DIRECT):
+        for base in (GH_DIRECT, GH):
             try:
                 r = subprocess.run(['curl', '-sSL', '--max-time', '600', '-r',
                                     '%d-%d' % (start, end), base + rel, '-o', path],
@@ -162,7 +163,7 @@ def curl(rel, out):
                 with io.open(os.path.join(pdir, 'p%03d' % i), 'rb') as f:
                     shutil.copyfileobj(f, w, 1 << 20)
         return os.path.getsize(out) == size
-    for base in (GH, GH_DIRECT):
+    for base in (GH_DIRECT, GH):
         for attempt in range(4):
             before = os.path.getsize(out) if os.path.isfile(out) else 0
             try:

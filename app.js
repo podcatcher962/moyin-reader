@@ -2310,10 +2310,11 @@
      ② 「启动时自动检查」默认关闭，要开自己在设置里开，随时能关；
      ③ 清单里带着每个包的大小和 sha256，下载完能自己核对，不怕中间被换包。 */
   var UPD = { busy: false, doc: null, at: 0 };
-  /* 主源走 Pages；Pages 在国内偶发抽风时退到镜像读同一份文件（同 gh-proxy，与下载链同一个源） */
+  /* 版本清单只从 GitHub 自家的两处取：Pages（主）与 raw.githubusercontent（备）。
+     不挂任何第三方加速——检查更新可能自动触发，不该悄悄把 IP 交给不相干的人。 */
   var UPD_SRC = [
     'https://podcatcher962.github.io/versions.json',
-    'https://gh-proxy.com/https://raw.githubusercontent.com/podcatcher962/podcatcher962.github.io/main/versions.json'
+    'https://raw.githubusercontent.com/podcatcher962/podcatcher962.github.io/main/versions.json'
   ];
   function jsonFetch(url, ms) {
     return new Promise(function (res, rej) {
@@ -3586,9 +3587,10 @@
   /* ── 朗读不可用时，按平台给不同的出路 ───────────────────────────────
      桌面：换浏览器；安卓浏览器：装 APK；APK 内：去系统装中文语音。
      在手机上甩一句「请用新版 Edge / Chrome」等于什么都没说。 */
-  var APK_URL = 'https://github.com/podcatcher962/moyin-reader/releases/latest/download/MoYinReader.apk';
-  /* 指向 releases/latest：安卓包不再塞进仓库（单请求 70 MB 会被网关拒），
-     这样页面上的下载永远是最新那一版，换版本也不用改页面。 */
+  /* 下载走本站的下载页，不是直接甩一个 70 MB 的包：
+     Pages 不适合长期托管这么大的二进制（每次发版都要整包同步到 CDN，会超时），
+     由下载页列出官方直链与可选的第三方加速，让用户自己决定把 IP 交给谁。 */
+  var APK_URL = 'https://podcatcher962.github.io/moyin-reader/download/';
   function speakEnv() {
     var ua = navigator.userAgent || '', host = location.hostname || '';
     return {
@@ -3955,7 +3957,7 @@
       '<p>朗读依赖操作系统 / 浏览器提供的语音引擎，音色、可用性、断句效果因设备而异，不保证与人工朗读一致。驾车、操作机械等需要注意力的场合请勿收听。</p>' +
       '<p>本软件按「现状」提供，不附带任何明示或默示担保。在法律允许的最大范围内，作者不对使用或无法使用本软件造成的任何直接或间接损失（含数据丢失、设备损坏、时间或收入损失）承担责任。</p>' +
       '<p>「墨吟」的名称、界面与文档著作权归作者所有；文中提及的其他产品、公司、语音服务名称可能是其各自所有者的商标，仅用于说明用途，不表示任何关联、赞助或背书。</p>' +
-      '<p><b>关于联网与权限</b>：除了上面说的检查更新（一个普通 GET 取版本号，不带书名也不带设备标识）和下载安装包 / 语音模型（GitHub，国内线路不通时走第三方镜像 <code>gh-proxy.com</code>，该镜像运营方能看到你的 IP 与浏览器标识）之外，软件不发起任何网络请求——没有统计、没有埋点、没有广告 SDK、没有崩溃上报。安卓包只申请 <code>INTERNET</code> 与 <code>ACCESS_NETWORK_STATE</code> 两个权限，不读存储、位置、通讯录、相机、麦克风，也不读 IMEI / Android ID / MAC。完整隐私说明随发行包以 <code>PRIVACY.md</code> 提供。</p>' +
+      '<p><b>关于联网与权限</b>：除了上面说的检查更新（一个普通 GET 取版本号，不带书名也不带设备标识）和下载安装包 / 语音模型之外，软件不发起任何网络请求——没有统计、没有埋点、没有广告 SDK、没有崩溃上报。下载默认直连 GitHub 官方地址，中间没有别的服务器；只有在下载页上<b>由你本人点了</b>镜像链接时，请求才会经过 <code>gh-proxy.com</code> 这类第三方反代，对方能看到你的 IP 与浏览器标识。安卓包只申请 <code>INTERNET</code> 与 <code>ACCESS_NETWORK_STATE</code> 两个权限，不读存储、位置、通讯录、相机、麦克风，也不读 IMEI / Android ID / MAC。完整隐私说明随发行包以 <code>PRIVACY.md</code> 提供。</p>' +
       '<p><b>关于声音</b>：187 个配角声线来自公开多说话人数据集训练的开源模型，主角两份来自公开 Piper 中文模型。它们只是合成音色，不用于声纹识别，也不代表任何真实人物；软件不提供声音克隆，不采集、不上传你本人的录音。界面里的声线名字是产品内的档位名，不是对任何人的称呼或代言。</p>' +
       '<p>若你是权利人，认为本工具或其随附内容侵犯了你的权益，请通过发行包内 README 所示方式联系作者，核实后会及时处理。</p>'],
     about: ['关于', '<p style="font-size:1.2em"><b>墨吟 · MoYin Reader</b></p>' +
