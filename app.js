@@ -3586,7 +3586,9 @@
   /* ── 朗读不可用时，按平台给不同的出路 ───────────────────────────────
      桌面：换浏览器；安卓浏览器：装 APK；APK 内：去系统装中文语音。
      在手机上甩一句「请用新版 Edge / Chrome」等于什么都没说。 */
-  var APK_URL = 'https://podcatcher962.github.io/moyin-reader/download/MoYinReader.apk';
+  var APK_URL = 'https://github.com/podcatcher962/moyin-reader/releases/latest/download/MoYinReader.apk';
+  /* 指向 releases/latest：安卓包不再塞进仓库（单请求 70 MB 会被网关拒），
+     这样页面上的下载永远是最新那一版，换版本也不用改页面。 */
   function speakEnv() {
     var ua = navigator.userAgent || '', host = location.hostname || '';
     return {
