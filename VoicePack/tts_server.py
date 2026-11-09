@@ -19,6 +19,7 @@ import io
 import json
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -104,6 +105,16 @@ XIAOYA_F0 = 266                        # 2026-11-08 实测中位
 CHAOWEN_DIR = 'chaowen'                # 男主
 CHAOWEN_F0 = 163                       # 2026-11-08 实测中位
 FANCHEN_DIR = 'fanchen'                # 187 人配角库
+
+# 英文模型（可选装）。三个中文模型一个英文字母都不认识——实测 lexicon 里
+# 连 hello / CPU / OK 都没有，送进去就是「一个字都没念出来」，整句 500。
+# 所以小说里夹的 iPhone / WiFi / GDP 以前是被静默吞掉的，纯英文段落更是
+# 直接报错。装一个 piper 英文模型（int8，约 22 MB）就能把这块补上：
+#   models/piper-en/model.onnx + tokens.txt + espeak-ng-data/
+# 没装也不影响中文朗读，页面会拿系统英文语音顶这一段（见 app.js 的 speakForeign）。
+EN_DIR = 'piper-en'
+EN_SID = 0                             # 多说话人模型里挑的那个英文声线
+EN_F0 = 200                            # 只用于界面显示分档
 
 SID_F0 = {
       0: 260,
@@ -408,13 +419,305 @@ if os.path.isfile(os.path.join(MODEL_DIR, FANCHEN_DIR, 'model.onnx')):
         _key = 's%d' % _sid
         VOICES[_key] = _v(_sid, CURATED_LABEL.get(_key) or ('音色 %d' % _sid), SID_F0[_sid])
 
+# ---------------- 常驻引擎 ----------------
+#
+# 2026-11-09 实测（本机 12 核）：命令行版 sherpa-onnx-offline-tts.exe **每合成一个
+# 片段都要重启一次进程**，光是启动 + 载模型就 1.9 秒。一段 15 个片段的长对白，
+# 并行 6 路也要 9.9 秒——这就是「到对话这里要等十秒」的真凶，跟模型快慢无关。
+#
+# 同一份模型用 sherpa_onnx 的 Python 绑定常驻内存后：
+#   加载一次 1.6 秒，之后每片段 0.3~0.7 秒，整段 15 片段并行 2.7 秒。
+# 所以桌面端一律走常驻；只有在没装 sherpa_onnx（Linux 包、源码直跑没装依赖）时
+# 才回退到命令行子进程，行为跟以前完全一样。
+#
+# 配角声线：fanchen 那套 16 kHz 多说话人模型听着最好，但推理慢 20 倍
+# （实测一句 20 字要 12~16 秒），只要角色一开口就必然干等。这里换成正主
+# 两个 22 kHz 声线的**变调族**：同一次合成结果做一次线性插值重采样，
+# 音高变、母语感不变，代价只有几毫秒。低音顺带念得慢一点、高音快一点，
+# 正好跟「年长者语速慢、年轻人语速快」对得上。
+_PITCH = [('', 1.0), ('b', 0.94), ('c', 0.89), ('d', 1.06)]
+_BASE_DIR = {'f': XIAOYA_DIR, 'm': CHAOWEN_DIR}
+_BASE_F0 = {'f': XIAOYA_F0, 'm': CHAOWEN_F0}
+# 每个基干声线给出 4 个变体的显示名与音高档（band 必须以「男声/女声」开头，
+# 页面那边靠这个前缀判男女，别改。）
+_FAST_META = {
+    'f': [('女声 1 · 原声', '女声 · 成年', 266),
+          ('女声 2 · 沉稳', '女声 · 低音', 250),
+          ('女声 3 · 低沉', '女声 · 低音', 237),
+          ('女声 4 · 明亮', '女声 · 青年', 282)],
+    'm': [('男声 1 · 原声', '男声 · 中年', 163),
+          ('男声 2 · 沉稳', '男声 · 中年', 153),
+          ('男声 3 · 低沉', '男声 · 低沉', 145),
+          ('男声 4 · 清亮', '男声 · 偏高', 173)],
+}
+
+RES = {'tried': False, 'mod': None, 'pool': {}, 'lock': threading.Lock(), 'err': ''}
+FAST = False          # 常驻引擎可用时置 True，_synth_one 据此分派
+
+
+def _fast_spec():
+    """把 f0..f3 / m0..m3 塞进 VOICES。base=基干模型，pitch=音高倍率。"""
+    out = {}
+    for base, metas in _FAST_META.items():
+        for i, (label, band, hz) in enumerate(metas):
+            key = '%s%d' % (base, i)
+            out[key] = {'kind': 'fast', 'fast': True, 'base': base,
+                        'pitch': _PITCH[i][1], 'sid': None,
+                        'model': os.path.join(MODEL_DIR, _BASE_DIR[base], 'model.onnx'),
+                        'files': [os.path.join(MODEL_DIR, _BASE_DIR[base], 'model.onnx')],
+                        'label': label, 'band': band, 'f0': hz}
+    return out
+
+
+def _probe_resident():
+    """import 一次看常驻引擎在不在。失败就彻底走老路，不反复试。"""
+    global FAST
+    if RES['tried']:
+        return FAST
+    RES['tried'] = True
+    try:
+        import sherpa_onnx as so
+        RES['mod'] = so
+        RES['ok'] = True
+    except Exception as e:
+        RES['ok'] = False
+        RES['err'] = '%s: %s' % (type(e).__name__, e)
+        return False
+    if not (os.path.isfile(os.path.join(MODEL_DIR, XIAOYA_DIR, 'model.onnx'))
+            or os.path.isfile(os.path.join(MODEL_DIR, CHAOWEN_DIR, 'model.onnx'))):
+        RES['ok'] = False
+        RES['err'] = 'model missing'
+        return False
+    VOICES.update(_fast_spec())
+    # 老配置里存的是 x0/c0，让它们指向同一套常驻实例，用户不用重新选音色
+    if 'x0' in VOICES:
+        VOICES['x0'] = VOICES['f0']
+    if 'c0' in VOICES:
+        VOICES['c0'] = VOICES['m0']
+    FAST = True
+    return True
+
+
+def _res_cfg(base):
+    """常驻配置：与命令行版逐项对齐（silence 0.35 让引擎念紧凑，停顿我们自己插）。"""
+    so = RES['mod']
+    d = _BASE_DIR[base]
+    v = so.OfflineTtsVitsModelConfig(
+        model=os.path.join(MODEL_DIR, d, 'model.onnx'),
+        tokens=os.path.join(MODEL_DIR, SHARED_DIR, 'tokens.txt'),
+        lexicon=os.path.join(MODEL_DIR, SHARED_DIR, 'lexicon.txt'))
+    m = so.OfflineTtsModelConfig(vits=v, num_threads=2, debug=False, provider='cpu')
+    c = so.OfflineTtsConfig(model=m)
+    # 与命令行版一致：三个数字/电话规则 fst
+    c.rule_fsts = ','.join(os.path.join(MODEL_DIR, SHARED_DIR, x) for x in SHARED_FSTS)
+    c.silence_scale = SILENCE_SCALE
+    # 一次只喂一句话：我们已经在标点处切好了，让引擎再分句会把停顿拆散
+    c.max_num_sentences = 1
+    return c
+
+
+def _res_pool(base, n=None):
+    """每个基干声线建 n 个实例轮转（单实例常驻约 105 MB）。
+
+    实例数按 CPU 核数给：本机 12 核实测 10 个片段 2 实例 2.7 秒 / 3 实例 2.1 秒 /
+    4 实例 1.8 秒，收益递减而内存线性上涨。女主声线用得最多（旁白＋多数对白）给 3 个，
+    男声给 2 个；4 核及以下的小机器各减一个，别为了快把内存吃光。
+    """
+    if n is None:
+        cores = os.cpu_count() or 4
+        n = (3 if base == 'f' else 2) if cores >= 8 else (2 if base == 'f' else 1)
+    p = RES['pool'].get(base)
+    if p:
+        return p
+    with RES['lock']:
+        p = RES['pool'].get(base)
+        if p:
+            return p
+        insts = [RES['mod'].OfflineTts(_res_cfg(base)) for _ in range(n)]
+        import queue as _q
+        q = _q.Queue()
+        for x in insts:
+            q.put(x)
+        p = RES['pool'][base] = {'q': q, 'n': n}
+    return p
+
+
+# ---------------- 英文：可选模型 + 中英混排 ----------------
+#
+# 中文三个模型的 lexicon 里一个英文字母都没有（2026-11-09 实测：68 012 条词条，
+# hello / world / OK / CPU 全都没有）。所以：
+#   · 纯英文段落 -> 每个片段都合成不出声 -> 整句 500 -> 页面当引擎坏了
+#   · 中英混排   -> 英文单词被静默丢掉（「他打开 iPhone 看了一眼」听成「他打开 看了一眼」）
+# 装 models/piper-en（piper 英文 int8，约 22 MB，自带 espeak-ng-data）之后：
+#   · 纯英文整段交给英文模型；
+#   · 混排按语言切片，中文段仍用角色的声线，英文段用英文模型，接回去不留缝。
+# 没装英文模型也不算故障：纯英文块抛 NoEnVoice，页面改用系统英文语音，
+# 而不是弹「引擎不可用」。
+_HAN_RE = re.compile(r'[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]')
+_LAT_RE = re.compile(r'[A-Za-z]')
+
+
+class NoEnVoice(RuntimeError):
+    """这一段是外文，但这台机器没装英文模型。页面据此换系统英文语音。"""
+
+
+def has_han(s):
+    return bool(_HAN_RE.search(s or ''))
+
+
+def has_latin(s):
+    return bool(_LAT_RE.search(s or ''))
+
+
+def lang_split(s):
+    """把片段按语言切开：[('iPhone', 'en'), (' 15 ', 'zh'), ('Pro', 'en')]。
+
+    英文只认拉丁字母（以及词内撇号/连字符）。数字、汉字、标点都留给中文模型——
+    它有 date/number fst，「2026 年 3 月」读得比英文模型自然。
+    """
+    out, buf, cur = [], [], None
+    for ch in s:
+        if ch.isspace():
+            # 空格跟着当前这一片走：「Hello world」不该被切成两个英文片段
+            if cur is not None:
+                buf.append(ch)
+            continue
+        t = 'en' if (ch.isascii() and (ch.isalpha() or ch in "'\u2019-")) else 'zh'
+        if cur is None or t == cur:
+            buf.append(ch)
+            cur = t
+        else:
+            out.append((''.join(buf), cur))
+            buf = [ch]
+            cur = t
+    if buf:
+        out.append((''.join(buf), cur))
+    # 纯标点片（「……」「——」）没有字可念，丢掉；数字片要留（中文模型有数字 fst）
+    return [(x, t) for x, t in out
+            if _HAN_RE.search(x) or re.search(r'[0-9A-Za-z]', x)]
+
+
+EN = {'pool': None, 'lock': threading.Lock()}
+
+
+def _en_dir():
+    return os.path.join(MODEL_DIR, EN_DIR)
+
+
+def en_ready():
+    """英文模型在不在。只在常驻模式下有用（命令行兜底路径不支持英文）。"""
+    if not FAST:
+        return False
+    d = _en_dir()
+    if not (os.path.isfile(os.path.join(d, 'model.onnx'))
+            and os.path.isfile(os.path.join(d, 'tokens.txt'))):
+        return False
+    return os.path.isdir(os.path.join(d, 'espeak-ng-data'))
+
+
+def _en_cfg():
+    so = RES['mod']
+    d = _en_dir()
+    v = so.OfflineTtsVitsModelConfig(
+        model=os.path.join(d, 'model.onnx'),
+        tokens=os.path.join(d, 'tokens.txt'),
+        data_dir=os.path.join(d, 'espeak-ng-data'))
+    m = so.OfflineTtsModelConfig(vits=v, num_threads=2, debug=False, provider='cpu')
+    c = so.OfflineTtsConfig(model=m)
+    c.silence_scale = SILENCE_SCALE
+    c.max_num_sentences = 1
+    return c
+
+
+def _en_pool():
+    """英文实例只建一个：书里英文本来就少，不值得为它多占一份内存。"""
+    if EN['pool'] is not None:
+        return EN['pool']
+    with EN['lock']:
+        if EN['pool'] is None:
+            import queue as _q
+            q = _q.Queue()
+            q.put(RES['mod'].OfflineTts(_en_cfg()))
+            EN['pool'] = {'q': q}
+    return EN['pool']
+
+
+def _synth_en(text, speed):
+    """英文片段：走 piper 模型，不和中文声线抢实例池。"""
+    p = _en_pool()
+    inst = p['q'].get()
+    try:
+        au = inst.generate(text, sid=EN_SID, speed=speed or 1.0)
+    finally:
+        p['q'].put(inst)
+    return _pcm16(au.samples, au.sample_rate)
+
+
+def _pcm16(samples, sr):
+    """float32 [-1,1] -> 16bit 单声道 WAV 字节。跟命令行版输出格式保持一致。"""
+    import numpy as np
+    a = np.clip(np.asarray(samples, dtype=np.float32), -1.0, 1.0) * 32767.0
+    buf = io.BytesIO()
+    with wave.open(buf, 'wb') as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes(a.astype('<i2').tobytes())
+    return buf.getvalue()
+
+
+def _pitch_shift(samples, r):
+    """线性插值重采样：r<1 音高变低、r>1 变高（时长同时变 1/r）。
+    朗读里这点语速差反而是好事——低音的年长者本来就该念得慢些。"""
+    import numpy as np
+    s = np.asarray(samples, dtype=np.float32)
+    n = len(s)
+    if n < 16 or abs(r - 1.0) < 1e-3:
+        return s
+    m = max(8, int(round(n / r)))
+    src = np.arange(n, dtype=np.float32)
+    idx = np.linspace(0.0, n - 1.0, m, dtype=np.float32)
+    return np.interp(idx, src, s).astype(np.float32)
+
+
+def _synth_res(text, base, speed, pitch):
+    """常驻合成一句。实例从池里借，借不到就排队等——不会并发踩同一个实例。"""
+    p = _res_pool(base)
+    inst = p['q'].get()
+    try:
+        au = inst.generate(text, sid=0, speed=speed)
+    finally:
+        p['q'].put(inst)
+    s = au.samples
+    if abs(pitch - 1.0) > 1e-3:
+        s = _pitch_shift(s, pitch)
+    return _pcm16(s, au.sample_rate)
+
+
+def warm_resident(which='fm'):
+    """后台把所有常驻实例建起来。点「朗读」之前先叫醒，第一句就不用等 1.6 秒。"""
+    if not FAST:
+        return False
+    for base in ('f', 'm'):
+        if base not in which:
+            continue
+        try:
+            _res_pool(base)
+        except Exception:
+            pass
+    return True
+
+
+# 启动时就探一次：常驻引擎能不能用决定后续走哪条路，也决定 /health 报什么。
+_probe_resident()
+
 # 默认音色：女主优先；没装就退回 matcha，再没有就用挑过的 12 号。
 DEFAULT_VOICE = ('x0' if 'x0' in VOICES
                  else 'm0' if 'm0' in VOICES else 's12')
 
 
-_sem = threading.Semaphore(6)          # 并行合成数：每次调用 2 线程，6 路正好吃满 12 核
-PARALLEL = 6
+_sem = threading.Semaphore(12 if FAST else 6)   # 子进程并行数；常驻模式不受它限制
+PARALLEL = 8 if FAST else 6                     # 一段里同时合成的片段数
 _cache = OrderedDict()                 # 整段缓存：重听同一段直接命中
 _seg_cache = OrderedDict()             # 片段缓存：同一短句在书里反复出现时省掉重复合成
 _cache_lock = threading.Lock()
@@ -489,19 +792,31 @@ def health():
     exe = find_exe()
     voices = {v: voice_ready(v) for v in VOICES}
     order = []
-    for v in ['x0', 'c0'] + [k for k, _l in CURATED]:
-        if v in VOICES and v not in order:
-            order.append(v)
+    if FAST:
+        # 常驻模式下推荐的就是这 8 个：两个基干声线各 4 个音高变体。
+        # 187 个 16k 配角声线仍然在 VOICES 里（老配置不会失效），
+        # 但不再进推荐列表——它们每句要 12 秒，放进去只会让人以为软件卡了。
+        for b in ('f', 'm'):
+            for i in range(len(_FAST_META[b])):
+                k = '%s%d' % (b, i)
+                if k in VOICES:
+                    order.append(k)
+    else:
+        for v in ['x0', 'c0'] + [k for k, _l in CURATED]:
+            if v in VOICES:
+                order.append(v)
     return {
-        'ok': bool(exe) and any(voices.values()),
-        'engine': 'sherpa-onnx 2.0.1' if exe else 'missing',
+        'ok': (bool(exe) or FAST) and any(voices.values()),
+        'engine': 'sherpa-onnx 2.0.1' if (exe or FAST) else 'missing',
+        'resident': FAST,
         'voices': voices,
         'labels': {v: VOICES[v]['label'] for v in VOICES},
         'groups': {v: VOICES[v]['band'] for v in VOICES},
         'f0': {v: VOICES[v]['f0'] for v in VOICES},
         'curated': order or list(VOICES),
-        'count': len(VOICES),
-        'version': 6,
+        'count': len([v for v in VOICES if voices.get(v)]),
+        'en': en_ready(),
+        'version': 8,
         'engineKind': VOICES[DEFAULT_VOICE]['kind'] if DEFAULT_VOICE in VOICES else 'vits',
     }
 
@@ -646,7 +961,21 @@ def _synth_units(units, voice):
     无声的片段并进相邻片段重来——这是实测出来的必要一步，
     引擎对某些孤立词（「墨水」）会返回近乎全零的波形，不检查就会在书里留下一段空白。
     """
-    jobs = list(units)
+    jobs = []
+    if not en_ready():
+        # 没装英文模型时，纯英文片段念不出来（不是故障）。跳过它，把它该有的停顿
+        # 让给前一片——否则「他打开 iPhone 看了一眼」会在 iPhone 那里留一处空白。
+        for u in units:
+            if has_latin(u[0]) and not has_han(u[0]):
+                if jobs:
+                    prev = jobs[-1]
+                    jobs[-1] = (prev[0], max(prev[1], u[1])) + tuple(prev[2:])
+                continue
+            jobs.append(u)
+        if not jobs:
+            raise NoEnVoice('no english voice installed')
+    else:
+        jobs = list(units)
     workers = max(1, min(PARALLEL, len(jobs)))
 
     def run(js):
@@ -803,14 +1132,63 @@ def _join(items):
     return buf.getvalue()
 
 
+def _synth_zh(text, voice, length_scale, silence_scale):
+    """中文片段：常驻引擎优先，没有才退子进程。"""
+    s = VOICES.get(voice) or VOICES[DEFAULT_VOICE]
+    if s.get('fast'):
+        return _synth_res(text, s['base'], 1.0 / (length_scale or 1.0), s['pitch'])
+    return _synth_cli(text, voice, length_scale, silence_scale)
+
+
+def _synth_mixed(text, voice, length_scale):
+    """中英混排：中文段用角色声线，英文段用英文模型，按原顺序接回去。
+
+    接缝处只留 20 ms（_join 的下限），听感上是连着念的，不会在
+    「他打开 iPhone」中间多出一次换气。
+    """
+    speed = 1.0 / (length_scale or 1.0)
+    pieces = []
+    for seg, lang in lang_split(text):
+        if lang == 'en':
+            pieces.append((_synth_en(seg, speed), 0.0))
+        else:
+            pieces.append((_synth_zh(seg, voice, length_scale, SILENCE_SCALE), 0.0))
+    if not pieces:
+        raise RuntimeError('empty text')
+    if len(pieces) == 1:
+        return pieces[0][0]
+    return _join(pieces)
+
+
 def _synth_one(text, voice, length_scale, silence_scale):
-    """合成一个片段，带片段级缓存。"""
+    """合成一个片段，带片段级缓存。常驻引擎优先，没有才退子进程。"""
     key = (voice, text, length_scale, silence_scale)
     with _cache_lock:
         if key in _seg_cache:
             _seg_cache.move_to_end(key)
             return _seg_cache[key]
 
+    if has_latin(text) and en_ready():
+        # 有英文模型：纯外文整段给英文模型，混排按语言切片
+        data = (_synth_mixed(text, voice, length_scale) if has_han(text)
+                else _synth_en(text, 1.0 / (length_scale or 1.0)))
+    elif has_latin(text) and not has_han(text):
+        # 纯外文但没装英文模型：交给页面用系统英文语音，别当引擎故障
+        raise NoEnVoice('no english voice installed')
+    else:
+        # 中文（可能夹着几个英文词——没有英文模型时那些词只能丢，中文照常念）
+        data = _synth_zh(text, voice, length_scale, silence_scale)
+
+    with _cache_lock:
+        _seg_cache[key] = data
+        _seg_cache.move_to_end(key)
+        while len(_seg_cache) > SEG_CACHE_MAX:
+            _seg_cache.popitem(last=False)
+    return data
+
+
+def _synth_cli(text, voice, length_scale, silence_scale):
+    """回退路径：起一次 sherpa-onnx-offline-tts.exe。每片段约 1.9 秒，只当兜底。"""
     exe = find_exe()
     if not exe:
         raise RuntimeError('engine missing: run 安装语音包.cmd first')
@@ -838,20 +1216,40 @@ def _synth_one(text, voice, length_scale, silence_scale):
                 os.remove(out)
             except OSError:
                 pass
-
-    with _cache_lock:
-        _seg_cache[key] = data
-        _seg_cache.move_to_end(key)
-        while len(_seg_cache) > SEG_CACHE_MAX:
-            _seg_cache.popitem(last=False)
     return data
+
+
+def _sayable(s):
+    """有没有「念得出来」的字。
+
+    小说里常出现整段只有标点的块：「？？？」「……」「——」。清洗后它们不是空字符串，
+    但一个可发音的字都没有，引擎会抛 empty text。以前这种情况回 HTTP 500，
+    页面收到就以为引擎坏了，直接切回系统朗读——听感上就是「念到问号忽然换了个人」。
+    所以这种块别再当错误：给一段等长静音，页面照常往下念。
+    """
+    return any(ch.isalnum() for ch in (s or ''))
+
+
+def _silence_wav(sec=0.30, sr=22050):
+    """一段等长静音（WAV）。长度按「本来该念多久」估：一个问号约 0.3 秒。"""
+    n = max(1, int(sr * max(0.12, min(1.2, sec))))
+    buf = io.BytesIO()
+    with wave.open(buf, 'wb') as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes(array.array('h', [0]) * n)
+    return buf.getvalue()
 
 
 def synth(text, voice, speed):
     """切分 -> 并行合成 -> 按标点插停顿 -> 拼成一整段。失败抛 RuntimeError。"""
     text = clean_text(text)
-    if not text:
-        raise RuntimeError('empty text')
+    if not _sayable(text):
+        return _silence_wav(0.18 + 0.16 * min(4, len(text)))
+    # 整段外文 + 没装英文模型：早早告诉页面换系统英文语音，别让它等一轮 500
+    if has_latin(text) and not has_han(text) and not en_ready():
+        raise NoEnVoice('no english voice installed')
     # 选了没装好的音色时，落到第一个可用音色，不打断听书
     if voice not in VOICES or not voice_ready(voice):
         voice = next((v for v in VOICES if voice_ready(v)), DEFAULT_VOICE)
@@ -863,7 +1261,7 @@ def synth(text, voice, speed):
 
     units = merge_short(prosody_split(text))
     if not units:
-        raise RuntimeError('empty text')
+        return _silence_wav()
 
     parts = _synth_units(units, voice)
     if not parts:
@@ -918,8 +1316,17 @@ class Handler(BaseHTTPRequestHandler):
         self._send(204, b'')
 
     def do_GET(self):
-        if self.path.split('?')[0].rstrip('/') in ('/health', ''):
+        p = self.path.split('?')[0].rstrip('/')
+        if p in ('/health', ''):
             self._send(200, json.dumps(health(), ensure_ascii=False))
+        elif p == '/warm':
+            # 常驻模式下这次真的有意义：把两个基干声线的实例建起来（约 3 秒），
+            # 页面在开头几句旁白还在播时叫一次，等角色第一次开口就已经热好了。
+            if FAST:
+                threading.Thread(target=warm_resident, kwargs={'which': 'fm'},
+                                 daemon=True).start()
+            self._send(200, json.dumps({'ok': True, 'lib': True, 'resident': FAST},
+                                       ensure_ascii=False))
         else:
             self._send(404, json.dumps({'error': 'not found'}, ensure_ascii=False))
 
@@ -939,6 +1346,10 @@ class Handler(BaseHTTPRequestHandler):
         try:
             wav = synth(req.get('text'), req.get('voice') or DEFAULT_VOICE, req.get('speed') or 1)
             self._send(200, wav, 'audio/wav')
+        except NoEnVoice:
+            # 415 而不是 500：这不是「引擎坏了」，是「这一段是外文，本机没装英文模型」。
+            # 页面收到 415 会改用系统英文语音念这一块，不弹错、不降级、不计失败。
+            self._send(415, json.dumps({'error': 'no_en_voice'}, ensure_ascii=False))
         except subprocess.TimeoutExpired:
             self._send(503, json.dumps({'error': '合成超时'}, ensure_ascii=False))
         except Exception as e:
@@ -976,15 +1387,19 @@ def main():
     print('  墨吟 · 免费离线神经语音引擎', flush=True)
     print('=' * 52, flush=True)
     print('  端口     : http://127.0.0.1:%d (仅本机)' % PORT, flush=True)
-    print('  引擎     : %s' % st['engine'], flush=True)
-    print('  音色     : %d 个就绪 / 共 %d 个' % (sum(st['voices'].values()), len(VOICES)), flush=True)
-    for v, okk in st['voices'].items():
-        print('    %-10s %-20s %s' % (v, VOICES[v]['label'], '就绪' if okk else '缺失'), flush=True)
+    print('  引擎     : %s%s' % (st['engine'], '（常驻内存）' if st.get('resident') else '（逐句起进程）'), flush=True)
+    print('  音色     : %d 个就绪 / 共 %d 个' % (st['count'], len(VOICES)), flush=True)
+    for v in st['curated']:
+        print('    %-10s %-20s %s' % (v, VOICES[v]['label'],
+                                      '就绪' if st['voices'].get(v) else '缺失'), flush=True)
     if not st['ok']:
         print('\n  [!] 引擎或模型缺失，请先双击「安装语音包.cmd」', flush=True)
     else:
         print('\n  已就绪。切回阅读器，绿色「● 免费神经语音」即已连上。', flush=True)
     print('  关掉本窗口即停止服务（阅读器会自动退回系统语音）。\n', flush=True)
+    if FAST:
+        # 空格就是「模型常驻内存」，先把默认声线叫醒，第一句话不用等
+        threading.Thread(target=warm_resident, kwargs={'which': 'f'}, daemon=True).start()
     if '--no-open' not in sys.argv:
         threading.Timer(0.6, open_reader).start()
     try:

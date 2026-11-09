@@ -94,3 +94,9 @@ _voice_compare/
 # ---- 发版前的模型备份 / 一次性分析脚本（含大文件，只在本机留着） ----
 _backup_*/
 _tools/
+
+# ---- 临时下载 / 探测产物（英文模型试行版、Release 清单缓存） ----
+_en_*.bz2
+_rel.json
+_spd.bin
+*.bz2

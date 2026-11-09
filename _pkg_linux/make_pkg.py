@@ -19,7 +19,7 @@ import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-VER = '1.14.0'
+VER = '1.14.11'
 OUT = os.path.join(ROOT, 'dist')
 
 LINUX_DIR = 'MoYinReader-Linux'

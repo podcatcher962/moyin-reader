@@ -35,7 +35,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 APP = 'MoYinReader'
 APP_CN = '墨吟阅读器'
-VER = '1.14.0'
+VER = '1.14.11'
 VOICE_PORT = 8177
 PORTS = (38975, 38976, 0)
 CREATE_NO_WINDOW = 0x08000000
@@ -265,6 +265,19 @@ def local_dir():
     d = os.path.join(data_home(), APP)
     os.makedirs(d, exist_ok=True)
     return d
+
+
+def _slog(msg):
+    """启动阶段落盘。窗口版（--windowed）没有控制台，出了事只能靠这个文件说话：
+    「双击没反应」「一直转圈」这类报障，先看 startup.log 停在哪一步。"""
+    try:
+        p = os.path.join(local_dir(), 'startup.log')
+        if os.path.isfile(p) and os.path.getsize(p) > 200000:
+            os.remove(p)
+        with io.open(p, 'a', encoding='utf-8') as f:
+            f.write('%s %s\n' % (time.strftime('%m-%d %H:%M:%S'), msg))
+    except Exception:
+        pass
 
 
 def page_file():
@@ -821,6 +834,63 @@ def voice_health():
         return False
 
 
+# 语音服务端 health().version 低于这个数，就是升级前留下的旧引擎。
+# 旧引擎没有 1.14.10/1.14.11 的标点与英文修正，继续用它，用户会觉得「升级了没变化」。
+VOICE_MIN_VER = 8
+
+
+def voice_version():
+    """返回 (有没有服务, 版本号)。老服务没有 version 字段时版本算 0。"""
+    try:
+        with urllib.request.urlopen('http://127.0.0.1:%d/health' % VOICE_PORT,
+                                    timeout=0.7) as r:
+            j = json.loads(r.read().decode('utf-8', 'ignore'))
+            return True, int(j.get('version') or 0)
+    except Exception:
+        return False, 0
+
+
+def port_pid(p):
+    """监听 127.0.0.1:p 的进程号；找不到就 None。只用系统自带的 netstat。"""
+    try:
+        out = subprocess.run(['netstat', '-ano'], capture_output=True).stdout
+        out = out.decode('utf-8', 'ignore')
+    except Exception:
+        return None
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) < 5 or parts[0] != 'TCP':
+            continue
+        if parts[3] not in ('LISTENING', 'LISTEN'):
+            continue
+        if parts[1].endswith(':%d' % p):
+            try:
+                return int(parts[4])
+            except ValueError:
+                continue
+    return None
+
+
+def kill_port_owner(p):
+    """清掉占着端口的旧语音服务。
+
+    这里动手的前提很明确：能跑到 ensure_voice，说明没有另一个墨吟窗口开着
+    （单实例锁已经拦过），所以 8177 上的旧服务只可能是上次没退干净的
+    孤儿进程（MoYinVoice.exe 或 启动语音引擎.cmd 起的 python）。杀掉它，
+    新版才能在同一个端口上起新引擎——页面不用改端口，用户也看不出来。
+    """
+    pid = port_pid(p)
+    if not pid:
+        return False
+    try:
+        subprocess.run(['taskkill', '/F', '/PID', str(pid)],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       creationflags=CREATE_NO_WINDOW if IS_WIN else 0)
+        return True
+    except Exception:
+        return False
+
+
 def stop_voice_proc():
     """关掉本进程自己拉起的服务；不是我们起的不动。"""
     global VOICE_PROC, VOICE_SRV
@@ -861,8 +931,15 @@ def start_voice_inproc(vp):
         threading.Thread(target=srv.serve_forever, name='moyin-voice',
                          daemon=True).start()
         VOICE_SRV = srv
+        _slog('3a 语音服务（进程内）已起 %d 常驻=%s' % (VOICE_PORT, getattr(tts_server, 'FAST', '?')))
+        # 常驻引擎要先建实例池（每份模型约 1.6 秒，男女各几份）。
+        # 现在就放后台建，用户点「朗读」时池子已经热了——否则第一句要等 3~6 秒。
+        if getattr(tts_server, 'FAST', False):
+            threading.Thread(target=lambda: tts_server.warm_resident('fm'),
+                             name='moyin-warm', daemon=True).start()
         return True
-    except Exception:
+    except Exception as e:
+        _slog('3a 语音服务（进程内）失败：%s: %s' % (type(e).__name__, e))
         VOICE_SRV = None
         return False
 
@@ -873,11 +950,25 @@ def ensure_voice():
     语音引擎是 Windows 二进制（sherpa-onnx .exe）。Linux / macOS 上没有它，
     直接返回 'unsupported'，页面会自动回落到系统语音，不影响看书。
     """
-    global VOICE_PROC
+    global VOICE_PROC, VOICE_PORT
     if not IS_WIN:
         return 'unsupported'
-    if voice_health():
+    ok, ver = voice_version()
+    if ok and ver >= VOICE_MIN_VER:
         return 'running'
+    if ok:
+        # 8177 上挂着升级前留下的旧服务（上次没退干净的孤儿进程）。
+        # 清掉它，新版照样在 8177 起服务——页面不用换端口。
+        _slog('3b 端口 %d 上是旧引擎 version=%s，清掉重起' % (VOICE_PORT, ver))
+        stop_voice_proc()
+        if kill_port_owner(VOICE_PORT):
+            _slog('3b 已终止旧服务进程')
+        time.sleep(0.5)
+        if voice_health():
+            # 清不掉（权限不够 / 属于别的用户）就别硬来：先把旧的服务当真，
+            # 页面会提示「重启墨吟即可换成新版」，下次开机自然就好了。
+            _slog('3b 旧服务仍在，本次先沿用它')
+            return 'running-old'
     vp = prepare_voice_dir()
     exe = os.path.join(vp, 'MoYinVoice.exe')
     script = os.path.join(vp, 'tts_server.py')
@@ -945,7 +1036,14 @@ def single_instance():
         except Exception:
             return None
     import msvcrt
-    f = open(os.path.join(local_dir(), 'app.lock'), 'a+')
+    try:
+        f = open(os.path.join(local_dir(), 'app.lock'), 'a+')
+    except OSError:
+        # 锁文件被别的进程占着：旧版窗口还开着、或在托盘里挂着，它的
+        # WebView 子进程握着这个句柄。升级后第一次双击新版本最容易撞上。
+        # 这时不能抛异常——exe 会一闪而过，用户只会觉得「新版本打不开」。
+        _already_running()
+        return None
     try:
         f.seek(0)
         f.write('x')
@@ -954,14 +1052,18 @@ def single_instance():
         msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
         return f                    # 必须持有引用，锁才不会随 GC 释放
     except OSError:
-        try:
-            import ctypes
-            ctypes.windll.user32.MessageBoxW(
-                0, '墨吟阅读器已经在运行了。\n请看一下任务栏，或到托盘找找窗口。',
-                APP_CN, 0x40)
-        except Exception:
-            pass
+        _already_running()
         return None
+
+
+def _already_running():
+    try:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(
+            0, '墨吟阅读器已经在运行了。\n请看一下任务栏，或到托盘找找窗口。',
+            APP_CN, 0x40)
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------- 自检
@@ -1329,11 +1431,13 @@ def main():
     lock = single_instance()
     if lock is None:
         return 0
+    _slog('1 单实例锁 ok')
     start_server()
-    voice = ensure_voice()
-    if voice.startswith('started'):
-        # 给引擎一点初始化时间，页面自己的 localProbe 会重试
-        pass
+    _slog('2 页面服务已起 %s' % (str(getattr(SERVER, 'server_address', '?')),))
+    # 语音服务放到窗口之后 1.5 秒再起：模型和底层库要吃掉不少内存和磁盘，
+    # 跟 WebView2 抢在同一刻初始化时，某些机型上会让窗口直接起不来。
+    # 页面自己会轮询 /health，晚一两秒连上不影响听书。
+    threading.Timer(1.5, lambda: _slog('3 语音 %s' % (ensure_voice(),))).start()
 
     # 原生窗口：Windows/macOS 走各自内核，Linux 走 GTK/Qt(WebKit)。
     # 信创机器上常见的坑是「装了 pywebview 但没装 webkit2gtk」，
@@ -1344,14 +1448,22 @@ def main():
         storage = os.path.join(local_dir(), 'webview')
         os.makedirs(storage, exist_ok=True)
         geo = load_geo()
+        _slog('4 准备建窗口')
         w = webview.create_window(window_title(), url(),
                                   width=geo.get('w') or 1180, height=geo.get('h') or 800,
                                   x=geo.get('x'), y=geo.get('y'),
                                   min_size=(760, 520),
                                   background_color='#F5F2EA', text_select=True)
+        # 3 秒后还活着 = 窗口确实画出来了。这条是给「双击没反应」定位用的：
+        # 有 4 没 4b，说明卡在建窗口；有 4b 没 4c，说明窗口起来后台崩了。
+        _slog('4b 窗口对象已建')
+        threading.Timer(3.0, lambda: _slog('4c 窗口存活 3 秒')).start()
+        threading.Timer(10.0, lambda: _slog('4d 窗口存活 10 秒')).start()
+        threading.Timer(30.0, lambda: _slog('4e 窗口存活 30 秒')).start()
         try:
             webview.start(private_mode=False, storage_path=storage, debug=False)
         finally:
+            _slog('5 窗口已关闭')
             try:
                 save_geo(w)
             except Exception:
@@ -1389,4 +1501,11 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except SystemExit:
+        raise
+    except BaseException:
+        import traceback
+        _slog('X 启动失败：' + traceback.format_exc().replace('\n', ' | ')[:1500])
+        raise

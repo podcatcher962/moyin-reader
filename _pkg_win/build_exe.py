@@ -48,6 +48,11 @@ def md5(b):
 
 
 def make_icon():
+    # 本机 pip 装不上 Pillow（索引连不上），图标又每次画得一模一样，
+    # 所以已有 moyin.ico 就直接沿用；真要改版式时删掉它重跑即可。
+    if os.path.isfile(ICO) and os.path.getsize(ICO) > 4096:
+        print('图标沿用已有', os.path.getsize(ICO), 'B', flush=True)
+        return
     from PIL import Image, ImageDraw, ImageFont
     im = Image.new('RGB', (256, 256), '#26303A')
     d = ImageDraw.Draw(im)
@@ -77,10 +82,24 @@ def build_reader():
             '--collect-all', 'webview',
             '--collect-all', 'pythonnet',
             '--collect-all', 'clr_loader',
+            # 常驻语音引擎（sherpa_onnx 的 Python 绑定）：不带它，语音就只能退回
+            # 「每句起一次 exe」，一段长对白要等十秒。代价是 exe 大约多 30 MB。
+            '--collect-all', 'sherpa_onnx',
+            '--hidden-import', 'sherpa_onnx.lib._sherpa_onnx',
+            '--hidden-import', 'numpy',
             '--hidden-import', 'webview.platforms.winforms',
             '--hidden-import', 'clr',
+            # tts_server.py 是以数据文件形式放进 exe 的（--add-data），PyInstaller
+            # 不会去分析它的 import，所以它用到而 app.py 没用到的那几个标准库
+            # 必须手动点名。漏掉 wave 的后果是进程内语音服务直接 import 失败。
+            '--hidden-import', 'wave',
+            '--hidden-import', 'array',
+            '--hidden-import', 'random',
+            '--hidden-import', 'queue',
+            '--hidden-import', 'tempfile',
+            '--hidden-import', 'shutil',
+            '--hidden-import', 'concurrent.futures',
             '--exclude-module', 'tkinter',
-            '--exclude-module', 'numpy',
             '--exclude-module', 'pandas',
             '--exclude-module', 'PIL',
             '--add-data', HTML + ';.',
@@ -103,7 +122,10 @@ def build_voice():
             '--name', 'MoYinVoice', '--icon', ICO,
             '--distpath', DIST, '--workpath', w2, '--specpath', w2,
             '--noupx', '--exclude-module', 'tkinter',
-            '--exclude-module', 'numpy', '--exclude-module', 'PIL',
+            '--collect-all', 'sherpa_onnx',
+            '--hidden-import', 'sherpa_onnx.lib._sherpa_onnx',
+            '--hidden-import', 'numpy',
+            '--exclude-module', 'PIL',
             TS]
     r = sh(args)
     out = os.path.join(DIST, 'MoYinVoice.exe')

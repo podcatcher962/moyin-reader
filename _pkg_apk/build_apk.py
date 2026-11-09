@@ -50,7 +50,11 @@ PKG = 'com.lanlan.moyinreader'
 APP_NAME = '墨吟'
 PORT = 38973
 HTML = os.path.join(ROOT, 'MoYinReader.html')
-FINAL = os.path.join(ROOT, 'MoYinReader.apk')
+# MOYIN_DIAG=1 打「三色探针包」：窗口底色蓝、WebView 底色品红、页面顶部压一块米黄说明牌，
+# 再配 Toast 报启动步骤。专治「没有 adb、只看得见一片颜色」的机器。正式构建不设这个变量，
+# 走的完全是原来那条路，产物不受任何影响。
+DIAG = os.environ.get('MOYIN_DIAG') == '1'
+FINAL = os.path.join(ROOT, 'MoYinReader-diag.apk' if DIAG else 'MoYinReader.apk')
 STAGE = os.path.join(PKG_DIR, 'stage_' + time.strftime('%H%M%S'))
 
 # ── 手机端离线神经语音：sherpa-onnx Android AAR + 小雅/超文/fanchen 三套中文模型 ──
@@ -86,8 +90,8 @@ os.makedirs(STAGE, exist_ok=True)
 MANIFEST = '''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="%s"
-    android:versionCode="11400"
-    android:versionName="1.14.0">
+    android:versionCode="11411"
+    android:versionName="1.14.11">
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
     <!-- 只有两条：WebView 访问本机 127.0.0.1 需要明文 http；
          不申请麦克风、定位、通讯录、存储，读书不需要这些。 -->
@@ -166,6 +170,8 @@ def patch_main():
     rep('            if (path.equals("/__save")) { handleSave(c, in, lines, method, query); return; }\n',
         '            if (path.equals("/__save")) { handleSave(c, in, lines, method, query); return; }\n'
         '            if (path.equals("/health")) { bridge.handleHealth(c, port, method); return; }\n'
+        '            if (path.equals("/diag")) { bridge.handleDiag(c, method); return; }\n'
+        '            if (path.equals("/warm")) { bridge.handleWarm(c, query, method); return; }\n'
         '            if (path.equals("/tts")) { bridge.handleTts(c, in, lines, method); return; }\n',
         'routes')
 
@@ -235,6 +241,136 @@ def patch_main():
     for kw in ('TtsBridge bridge', 'bridge.handleHealth', 'bridge.handleTts',
                'bridge.injectMoyin', 'bridge.stop()', 'MY.backKey'):
         assert kw in s, '接线缺失: ' + kw
+    if DIAG:
+        s = patch_diag(s)
+    return s
+
+
+def patch_diag(s):
+    """三色探针：把「窗口 / WebView / 页面」三层分别染成不同颜色，
+    再加上 Toast 步骤，手机上看一眼就知道卡在哪一层。只用在这条诊断分支上。"""
+    def rep(old, new, tag):
+        assert s.count(old) == 1, 'diag 锚点不唯一: %s count=%d' % (tag, s.count(old))
+        return s.replace(old, new, 1)
+
+    # 1) 整段换掉 onCreate：去掉「上次崩溃记忆」那条 return 分支（它会让机器卡在旧记录上）
+    a = s.index('    @Override\n    protected void onCreate(Bundle b) {')
+    b = s.index('    private void init() {')
+    s = s[:a] + '''    /** 落盘：native 崩溃时 Toast 会跟着进程一起消失，只有写盘能留下来。
+     *  用裸文件而不是 SharedPreferences —— 后者在部分 ROM 上 commit 会静默失败，
+     *  而且读回来时如果被同一轮的写覆盖掉，就什么都看不到了。 */
+    private void ds(String m) {
+        try {
+            java.io.FileOutputStream o =
+                    new java.io.FileOutputStream(new java.io.File(getFilesDir(), "boot.txt"));
+            o.write(m.getBytes("UTF-8"));
+            o.flush();
+            o.close();
+            return;
+        } catch (Throwable x) { }
+        try {
+            getSharedPreferences("moyin_boot", MODE_PRIVATE).edit()
+                    .putString("last", m).commit();
+        } catch (Throwable y) { }
+    }
+
+    private String readLast() {
+        try {
+            java.io.File f = new java.io.File(getFilesDir(), "boot.txt");
+            if (f.exists() && f.length() > 0) {
+                byte[] b = new byte[(int) f.length()];
+                java.io.FileInputStream in = new java.io.FileInputStream(f);
+                int n = in.read(b);
+                in.close();
+                if (n > 0) return new String(b, 0, n, "UTF-8");
+            }
+        } catch (Throwable x) { }
+        try {
+            String pv = getSharedPreferences("moyin_boot", MODE_PRIVATE).getString("last", "");
+            return pv == null ? "" : pv;
+        } catch (Throwable x) { return ""; }
+    }
+
+    /** 探针：不依赖任何布局，窗口没建好也能弹出来。 */
+    private void dg(final String m) {
+        ds(m);
+        try {
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    try {
+                        android.widget.Toast.makeText(MainActivity.this, m,
+                                android.widget.Toast.LENGTH_SHORT).show();
+                    } catch (Throwable x) { }
+                }
+            });
+        } catch (Throwable x) { }
+    }
+
+    @Override
+    protected void onCreate(Bundle b) {
+        // 先读、后写。顺序反了就永远是「1 进来了」，等于什么都没记。
+        String pv = readLast();
+        dg("诊断V7｜上次=「" + (pv.length() == 0 ? "无记录" : pv) + "」");
+        try {
+            super.onCreate(b);
+            dg("2 窗口好了");
+            init();
+        } catch (Throwable t) {
+            dg("X " + t.getClass().getSimpleName() + ": " + String.valueOf(t.getMessage()));
+            try { saveCrash(t); } catch (Throwable x) { }
+            try { showText("启动失败\\n\\n" + trace(t), false); } catch (Throwable x) { }
+        }
+    }
+
+''' + s[b:]
+
+    # 2) WebView 底色改成品红：页面一铺上来就看不见它了
+    s = rep('web.setBackgroundColor(0xFF1B1C1F);',
+            'web.setBackgroundColor(0xFFFF00FF);', 'webBg')
+
+    # 3) 各步骤打点
+    s = rep('        bridge = new TtsBridge(this);\n        web = new WebView(this);',
+            '        dg("3 语音桥开始");\n'
+            '        bridge = new TtsBridge(this);\n'
+            '        dg("4 语音桥好了");\n'
+            '        ds("4.9 准备 new WebView");\n'
+            '        web = new WebView(this);\n'
+            '        dg("5 WebView 建好了");', 'steps')
+    s = rep('        WebSettings s = web.getSettings();',
+            '        WebSettings s = web.getSettings();\n'
+            '        ds("5.2 getSettings 拿到");', 'settings')
+    s = rep('        web.setBackgroundColor(0xFFFF00FF);',
+            '        web.setBackgroundColor(0xFFFF00FF);\n'
+            '        ds("5.3 所有设置项配好");', 'setdone')
+    s = rep('        web.setWebViewClient(new WebViewClient() {',
+            '        ds("5.5 准备挂 WebViewClient");\n'
+            '        web.setWebViewClient(new WebViewClient() {', 'client')
+    s = rep('        setContentView(web);',
+            '        ds("5.9 准备 setContentView");\n'
+            '        setContentView(web);\n'
+            '        dg("6 界面挂上了");', 'content')
+    s = rep('                        if (p > 0) {\n',
+            '                        if (p > 0) {\n'
+            '                            dg("7 服务端口 " + p);\n', 'port')
+    s = rep('                            fellBack = true;\n'
+            '                        mainErr = false;    // 换一种方式重新加载，失败标记清零\n'
+            '                            web.loadUrl("file:///android_asset/index.html");\n'
+            '                        }\n'
+            '                    }\n'
+            '                });',
+            '                            fellBack = true;\n'
+            '                        mainErr = false;    // 换一种方式重新加载，失败标记清零\n'
+            '                            web.loadUrl("file:///android_asset/index.html");\n'
+            '                        }\n'
+            '                        dg("7 服务没起来，改用本地文件");\n'
+            '                    }\n'
+            '                });', 'noport')
+    s = rep('            public void onPageFinished(WebView v, String url) {',
+            '            public void onPageFinished(WebView v, String url) {\n'
+            '                dg("8 页面完成 " + url);', 'finished')
+    s = rep('                if (r != null && r.isForMainFrame() && !fellBack) {',
+            '                dg("E " + e.getErrorCode() + " " + e.getDescription());\n'
+            '                if (r != null && r.isForMainFrame() && !fellBack) {', 'err')
     return s
 
 
@@ -270,6 +406,20 @@ def neuro_available():
     return True, ''
 
 
+DIAG_NOTE_METHOD = '''
+    /** 诊断用：把当前走到哪一步写进 boot.txt，下次启动由 MainActivity 读出来。 */
+    private void note(String m) {
+        try {
+            java.io.FileOutputStream o = new java.io.FileOutputStream(
+                    new java.io.File(act.getFilesDir(), "boot.txt"));
+            o.write(m.getBytes("UTF-8"));
+            o.flush();
+            o.close();
+        } catch (Throwable x) { }
+    }
+'''
+
+
 def prepare_sources():
     src = os.path.join(STAGE, 'src')
     os.makedirs(src, exist_ok=True)
@@ -277,9 +427,20 @@ def prepare_sources():
     io.open(os.path.join(src, 'MainActivity.java'), 'w', encoding='utf-8').write(main)
     bridge = io.open(os.path.join(PKG_DIR, 'TtsBridge.java'), encoding='utf-8').read()
     bridge = bridge.replace('{PKG}', PKG)
+    if DIAG:
+        bridge = (bridge
+                  .replace('{DIAG_NOTE_METHOD}', DIAG_NOTE_METHOD)
+                  .replace('{DIAG_N1}', 'note("N1 开始建引擎对象");')
+                  .replace('{DIAG_N2}', 'note("N2 引擎对象已建（so 要到 new OfflineTts 时才加载）");')
+                  .replace('{DIAG_N3}', 'note("N3 模型加载返回 ok=" + ok);'))
+    else:
+        for k in ('{DIAG_NOTE_METHOD}', '{DIAG_N1}', '{DIAG_N2}', '{DIAG_N3}'):
+            bridge = bridge.replace(k, '')
+    assert '{DIAG' not in bridge, '诊断占位符没清干净'
     io.open(os.path.join(src, 'TtsBridge.java'), 'w', encoding='utf-8').write(bridge)
     engine = io.open(os.path.join(PKG_DIR, 'TtsEngine.java'), encoding='utf-8').read()
     engine = engine.replace('{PKG}', PKG)
+    engine = engine.replace('{DIAG_ON}', 'true' if DIAG else 'false')
     io.open(os.path.join(src, 'TtsEngine.java'), 'w', encoding='utf-8').write(engine)
     io.open(os.path.join(STAGE, 'AndroidManifest.xml'), 'w', encoding='utf-8').write(MANIFEST)
     # res
@@ -288,11 +449,30 @@ def prepare_sources():
         d = os.path.join(res, os.path.dirname(sub))
         os.makedirs(d, exist_ok=True)
         shutil.copy(os.path.join(TPL, f), os.path.join(res, sub))
+    if DIAG:
+        # 窗口底色染成深蓝：只要屏幕是蓝的，就说明 setContentView 压根没跑
+        p = os.path.join(res, 'values', 'colors.xml')
+        x = io.open(p, encoding='utf-8').read().replace('#F2E6CD', '#0033CC')
+        io.open(p, 'w', encoding='utf-8').write(x)
     # assets（逐字节，稍后要和源文件比对 md5）
     assets = os.path.join(STAGE, 'assets')
     os.makedirs(assets, exist_ok=True)
     shutil.copy2(HTML, os.path.join(assets, 'index.html'))
+    if DIAG:
+        stage_diag_page(os.path.join(assets, 'index.html'))
     return src, res, assets
+
+
+DIAG_CARD = '''<div id="__dg" style="position:fixed;left:0;top:0;right:0;z-index:2147483647;background:#EDE3CE;color:#3A3227;font:14px/1.6 sans-serif;padding:14px 18px;box-sizing:border-box;box-shadow:0 3px 10px rgba(0,0,0,.28)"><b id="__dgs">诊断中…</b><div id="__dge" style="margin-top:6px;color:#B00020;font-size:12px;white-space:pre-wrap;word-break:break-all"></div><div style="margin-top:8px;font-size:12px;color:#6F6150">点这条可以收起（正常进界面后它会自己消失）</div></div><script>(function(){var d=document.getElementById('__dg'),s=document.getElementById('__dgs'),e=document.getElementById('__dge');var n=0;function tick(){n++;var r=document.documentElement.getAttribute('data-ready');if(r==='1'){s.textContent='页面脚本已跑完（data-ready=1），诊断条自动收起';setTimeout(function(){d.style.display='none';},900);return;}s.textContent='已过 '+(n*0.5).toFixed(1)+' 秒 · data-ready 还没出现 · 说明 init() 卡住了';}var t=setInterval(tick,500);tick();d.addEventListener('click',function(){d.style.display='none';});window.addEventListener('error',function(ev){try{e.textContent+=String(ev.message)+'\\n'+(ev.filename||'')+':'+(ev.lineno||'')+'\\n';}catch(x){}},true);window.addEventListener('unhandledrejection',function(ev){try{e.textContent+='Promise: '+String(ev.reason)+'\\n';}catch(x){}},true);})();</script>'''
+
+
+def stage_diag_page(path):
+    """往页面 <body> 最前面压一块说明牌，顺带把 JS 报错显示在上面。"""
+    s = io.open(path, encoding='utf-8').read()
+    i = s.index('<body')
+    j = s.index('>', i) + 1
+    s = s[:j] + DIAG_CARD + s[j:]
+    io.open(path, 'w', encoding='utf-8').write(s)
 
 
 def stage_voice_model(assets):
@@ -334,9 +514,11 @@ def make_icons(res):
     if not has_pil:
         # 本机 pip 装不上 Pillow 时，直接从上一版 APK 里取图标复用：
         # 图标只在改版式时才需要重画，日常改页面不必为它去装依赖。
-        assert os.path.isfile(FINAL), '没有 Pillow，也找不到上一版 APK 复用图标'
+        # 诊断包成品名不同，图标一律从正式包 MoYinReader.apk 里取。
+        src_apk = FINAL if os.path.isfile(FINAL) else os.path.join(ROOT, 'MoYinReader.apk')
+        assert os.path.isfile(src_apk), '没有 Pillow，也找不到上一版 APK 复用图标'
         got = 0
-        with zipfile.ZipFile(FINAL) as z:
+        with zipfile.ZipFile(src_apk) as z:
             for n in z.namelist():
                 # aapt2 编出来的路径带版本后缀：res/mipmap-xxhdpi-v4/ic_launcher.png
                 m = re.match(r'res/(mipmap-[a-z]+)(?:-v\d+)?/ic_launcher\.png$', n)
@@ -443,7 +625,10 @@ def audit(allcls, dexfile, has_neuro):
         names = z.namelist()
         page = z.read('assets/index.html')
         src = open(HTML, 'rb').read()
-    ok &= ck(md5(page) == md5(src), '内嵌页面与源文件逐字节一致 md5=' + md5(page))
+    if DIAG:
+        ok &= ck(md5(page) != md5(src), '诊断包页面已注入说明牌（与源文件本就不同）')
+    else:
+        ok &= ck(md5(page) == md5(src), '内嵌页面与源文件逐字节一致 md5=' + md5(page))
     ok &= ck('classes.dex' in names, 'dex 已打包')
     if has_neuro:
         allowed = ({'assets/index.html'}

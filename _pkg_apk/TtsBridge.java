@@ -49,6 +49,12 @@ public class TtsBridge {
     /** 神经语音加载失败的原因；空串表示没失败（还在加载或已经好了）。 */
     private volatile String neuroErr = "";
 
+    /** 加载完的自检报告（GET /diag 原样返回给页面）。 */
+    private volatile String probe = "";
+
+    /** 等 WebView 把第一帧画完再加载 so，避开和 Chromium 抢 linker 锁。 */
+    private static final long NEURO_DELAY_MS = 9000;
+
     private final Map<String, CountDownLatch> waits = new ConcurrentHashMap<String, CountDownLatch>();
     private final Map<String, Boolean> results = new ConcurrentHashMap<String, Boolean>();
     private final Map<String, byte[]> cache = new ConcurrentHashMap<String, byte[]>();
@@ -90,7 +96,28 @@ public class TtsBridge {
             ready = false;
             engineName = "语音引擎不可用";
         }
-        startNeuro();
+        startNeuroLater();
+    }
+
+    /**
+     * 神经语音**必须等 WebView 站稳了再加载**。
+     *
+     * 以前这里是直接 startNeuro()：构造完立刻开线程 dlopen 30 MB 的
+     * libonnxruntime + sherpa 三个 so，而主线程紧接着 new WebView(this)
+     * —— Chromium 自己也要 dlopen libwebviewchromium.so。两个大 so 同时
+     * 抢 linker 的全局锁，部分 ROM（实测 MIUI/HyperOS）直接 SIGSEGV 带走进程：
+     * 表现就是点开图标一片窗口底色、系统把 Activity 反复拉起来，
+     * 永远进不去界面（日志里连 Java 异常都没有，因为它死在 native）。
+     *
+     * 页面画出来之前一次都不碰它。朗读本来也要等页面就绪，晚几秒没人察觉。
+     */
+    private void startNeuroLater() {
+        try {
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+                    new Runnable() {
+                        public void run() { startNeuro(); }
+                    }, NEURO_DELAY_MS);
+        } catch (Throwable t) { }
     }
 
     /**
@@ -104,12 +131,23 @@ public class TtsBridge {
             @Override
             public void run() {
                 try {
+                    {DIAG_N1}
                     TtsEngine e = new TtsEngine();
+                    {DIAG_N2}
                     long t0 = System.currentTimeMillis();
                     boolean ok = e.load(act);
+                    {DIAG_N3}
                     android.util.Log.i("MoYin", "神经语音加载 " + (ok ? "成功" : "失败:" + e.lastError())
                             + " 用时 " + (System.currentTimeMillis() - t0) + "ms");
-                    if (ok) neuro = e;
+                    if (ok) {
+                        neuro = e;
+                        /* 加载完先自己合成三句短的：一是把推理会话热起来
+                           （第一句本来就要现建，提前做掉用户就感觉不到），
+                           二是把结果留给 /diag —— 真机上「没声音」时这是唯一能
+                           看清是模型没出声还是根本没跑到合成的线索。 */
+                        try { probe = e.selfTest(); }
+                        catch (Throwable t) { probe = "自检异常 " + t.getClass().getSimpleName(); }
+                    }
                     else { neuroErr = e.lastError(); e.close(); }
                 } catch (Throwable t) {
                     neuroErr = t.getClass().getSimpleName() + ": " + t.getMessage();
@@ -121,6 +159,8 @@ public class TtsBridge {
         th.setPriority(Thread.NORM_PRIORITY - 1);
         th.start();
     }
+
+    {DIAG_NOTE_METHOD}
 
     /** 神经语音是否已经能合成。 */
     private boolean neuroReady() {
@@ -271,15 +311,77 @@ public class TtsBridge {
         if (rate < 0.5f) rate = 0.5f;
         if (rate > 2.0f) rate = 2.0f;
 
-        // 神经语音优先；合成失败（模型异常 / 内存不足）再退回系统语音，不中断听书
+        // 神经语音优先；合成失败（模型异常 / 内存不足）再把引擎给的原因带回去。
+        // 这里不再悄悄退回系统语音：安卓壳里的系统语音是哑的，退过去只会更糊涂，
+        // 而且把真实原因吞掉，页面只能弹一句没用的「再点一次」。
         if (hasNeuro) {
+            /* 纯外文块（一个汉字都没有、只有英文字母）：中文模型念不出来，
+               送进去必然「全段没出声」。这不是引擎故障，别让页面弹
+               「语音没有出声」——回 415，页面会按语速留白跳过这一段。
+               （桌面端装了英文模型就能念，见 VoicePack/tts_server.py。） */
+            if (TtsEngine.foreignOnly(text) && !neuro.enReady()) {
+                err(c, 415, "no_en_voice");
+                return;
+            }
             byte[] wav = neuro.synth(text, voice, rate);
             if (wav != null) { ok(c, "audio/wav", wav); return; }
+            String why = neuro.lastError();
+            err(c, 502, "神经语音没合成出这一段" + (why != null && why.length() > 0 ? "：" + why : "（引擎没给原因）"));
+            return;
         }
         if (!ready || tts == null) { err(c, 503, "合成失败，请检查手机中文语音引擎"); return; }
         byte[] wav = synth(text, rate);
         if (wav == null) { err(c, 503, "合成失败，请检查手机中文语音引擎"); return; }
         ok(c, "audio/wav", wav);
+    }
+
+    /** GET /diag：语音引擎自检报告。页面在合成失败时拉一次，摆进对话框里让人截图。 */
+    public void handleDiag(Socket c, String method) {
+        if (!"GET".equals(method) && !"HEAD".equals(method)) { err(c, 405, "只收 GET"); return; }
+        StringBuilder sb = new StringBuilder();
+        try {
+            sb.append("引擎=").append(neuro != null ? "已建" : "未建")
+              .append(" 就绪=").append(neuroReady())
+              .append(" 加载错误=").append(neuroErr.length() == 0 ? "无" : neuroErr)
+              .append('\n');
+            String p = probe;
+            sb.append(p == null || p.length() == 0 ? "自检还没跑完\n" : p);
+            TtsEngine e = neuro;
+            if (e != null) {
+                sb.append("最近一次合成错误=").append(e.lastError()).append('\n');
+            }
+            ok(c, "text/plain; charset=utf-8", sb.toString().getBytes("UTF-8"));
+        } catch (Throwable t) {
+            err(c, 500, "自检读取失败");
+        }
+    }
+
+    // ── GET /warm?lib=1 ──────────────────────────────────────────────
+    /** 后台预热配角库（分角色朗读用的 187 人模型）。
+     *
+     *  页面在「开始朗读」那一刻叫一次：那时正在播开头几句旁白，
+     *  40 MB 的解压和建会话就被这几句盖过去了，第一个角色开口不用再干等。
+     *  立刻返回，不占着连接——真去加载的是另一条线程。 */
+    public void handleWarm(Socket c, String query, String method) {
+        if (!"GET".equals(method) && !"HEAD".equals(method)) { err(c, 405, "只收 GET"); return; }
+        boolean lib = query != null && query.indexOf("lib=1") >= 0;
+        final TtsEngine e = neuro;
+        if (lib && e != null && e.ready()) {
+            try {
+                Thread th = new Thread(new Runnable() {
+                    public void run() { e.preloadLib(); }
+                }, "moyin-warm-lib");
+                th.setDaemon(true);
+                th.setPriority(Thread.MIN_PRIORITY);
+                th.start();
+            } catch (Throwable ignored) { }
+        }
+        try {
+            ok(c, "application/json; charset=utf-8",
+               ("{\"ok\":true,\"lib\":" + (e != null && e.libReady()) + "}").getBytes("UTF-8"));
+        } catch (Throwable t) {
+            err(c, 500, "预热失败");
+        }
     }
 
     private byte[] synth(String text, float rate) {

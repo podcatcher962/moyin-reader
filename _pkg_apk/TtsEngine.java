@@ -6,8 +6,14 @@ import android.content.res.AssetManager;
 import com.k2fsa.sherpa.onnx.GeneratedAudio;
 import com.k2fsa.sherpa.onnx.OfflineTts;
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig;
+import com.k2fsa.sherpa.onnx.OfflineTtsKittenModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineTtsMatchaModelConfig;
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineTtsPocketModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineTtsSupertonicModelConfig;
 import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineTtsZipVoiceModelConfig;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -28,6 +34,21 @@ import java.util.concurrent.locks.ReentrantLock;
  * onnxruntime 可以正常 mmap，不必每次把几十 MB 读进内存。
  */
 public final class TtsEngine {
+
+    // ── 诊断：native 崩溃时进程直接消失，Toast/异常都留不下，只能一步步写盘。 ──
+    // 正式构建由 build_apk.py 把 {DIAG_ON} 换成 false，只剩一次布尔判断。
+    static boolean DIAG = {DIAG_ON};
+    private static Context diagCtx;
+
+    static void mark(String m) {
+        if (!DIAG || diagCtx == null) return;
+        try {
+            FileOutputStream o = new FileOutputStream(new File(diagCtx.getFilesDir(), "boot.txt"));
+            o.write(m.getBytes("UTF-8"));
+            o.flush();
+            o.close();
+        } catch (Throwable x) { }
+    }
 
     /** 主角 · 女主（小雅）：Piper 中文单说话人 VITS，22.05 kHz，官方 int8 版。 */
     static final String GIRL_VOICE = "x0";
@@ -144,6 +165,28 @@ public final class TtsEngine {
         return CURATED_SID[0];
     }
 
+    /** 纯外文（有拉丁字母、一个汉字都没有）。中文模型对这种块一个字也念不出来，
+     *  送进去只会「全段没出声」，所以桥接层会回 415 让页面按语速留白跳过。 */
+    public static boolean foreignOnly(String s) {
+        if (s == null) return false;
+        boolean latin = false;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if ((c >= 0x4e00 && c <= 0x9fff) || (c >= 0x3400 && c <= 0x4dbf)
+                    || (c >= 0xf900 && c <= 0xfaff)) return false;
+            if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) latin = true;
+        }
+        return latin;
+    }
+
+    /** 这台机器能不能念外文。
+     *  当前 APK 里没有英文模型（中文三套模型都不认字母），所以恒 false；
+     *  等哪天把 piper 英文模型打进 assets/tts/en 并接上语言切片，再改成真判断。
+     *  在此之前纯英文块由页面按语速留白跳过，不弹错、不切系统语音。 */
+    public boolean enReady() {
+        return false;
+    }
+
     /** /health 的音色表：女主 1 + 男主 1 + 配角库 187。 */
     String healthJson(boolean engineOk) {
         int n = SID_F0.length + 2;
@@ -152,7 +195,8 @@ public final class TtsEngine {
         sb.append("\"engine\":\"").append(engineOk ? "sherpa-onnx 2.0.1 · 安卓" : "模型加载中").append("\",");
         sb.append("\"ready\":").append(engineOk).append(",");
         sb.append("\"count\":").append(n).append(",");
-        sb.append("\"version\":6,\"curated\":[\"").append(GIRL_VOICE).append("\",\"")
+        sb.append("\"en\":false,");
+        sb.append("\"version\":7,\"curated\":[\"").append(GIRL_VOICE).append("\",\"")
                 .append(BOY_VOICE).append("\"");
         for (int i = 0; i < CURATED_SID.length; i++) {
             sb.append(",\"s").append(CURATED_SID[i]).append("\"");
@@ -181,7 +225,16 @@ public final class TtsEngine {
         return sb.toString();
     }
 
-    private final ReentrantLock lock = new ReentrantLock();
+    /* 一把锁管「建/销毁引擎」，另外三把各管一套模型。
+     *
+     * 以前是一个 ReentrantLock 把合成也一起串起来：分角色朗读时旁白用女主
+     * 22 kHz 模型、对白用 fanchen 16 kHz 模型，两句本来各算各的，却被同一把
+     * 锁排成一条队——上一句旁白合完才轮到角色那句，听感就是「角色开口前干等」。
+     * 三个模型是三份独立的 onnxruntime 会话，互不共享状态，可以真正并行。 */
+    private final ReentrantLock loadLock = new ReentrantLock();
+    private final ReentrantLock girlLock = new ReentrantLock();
+    private final ReentrantLock boyLock = new ReentrantLock();
+    private final ReentrantLock libLock = new ReentrantLock();
     private Context appCtx;
     private OfflineTts girl;          // 女主，默认音色
     private OfflineTts boy;           // 男主，按需加载
@@ -207,6 +260,55 @@ public final class TtsEngine {
         return lastError;
     }
 
+    /** 语音自检：直接调 native 合成三句最短的话，把每一步的真实结果写成一段文字。
+     *
+     *  真机上「点了朗读没声音」，可能是模型没出声、峰值太低、采样率不对、
+     *  或者 JNI 直接出错，页面那边只能看到一句「没合成出来」。这份报告能一次
+     *  指到具体哪一环，用户截个图就够定位，不用连 adb。 */
+    public String selfTest() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("女主=").append(girl != null)
+          .append(" 男主=").append(boy != null)
+          .append(" 配角库=").append(lib != null).append('\n');
+        if (girl == null) {
+            return sb.append("女主引擎没建起来；lastError=").append(lastError).toString();
+        }
+        try {
+            sb.append("采样率=").append(girl.sampleRate())
+              .append(" 内置=").append(girlRate)
+              .append(" 说话人数=").append(girl.numSpeakers())
+              .append(" 语言=").append(girl.lang())
+              .append('\n');
+        } catch (Throwable e) {
+            sb.append("读引擎信息就出错：").append(e.getClass().getSimpleName())
+              .append(": ").append(e.getMessage()).append('\n');
+        }
+        probe(sb, "你好");
+        probe(sb, "你好，世界。");
+        probe(sb, "风起了。");
+        return sb.toString();
+    }
+
+    private void probe(StringBuilder sb, String t) {
+        long t0 = System.currentTimeMillis();
+        try {
+            GeneratedAudio a = girl.generate(t, 0, 1.0f);
+            long ms = System.currentTimeMillis() - t0;
+            if (a == null) {
+                sb.append("「").append(t).append("」→ generate 返回 null（").append(ms).append("ms）\n");
+                return;
+            }
+            float[] p = a.getSamples();
+            sb.append("「").append(t).append("」→ 样本=").append(p == null ? -1 : p.length)
+              .append(" 峰值=").append(String.format(java.util.Locale.US, "%.4f", p == null ? 0f : peak(p)))
+              .append(" 采样率=").append(a.getSampleRate())
+              .append(" 用时=").append(ms).append("ms\n");
+        } catch (Throwable e) {
+            sb.append("「").append(t).append("」→ 异常 ").append(e.getClass().getName())
+              .append(": ").append(e.getMessage()).append('\n');
+        }
+    }
+
     public static String mainVoice() {
         return GIRL_VOICE;
     }
@@ -222,6 +324,7 @@ public final class TtsEngine {
         }
         AssetManager am = ctx.getAssets();
         for (String name : files) {
+            mark("N2.3 解压 " + assetDir + "/" + name);
             File out = new File(base, name);
             File parent = out.getParentFile();
             if (parent != null && !parent.isDirectory()) parent.mkdirs();
@@ -243,6 +346,9 @@ public final class TtsEngine {
     /** 建一套 VITS 引擎：modelPath 是模型绝对路径，wordDir 放词表，dictDir 可空，ruleDir 放 fst。 */
     private OfflineTts build(Context ctx, String modelPath, String wordDir,
                              String dictDir, String ruleDir) {
+        // Kotlin data class 的 String 参数同样非空，传 null 会 NPE，统一收敛成空串。
+        if (dictDir == null) dictDir = "";
+        if (ruleDir == null) ruleDir = "";
         OfflineTtsVitsModelConfig vits = new OfflineTtsVitsModelConfig(
                 modelPath,                  // model
                 wordDir + "/lexicon.txt",   // lexicon
@@ -252,8 +358,19 @@ public final class TtsEngine {
                 0.667f,                     // noiseScale
                 0.8f,                       // noiseScaleW
                 1.0f);                      // lengthScale
+        // sherpa-onnx 2.0.1 的 OfflineTtsModelConfig 是 Kotlin data class，
+        // 7 个子配置全部声明为非空。传 null 会在运行期被 Kotlin 的空检查拦下：
+        //   NullPointerException: Parameter specified as non-null is null ...
+        //   OfflineTtsModelConfig.<init>, parameter matcha
+        // 所以 VITS 以外的引擎必须传「空实例」——字段全空串/0，等于没配。
         OfflineTtsModelConfig mc = new OfflineTtsModelConfig(
-                vits, null, null, null, null, null, null,
+                vits,
+                new OfflineTtsMatchaModelConfig(),
+                new OfflineTtsKokoroModelConfig(),
+                new OfflineTtsZipVoiceModelConfig(),
+                new OfflineTtsKittenModelConfig(),
+                new OfflineTtsPocketModelConfig(),
+                new OfflineTtsSupertonicModelConfig(),
                 2,                          // numThreads
                 false,                      // debug
                 "cpu");                     // provider
@@ -268,12 +385,24 @@ public final class TtsEngine {
                 // 一起放大，逗号永远显不出来；标点之间的停顿改由 synth()
                 // 按类型插入，与桌面端 tts_server.py 的 PAUSE 表一致。
                 0.35f);                     // silenceScale
-        return new OfflineTts(ctx.getAssets(), cfg);
+        // ⚠️ 第一参数必须传 null。OfflineTts 的构造是
+        //     OfflineTts(assetManager: AssetManager? = null, config)
+        // native 侧 allocate() 见到 assetManager 非空就走 newFromAsset，把 model / lexicon /
+        // tokens 全当「assets 内的相对路径」去 AAssetManager_open。我们是在首次启动时把模型
+        // 解压到 getFilesDir() 再用绝对路径喂进去的，走 asset 分支必然找不到文件——
+        // 而且这条路径不会抛 Java 异常，是 native 里直接 crash（实测 MIUI 上就是
+        // 「N2 写下了、N3 永远没有」的闪退）。传 null 才会走 newFromFile，用绝对路径。
+        mark("N2.5 准备 new OfflineTts " + modelPath);
+        OfflineTts t = new OfflineTts(null, cfg);
+        mark("N2.6 OfflineTts 建好");
+        return t;
     }
 
     /** 载入默认音色（女主）。可重复调用，已载入则直接返回。 */
     public boolean load(Context ctx) {
         appCtx = ctx.getApplicationContext();
+        diagCtx = appCtx;
+        mark("N2.0 load 开始");
         return ensureGirl();
     }
 
@@ -285,12 +414,14 @@ public final class TtsEngine {
     private boolean ensureGirl() {
         if (girl != null) return true;
         if (appCtx == null) return false;
-        lock.lock();
+        loadLock.lock();
         try {
             if (girl != null) return true;
             String d = ensureAssets(appCtx, GIRL_DIR, GIRL_DIR, GIRL_ASSETS, "girl");
+            mark("N2.4 女主模型已就位 size=" + new File(d, GIRL_MODEL).length() + " " + d);
             OfflineTts t = build(appCtx, d + "/" + GIRL_MODEL, d, "", d);
             int sr = t.sampleRate();
+            mark("N2.7 sampleRate=" + sr);
             if (sr <= 0) {
                 t.free();
                 lastError = "girl sampleRate=0";
@@ -304,7 +435,7 @@ public final class TtsEngine {
             girl = null;
             return false;
         } finally {
-            lock.unlock();
+            loadLock.unlock();
         }
     }
 
@@ -312,7 +443,7 @@ public final class TtsEngine {
     private boolean ensureBoy() {
         if (boy != null) return true;
         if (appCtx == null) return false;
-        lock.lock();
+        loadLock.lock();
         try {
             if (boy != null) return true;
             String w = ensureWordDir();
@@ -332,7 +463,7 @@ public final class TtsEngine {
             boy = null;
             return false;
         } finally {
-            lock.unlock();
+            loadLock.unlock();
         }
     }
 
@@ -340,7 +471,7 @@ public final class TtsEngine {
     private boolean ensureLib() {
         if (lib != null) return true;
         if (appCtx == null) return false;
-        lock.lock();
+        loadLock.lock();
         try {
             if (lib != null) return true;
             String d = ensureAssets(appCtx, LIB_DIR, LIB_DIR, LIB_ASSETS, "lib");
@@ -359,8 +490,22 @@ public final class TtsEngine {
             lib = null;
             return false;
         } finally {
-            lock.unlock();
+            loadLock.unlock();
         }
+    }
+
+    /** 后台预载配角库：分角色朗读注定要用它，第一次用要解压 40 MB 再建会话。
+     *
+     *  放在「开始朗读」那一刻做，被开头几句旁白盖过去——不然第一个角色开口前
+     *  要干等十几秒，听感就是「换声卡住了」。失败不影响听书，下次用到时再试。 */
+    public void preloadLib() {
+        if (lib != null || appCtx == null) return;
+        try { ensureLib(); } catch (Throwable ignored) { }
+    }
+
+    /** 配角库是否已经可以用。 */
+    public boolean libReady() {
+        return lib != null;
     }
 
     /** 合成一句，返回 16-bit 单声道 WAV 字节；失败返回 null。
@@ -388,7 +533,10 @@ public final class TtsEngine {
         if (speed < 0.5f) speed = 0.5f;
         if (speed > 2.0f) speed = 2.0f;
         final OfflineTts eng = tts;
-        lock.lock();
+        // 按模型分别加锁：旁白（女主 22k）与对白（配角库 16k）是两份独立会话，
+        // 允许同时出音，换声那一句不必排在旁白后面等。
+        final ReentrantLock elock = useLib ? libLock : (useBoy ? boyLock : girlLock);
+        elock.lock();
         try {
             java.util.List<Unit> units = mergeShort(prosodySplit(s));
             if (units.isEmpty()) return null;
@@ -400,13 +548,20 @@ public final class TtsEngine {
             // 模型常驻内存，每段只要几十毫秒，串行就够了（这个类本来也靠 lock 串行）。
             // 某段没出声时把它的文本连标点一起带到下一段重念，书里就不会出现空白。
             String carry = "";
+            int genNull = 0;
+            float topPeak = 0f;
             for (Unit u : units) {
                 String t = carry + u.text;
                 GeneratedAudio a = eng.generate(t, sid, speed);
                 float[] pcm = (a == null) ? null : a.getSamples();
-                if (pcm != null && pcm.length > 0 && peak(pcm) >= 0.01f) {
+                if (pcm == null || pcm.length == 0) genNull++;
+                float pk = (pcm == null || pcm.length == 0) ? 0f : peak(pcm);
+                if (pk > topPeak) topPeak = pk;
+                // 门槛压到 0.0008：int8 量化模型偶尔给得很轻，按旧的 0.01 丢
+                // 会把整段听书变成「没出声」；真有波形就抬起来播（见 boostQuiet）。
+                if (pcm != null && pcm.length > 0 && pk >= 0.0008f) {
                     if (a.getSampleRate() > 0) sr = a.getSampleRate();
-                    parts.add(trimSilence(pcm, sr));
+                    parts.add(trimSilence(boostQuiet(pcm), sr));
                     gaps.add(u.gap);
                     carry = "";
                 } else {
@@ -416,13 +571,20 @@ public final class TtsEngine {
             if (!carry.isEmpty()) {
                 GeneratedAudio a = eng.generate(carry, sid, speed);
                 float[] pcm = (a == null) ? null : a.getSamples();
-                if (pcm != null && pcm.length > 0 && peak(pcm) >= 0.01f) {
+                float pk = (pcm == null || pcm.length == 0) ? 0f : peak(pcm);
+                if (pk > topPeak) topPeak = pk;
+                if (pcm != null && pcm.length > 0 && pk >= 0.0008f) {
                     if (a.getSampleRate() > 0) sr = a.getSampleRate();
-                    parts.add(trimSilence(pcm, sr));
+                    parts.add(trimSilence(boostQuiet(pcm), sr));
                     gaps.add(0f);
                 }
             }
-            if (parts.isEmpty()) return null;
+            if (parts.isEmpty()) {
+                lastError = "全段没出声（段数=" + units.size() + " 空返回=" + genNull
+                        + " 最高峰值=" + String.format(java.util.Locale.US, "%.5f", topPeak)
+                        + " 采样率=" + sr + " 声线=" + sid + "）";
+                return null;
+            }
 
             int total = 0;
             for (int i = 0; i < parts.size(); i++) {
@@ -445,10 +607,10 @@ public final class TtsEngine {
             }
             return wav(all, sr);
         } catch (Throwable e) {
-            lastError = e.getClass().getSimpleName() + ": " + e.getMessage();
+            lastError = "合成异常 " + e.getClass().getSimpleName() + ": " + e.getMessage();
             return null;
         } finally {
-            lock.unlock();
+            elock.unlock();
         }
     }
 
@@ -568,6 +730,21 @@ public final class TtsEngine {
         return m;
     }
 
+    /** 引擎偶尔给出很轻的波形（int8 量化模型的通病）。峰值低于 0.02 时
+     *  直接丢掉会变成「整段都没出声」，这里把它抬到 0.7 再拼，听感正常也听得见；
+     *  本来就是静音（峰值近乎 0）的原样返回，抬也没意义。 */
+    private static float[] boostQuiet(float[] pcm) {
+        float pk = peak(pcm);
+        if (pk >= 0.02f || pk < 0.0008f) return pcm;
+        float g = 0.7f / pk;
+        float[] out = new float[pcm.length];
+        for (int i = 0; i < pcm.length; i++) {
+            float v = pcm[i] * g;
+            out[i] = v > 1f ? 1f : (v < -1f ? -1f : v);
+        }
+        return out;
+    }
+
     private static float rms(float[] a, int from, int len) {
         double s = 0;
         for (int i = from; i < from + len; i++) s += (double) a[i] * a[i];
@@ -658,7 +835,12 @@ public final class TtsEngine {
     }
 
     public void close() {
-        lock.lock();
+        // 释放前必须把三把合成锁也拿住：另一条线程正在 generate 时 free，
+        // native 侧立刻就是野指针，进程连异常都不给。
+        loadLock.lock();
+        girlLock.lock();
+        boyLock.lock();
+        libLock.lock();
         try {
             if (girl != null) {
                 try { girl.free(); } catch (Throwable ignored) { }
@@ -673,7 +855,10 @@ public final class TtsEngine {
                 lib = null;
             }
         } finally {
-            lock.unlock();
+            libLock.unlock();
+            boyLock.unlock();
+            girlLock.unlock();
+            loadLock.unlock();
         }
     }
 }

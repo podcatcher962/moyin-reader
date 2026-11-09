@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.14.0';
+  var VER = '1.14.11';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -1512,6 +1512,7 @@
       BK = await parseBook(rec.buf, meta.name, meta.ext);
     } catch (e) { toast(T('打开失败：') + e.message, 4000); return; }
     BK.id = id; BK.meta = meta;
+    loadCast(meta);                    // 上次听这本书时定下的人物声线，原样接回来
     if (!Array.isArray(meta.hl)) meta.hl = [];
     if (!meta.first) meta.first = Date.now();
     meta.last = Date.now();
@@ -1592,6 +1593,8 @@
     $('pageWrap').scrollTop = 0;
     applyHighlights();
     SPK.paras = Array.prototype.slice.call($('page').querySelectorAll('.rdp'));
+    // 换章了：把新一章里的人物补进表里（已定过的声线不动），旧人物照样沿用原来的嗓子
+    if (SPK.on && CFG.roleOn && localReady()) buildCast(i);
     // 翻页模式：量好列数页数后定位；滚动模式：按比例还原
     if (pgEnabled()) {
       pgMeasure();
@@ -2118,9 +2121,14 @@
 
   /* ---------------- 朗读 ---------------- */
   var SPK = { on: false, playing: false, pi: 0, ci: 0, chunks: [], cv: [], paras: [], gen: 0,
-    cast: {}, castName: {}, used: {},
+    cast: {}, castName: {}, used: {}, sex: {},
+    /* scene：这一小段的「在场人物」——最近开口的男/女是谁、上一位用的哪个声线。
+       代词「他/她」和没写主的对白都靠它接住，绝不临时另配一个新声音。
+       main：全书出场最多的男/女，认不出时的最后一级兜底。 */
+    scene: { f: '', m: '', lastWho: '', lastV: '' }, main: { f: '', m: '' }, castAt: '',
     watch: null, deadline: 0, timer: null, gapT: null, fb: 0, seenEnd: false, trying: false,
-    audio: null, prefetch: null };
+    audio: null, pref: {}, pre: {}, pcm: {}, fillQ: null, fillGen: 0,
+    fails: 0, skipped: 0, degraded: 0 };      // fails/skipped：跳过还是降级；degraded：本次朗读已退回系统语音
   /* 听书时让屏幕保持常亮：手机一熄屏，WebView 里的音频立刻被系统掐掉，
      走路、做家务时听书就断在半句上。Wake Lock 失败（旧内核 / file://）就算了，
      只是不如常亮，不影响朗读本身。 */
@@ -2227,12 +2235,21 @@
       CFG.localVoice = pool[0][0]; saveCfg();
     }
   }
-  var LOCAL = { ready: false, checking: false, info: null, list: null, miss: 0 };
+  /* slow：等到超时引擎仍没就绪；firstSynth：还没成功合成过（首段要建会话，慢得多） */
+  var LOCAL = { ready: false, checking: false, info: null, list: null, miss: 0,
+                slow: false, firstSynth: true };
+  /* health().version 低于这个数，说明是升级前留下的旧语音服务（没有标点/英文修正）。
+     桌面壳启动时会按这个号判断要不要把旧服务清掉重起，页面这里只做日志与提示。 */
+  var LOCAL_MINVER = 8;
   function localBase() { return 'http://127.0.0.1:' + (Number(CFG.localPort) || 8177); }
   function localReady() { return !!(CFG.localOn && LOCAL.ready); }
   function localErrText(status, txt) {
     if (status === 404) return T('服务路径不匹配，请更新语音包');
     if (status === 503) return T('语音引擎正在初始化，稍后再试');
+    /* 502 是桥自己的合成失败，正文里带着引擎给的原因，原样透出去——
+       这一层再包一层「HTTP 502」只会把最有用的信息埋掉。 */
+    if (status === 502) return String(txt || '').slice(0, 300) || T('神经语音没合成出这一段');
+    if (status === 415) return T('这一段是英文，本机没装英文语音模型');
     return 'HTTP ' + status + (txt ? '：' + String(txt).slice(0, 80) : '');
   }
   /* 探测本机语音引擎；服务未启动时静默回退系统语音，不打扰阅读 */
@@ -2240,13 +2257,21 @@
     if (LOCAL.checking) return Promise.resolve(LOCAL.ready);
     if (!CFG.localOn) { LOCAL.ready = false; return Promise.resolve(false); }
     LOCAL.checking = true;
-    return withTimeout(fetch(localBase() + '/health', { method: 'GET', cache: 'no-store' }), 2200)
+    /* 4 秒而不是 2.2 秒：引擎正在解压模型 / 建会话时，CPU 和内存都很紧，
+       状态接口偶尔要两三秒才回，超时就等于误判成「没连上」。 */
+    return withTimeout(fetch(localBase() + '/health', { method: 'GET', cache: 'no-store' }), 4000)
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
         LOCAL.ready = !!(j && j.ok); LOCAL.info = j || null; LOCAL.checking = false;
         LOCAL.list = buildVoiceList(j);
         LOCAL.miss = LOCAL.ready ? 0 : LOCAL.miss + 1;
         if (LOCAL.ready) fixLocalVoice();
+        /* 连上的是升级前残留的旧引擎？提示一句「重启就好」，
+           免得用户以为这一版什么都没改。 */
+        if (LOCAL.ready && !speakEnv().android && (j.version || 0) < LOCAL_MINVER && !LOCAL.oldTip) {
+          LOCAL.oldTip = 1;
+          toast(T('当前连的是旧版语音引擎（标点/英文修正不生效），完全退出墨吟再打开即可换成新版'), 5200);
+        }
         fillVoices(); if (force && LOCAL.ready) toast(T('已连接免费离线神经语音（{n} 个声线可用）', { n: localVoiceList().length }), 2600);
         return LOCAL.ready;
       })
@@ -2429,40 +2454,169 @@
       } catch (e) {}
       SPK.audio = null;
     }
-    if (SPK.prefetch && SPK.prefetch.p) { SPK.prefetch.p.then(function (u) { revokeURL(u); }, function () {}); }
-    SPK.prefetch = null;
   }
+  /* 单段合成失败时的处置。以前一律切回系统朗读，结果就是「念到一半忽然换了个人」——
+     多角色朗读最怕这个。现在分三种：
+       ① 这一段本身合成不出来（空文本、模型没出声、音频坏、声线缺失）→ 跳过这一段接着念；
+       ② 连不上引擎，或者已经连着跳了太多段 → 才切回系统朗读（真的没声音更糟）；
+       ③ 安卓壳里系统语音是哑的，只弹诊断卡。
+     判断「是不是真挂了」靠一句 health：能回就只当这一段的事。 */
+  var SOFT_FAIL = /empty text|空文本|音频为空|音频加载失败|没有出声|model missing|音色|voice|not found/i;
   function localFail(msg) {
-    toast(T('本地语音引擎不可用：{m}。已切回系统朗读（双击「VoicePack/启动语音引擎.cmd」可恢复）', { m: msg }), 7000);
+    msg = String(msg || '');
+    /* 415 是「这段是外文，本机没装英文模型」，不是引擎故障。
+       必须先于安卓那套弹窗判断：手机上更不该为一段英文弹「语音没有出声」。 */
+    if (/^HTTP 415|no_en_voice/.test(msg)) { speakForeign(SPK.chunks[SPK.ci]); return; }
+    if (speakEnv().android) {
+      /* 安卓壳里的系统语音是「哑」的，切过去等于没声音。这里别假装切成功，
+         也不要只弹一条 6 秒就消失的灰条——用户最需要看的就是这句原因。 */
+      SPK.gen++; clearTimeout(SPK.watch); clearTimeout(SPK.gapT);
+      stopLocalAudio();
+      localDiag(msg);
+      return;
+    }
+    SPK.fails = (SPK.fails || 0) + 1;
+    if (SPK.fails > 6) { degradeLocal(msg); return; }   // 连着这么多段都出不来，别再装作没事
+    if (SOFT_FAIL.test(msg)) { skipChunk(msg); return; }
+    withTimeout(fetch(localBase() + '/health', { cache: 'no-store' }), 1600)
+      .then(function (r) { if (r.ok) skipChunk(msg); else degradeLocal(msg); })
+      .catch(function () { degradeLocal(msg); });
+  }
+  /* 跳过这一句，接着念下一句。只丢这一句，段里其它内容照念；
+     不弹窗、不切系统语音——最多轻提示一次。 */
+  function skipChunk(msg) {
+    if (!SPK.playing) return;
+    SPK.gen++;                                   // 半路回来的旧结果就此作废
+    clearTimeout(SPK.watch); clearTimeout(SPK.gapT);
+    stopLocalAudio();
+    if (!SPK.skipped) {
+      SPK.skipped = 1;
+      toast(T('这一句没合成出来，已跳过继续朗读（{m}）', { m: String(msg).slice(0, 60) }), 3600);
+    }
+    speakNext(false);
+  }
+  function degradeLocal(msg) {
+    /* 一旦退回系统语音，这一场朗读就保持系统语音，不在半路又切回神经语音：
+       同一段话两副嗓子比一直用机械音更难受。下次点朗读会自动再试本地引擎。 */
+    SPK.degraded = 1;
+    toast(T('本地语音引擎不可用：{m}。本次朗读改用系统语音；再点一次朗读可重试（双击「VoicePack/启动语音引擎.cmd」可恢复）', { m: msg }), 7000);
     LOCAL.ready = false; fillVoices();
     SPK.gen++; clearTimeout(SPK.watch); clearTimeout(SPK.gapT);
     stopLocalAudio();
     if (SPK.playing) speakChunk(0);
   }
+  /* 合成失败时把引擎自检一起摆出来。真机上「没声音」可能是模型没出声、
+     峰值太低、采样率不对或者 JNI 直接报错，页面这边只会看到一句「没合成出来」，
+     所以让引擎把自己的检查结果交上来，截图就能定位。 */
+  function localDiag(msg) {
+    var body = '<p>' + T('这一段没合成出来：{m}', { m: String(msg).slice(0, 200) }) + '</p>' +
+      '<pre id="dgTxt" style="white-space:pre-wrap;word-break:break-all;font:12px/1.55 monospace;' +
+      'max-height:200px;overflow:auto;margin:10px 0 0;color:#9AA7B4">' + T('正在取引擎自检…') + '</pre>' +
+      '<p class="kv">' + T('把这张截图发给作者就能定位。') + '</p>';
+    showModal(T('语音没有出声'), body, [
+      { label: T('再试一次'), cls: 'pri', fn: function () {
+          closeModal(); SPK.connecting = false; SPK.slow = false;
+          LOCAL.firstSynth = true; startSpeak();
+        } },
+      { label: T('关闭') }
+    ]);
+    withTimeout(fetch(localBase() + '/diag', { cache: 'no-store' }), 20000)
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var b = document.getElementById('dgTxt');
+        if (b) b.textContent = String(t || '').slice(0, 900);
+      })
+      .catch(function () {});
+  }
+  /* 预取队列：按段号存「已请求 / 已备好」的合成结果。
+     深度 2 而不是 1 —— 分角色时相邻两句往往换模型（旁白是小雅 22 kHz、对白是
+     fanchen 16 kHz），深度 1 恰好卡在换声那一下：上一句都快播完了才轮到合成角色
+     那句，听感就是「角色开口前干等」。提前两段排队，换声那句通常在上上句还在播
+     时就已经备好。 */
   function localPrefetch(at) {
-    var i = (at === undefined) ? SPK.ci + 1 : at;
-    var t = SPK.chunks[i];
-    if (!t || !localReady()) return;
-    var v = SPK.cv[i] || CFG.localVoice;
-    var p = localURL(t, v);
-    SPK.prefetch = { ch: BK ? BK.ch : -1, text: t, v: v, p: p };
-    p.catch(function () {});
+    if (!localReady()) return;
+    var i0 = (at === undefined) ? SPK.ci + 1 : at;
+    var ch = BK ? BK.ch : -1;
+    var map = SPK.pref || (SPK.pref = {});
+    for (var i = i0; i <= i0 + 1; i++) {
+      var t = SPK.chunks[i];
+      if (!t) break;
+      if (!sayable(t)) continue;                    // 纯标点块不用合成，播放时留白
+      /* 纯外文块且本机没英文模型：送了只会拿回 415，播放时会走英文语音 */
+      if (foreignOnly(t) && !enLocal()) continue;
+      var v = SPK.cv[i] || CFG.localVoice;
+      var old = map[i];
+      if (old && old.ch === ch && old.text === t && old.v === v) continue;   // 已经在做了
+      if (old) dropPref(i);
+      var item = { ch: ch, text: t, v: v, p: localURL(t, v) };
+      map[i] = item;
+      item.p.catch(function () { });
+    }
+    // 已经走过的那几段别把 blob 留在内存里
+    Object.keys(map).forEach(function (k) { if (+k < i0 - 1) dropPref(+k); });
+  }
+  function dropPref(k) {
+    var map = SPK.pref, it = map && map[k];
+    if (!it) return;
+    delete map[k];
+    it.p.then(function (u) { revokeURL(u); }, function () { });
+  }
+  /* 整队作废：停读、跳段、换声线时用。正在播的那段不在这里，见 takePref。 */
+  function clearPref() {
+    var map = SPK.pref;
+    if (map) Object.keys(map).forEach(function (k) { dropPref(+k); });
+    // 整段预排的队列一起作废：句号前缀的 blob 留着会白占内存，还会在跳段后
+    // 播到「段号对上、内容不对」的旧音频
+    SPK.fillGen++;
+    clearTimeout(SPK.fillQ); SPK.fillQ = null;
+    Object.keys(SPK.pcm).forEach(function (k) {
+      var it = SPK.pcm[k];
+      delete SPK.pcm[k];
+      if (it && it.p) it.p.then(function (u) { revokeURL(u); }, function () {});
+    });
+    SPK.pre = {};
+  }
+  /* 摘走某一段：从队列删掉但不 revoke —— 它马上就要播，blob 交给 stopLocalAudio 收。 */
+  function takePref(i) {
+    var map = SPK.pref, it = map && map[i];
+    if (!it) return null;
+    delete map[i];
+    return it;
+  }
+  /* 开始朗读时先把配角库叫醒：分角色朗读注定要用 fanchen 那套 16 kHz 模型，
+     第一次用要解压 40 MB 再建会话。放在开头几句旁白正在播的时候做，
+     第一个角色开口就不用干等十几秒。只叫一次，失败也无所谓（真用到时还会再试）。 */
+  var warmedLib = false;
+  function warmLib() {
+    if (warmedLib || !CFG.roleOn || !localReady()) return;
+    warmedLib = true;
+    setTimeout(function () {
+      try {
+        withTimeout(fetch(localBase() + '/warm?lib=1', { cache: 'no-store' }), 6000)
+          .then(function (r) { return r.text(); })
+          .catch(function () { });
+      } catch (e) { }
+    }, 900);
   }
   function localSpeakChunk() {
     var txt = SPK.chunks[SPK.ci];
     if (txt === undefined) { speakNext(true); return; }
     var g = ++SPK.gen;
-    // 先把预取的那一份摘下来：stopLocalAudio() 会把 SPK.prefetch 连同它的 blob 一起作废，
-    // 原来「先 stop 再读」的写法等于每段都白做预取，永远没有命中过。
     var v = SPK.cv[SPK.ci] || CFG.localVoice;
-    var pf = SPK.prefetch;
-    SPK.prefetch = null;
+    // 三条来源按优先级取：整段预排的（早就合成好）> 本段两句预取 > 现发请求
+    var pm = takePcm(SPK.pi, SPK.ci, txt, v);
+    var pf = pm ? null : takePref(SPK.ci);
     stopLocalAudio();
     highlight();
-    var p = (pf && pf.text === txt && pf.v === v && pf.ch === (BK ? BK.ch : -1)) ? pf.p : localURL(txt, v);
-    SPK.prefetch = null;
-    withTimeout(p, 30000).then(function (u) {
+    var p = pm ? pm.p
+      : (pf && pf.text === txt && pf.v === v && pf.ch === (BK ? BK.ch : -1)) ? pf.p
+      : localURL(txt, v);
+    /* 首段要现建推理会话，手机上第一次三十秒以上都有可能；之后每段快得多。
+       统一按 30 秒卡会把「第一次」判成失败，所以首段放宽到 90 秒。 */
+    withTimeout(p, LOCAL.firstSynth ? 90000 : 45000).then(function (u) {
       if (g !== SPK.gen || !SPK.playing) { revokeURL(u); return; }
+      LOCAL.firstSynth = false;
+      SPK.fails = 0;                    // 念出来了，之前那些失败不再累计
       var a = new Audio(); a.src = u; a.playbackRate = Number(CFG.rate) || 1;
       SPK.audio = a;
       a.onended = function () { if (g === SPK.gen && SPK.playing) speakNext(false); };
@@ -2472,6 +2626,8 @@
         if (q && q.catch) q.catch(function () { if (g === SPK.gen) localFail(T('浏览器阻止了播放，请点一下页面')); });
       } catch (e) { localFail(e.message); return; }
       localPrefetch();
+      // 声音已经在播了，后台接着把这一段剩下的、再下一段提前合成好
+      fillPara(SPK.pi, SPK.ci + 1);
     }).catch(function (e) {
       if (g === SPK.gen) localFail(e.message || T('请求失败'));
     });
@@ -2602,6 +2758,48 @@
     var uri = $('spVoice') ? $('spVoice').value : CFG.voiceURI;
     return vs.filter(function (v) { return voiceKey(v) === uri; })[0] || null;
   }
+  /* 这一段到底有没有「念得出来」的字。小说里整段只有标点的块不少：
+     “？？？”、“……”、“——”。它们不是空文本，但一个可发音的字都没有，
+     送去合成会被引擎判成空文本（HTTP 500 empty text）。
+     以前这一下就切回系统朗读，听感上就是「念到问号忽然换了个人」。 */
+  function sayable(t) {
+    var s = String(t || '');
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i);
+      if (c >= 48 && c <= 57) return true;              // 0-9
+      if (c >= 65 && c <= 90) return true;              // A-Z
+      if (c >= 97 && c <= 122) return true;             // a-z
+      if (c >= 0x4e00 && c <= 0x9fff) return true;      // 汉字
+      if (c >= 0x3400 && c <= 0x4dbf) return true;
+      if (c >= 0xf900 && c <= 0xfaff) return true;
+      if (c >= 0xff10 && c <= 0xff19) return true;      // ０-９
+      if (c >= 0xff21 && c <= 0xff3a) return true;      // Ａ-Ｚ
+      if (c >= 0xff41 && c <= 0xff5a) return true;      // ａ-ｚ
+    }
+    return false;
+  }
+  /* 纯符号块的长度就是它该占的停顿：一个问号约 0.2 秒，四个问号近 1 秒。
+     这样「？？？」听上去是那个人沉默了一会儿，而不是被跳过去。 */
+  function punctPause(t) {
+    var n = String(t || '').replace(/\s/g, '').length;
+    return Math.round((0.18 + 0.16 * Math.min(4, Math.max(1, n))) * 1000);
+  }
+  /* 这一段有没有汉字、有没有拉丁字母。中文模型一个英文字母都不认识
+     （lexicon 里连 hello / OK 都没有），所以纯外文块必须交给英文语音，
+     按中文送去合成只会得到「一个字都没念出来」。 */
+  function hasHan(t) {
+    return /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/.test(String(t || ''));
+  }
+  function hasLatin(t) {
+    return /[A-Za-z]/.test(String(t || ''));
+  }
+  function foreignOnly(t) {
+    return hasLatin(t) && !hasHan(t);
+  }
+  /* 本地引擎自己能不能念外文（装了英文模型才会在 /health 里报 en:true）。 */
+  function enLocal() {
+    return !!(localReady() && LOCAL.info && LOCAL.info.en);
+  }
   /* 文本规范化：去掉零宽符、汉字间排版空格、重复标点；保留引号破折号供语音自行处理停顿 */
   function normSpeak(text) {
     var s = String(text || '');
@@ -2642,45 +2840,224 @@
      对白按人物固定分配不同声线——同一个人物整本书都是同一个声音。
      认人靠中文小说最常见的「某某说道：」句式；认不出人名时按出场顺序轮换，
      所以即使全都认不出，对话也不会和旁白混成一个声音。 */
-  var SPEAK_VERB = '说|道|问|答|喊|叫|笑|骂|吼|嚷|嘟囔|喃喃|低语|低声|轻声|冷笑|回答|反问|开口|自语';
+  /* 说话动词。中文小说的花样比想象中多：「续道」「接话」「嗤笑」「喃喃自语」…
+     漏一个就是一个人物被当成旁白，所以宁可写全。长词排前面，正则交替按顺序匹配。 */
+  var SPEAK_VERB = '续道|接着说|接口|接话|插话|插嘴|追问|反问|回应|应道|答道|应声|补充|解释|提醒|承认|否认|'
+    + '嘀咕|嘟囔|喃喃|低语|自语|失笑|嗤笑|冷笑|苦笑|笑道|哭道|骂道|喝道|喊道|叫道|吼道|嚷道|'
+    + '说|道|问|答|喊|叫|笑|骂|吼|嚷|开口|回答|问道|沉声|轻声|低声道|开口道';
   var NAME_STOP = /^(?:他|她|它|我|你|大家|众人|两人|二人|一人|有人|对方|那人|这人|此时|这时|于是|接着|然后|突然|忽然|连忙|急忙|赶紧|立刻|随后|最后|终于|不禁|忍不住|一面|一边|这话|说完|说完话|听了|闻言|见状|心想|心中|心里)$/;
-  var FEMALE_HINT = /女|妈|姐妹|奶|婆|姑|姨|嫂|婶|娘|妇|太太|夫人|姑娘|小姐|丫头/;
-  var MALE_HINT = /男|爸|哥|弟|爷|叔|伯|舅|兄|先生|老爷|少爷|公子|老头|汉子|他/;
+  /* 名字和动词之间常常隔着一层状语：「女子**平静**回应」「赵长河**忽然**开口」。
+     不把这层剥掉，取到的名字就会变成「女子平静」「赵长河忽然」——认人全废。
+     单字副词也收进来，因为「张三便道」「李四又问道」比「道」常见得多。 */
+  var ADV_SRC = '忽然|突然|蓦地|猛地|慢慢|缓缓|轻轻|淡淡|冷冷|平静|平静地|沉声|低声|轻声|柔声|笑着|冷笑着|'
+    + '苦笑|嗤笑|失笑|连忙|急忙|赶紧|随即|接着|顿了顿|顿了一下|沉默片刻|沉默半晌|想了想|沉吟|点头|摇头|'
+    + '叹气|皱眉|挑眉|撇嘴|续|又|便|就|才|也|都|却|竟|更|忙|再|方|这才|终于|还是|只是';
+  /* 人称与称谓：一眼能定性的先定下来，剩下靠「用字」和上下文代词兜。 */
+  var FEMALE_HINT = /女|妈|母|姐妹|奶|婆|姑|姨|嫂|婶|娘|妇|太太|夫人|姑娘|小姐|丫头|少女|女子|女士|女孩|媳妇|大姐|阿姨|婆婆|奶奶|外婆|妈妈|姐姐|妹妹/;
+  var MALE_HINT = /男|爸|父|哥|弟|爷|叔|伯|舅|兄|先生|老爷|少爷|公子|老头|汉子|小伙|大哥|大爷|壮汉|汉子|爸爸|爷爷|叔叔|伯伯|舅舅|哥哥|弟弟/;
+  /* 中文名字里能看出性别的常用字。名字本身不带「男女」二字，
+     但「阿芳」「王丽」这种几乎不会安在男角色身上——按用字投票比瞎猜准得多。 */
+  var FEMALE_CHAR = /[芳娟丽娜婷静琳雅薇莉梅兰霞琴颖洁慧燕玲雪月彩淑贞娥姝嫣婉妍媛娇婕妮倩怡欣蕊莹琦瑶荷莲菊蓉萍芹芬芸嘉柔曼妙秀茜彤凤娥萍霞娣妍嫔妃媚娴婉珠玉珍珊瑾璐]/;
+  /* 「长河」「青山」「川」「岳」这类名字里的字几乎只出现在男角色身上。
+     赵长河这种三字名，全书都抓不到「他」，只能靠用字先定个性别——
+     定错了顶多是声音偏一点，不定就被分到女声池里，一开口就是女声，最刺耳。 */
+  var MALE_CHAR = /[强伟军勇刚峰磊涛斌亮杰浩宇鹏龙虎彪鑫凯健豪毅锋超明辉宏波威武雄飞振国建志海山林石铁钢柱栋梁啸程长河川江岳岩松柏森栋元伯仲叔季甫侯仁义礼智信忠孝乾坤阳明晨旭帆舟航远行生成立定安平康泰宁丰茂盛兴隆民崇峻峥嵘钧铭锐铮磊雄]/;
   /* 对白音色池里额外补的男声：精选里男声够用，这里再留几个低沉男声备选 */
   /* 精选之外再补的几个低沉男声：角色多的时候男声不至于不够用 */
   var EXTRA_MALE = ['s100', 's119', 's40', 's163', 's98', 's175'];
+
+  /* ---------------- 人物表：先定人，再开口 ----------------
+     以前是「谁先开口，谁就从声线池里挑一个还没被用过的」。听起来合理，实际最糟：
+     同一个人在不同段落被认成不同写法（赵长河 / 他 / 赵长河忽），各抢一个声音；
+     认不出说话人的那句又再抢一个。于是一段两人对话里，男声女声来回跳。
+     现在反过来：开口之前先把这一章（连同前后各两章）里说过话的人全扫一遍，
+     按出场次数排好，一次性把声线定死，并写进书里（BK.meta.cast），下次打开还是这些声音。
+     之后无论遇到「他」「她」还是没写主的对白，都只会绑到已经定好的人物身上。 */
+  var CAST_MAX = 14;           // 一本书最多给多少人单独配声；再多必然撞声，不如并回旁白
+  var CASTTX = {};             // 章节正文缓存：换章补人物时不必反复解压 / 去标签
+  function castWindowText(ch, span) {
+    if (!BK || typeof BK.chapterText !== 'function') return '';
+    var s = [], from = Math.max(0, ch - (span || 2)), to = Math.min(chapterCount() - 1, ch + (span || 2));
+    if (Object.keys(CASTTX).length > 24) CASTTX = {};      // 听了几十章的缓存清一下，别一直往上堆
+    for (var i = from; i <= to; i++) {
+      var t = CASTTX[i];
+      if (t === undefined) {
+        try { t = BK.chapterText(i) || ''; } catch (e) { t = ''; }
+        CASTTX[i] = t;
+      }
+      s.push(t);
+    }
+    return s.join('\n');
+  }
+  /* 名字后面常粘着状语：「赵长河忽然开口」贪心取 3 字会得到「赵长河忽」。
+     状语首字都是一个有限集合，剥到不像状语为止。 */
+  var ADV_TAIL = /[忽突蓦猛慢缓轻淡冷平沉低柔笑苦嗤失连急赶随接顿想点摇叹皱挑撇续又便就才也都却竟更忙再方终还只]$/;
+  /* 被当成名字抓上来的常用词：「你跟任何人说」「昨天不是说」里的「任何人」「天不是」。
+     名字里基本不会出现虚词和代词，先用一条黑名单把它们清掉，免得白占一条声线。 */
+  var NAME_BAD = /[不没的是了着过很也就都又还再才更最和与及或但而个这那我你他她们吗呢吧啊]/;
+  var NAME_BAD_HEAD = /^(?:任何|所有|其他|别的|别人|自己|大家|众人|有人|没有|什么|怎么|为何|因为|所以|如果|虽然|只是|于是|接着|然后|突然|忽然|此时|这时|一边|一面)/;
+  function nameOk(nm) {
+    if (!nm || nm.length < 2 || nm.length > 4) return false;
+    if (NAME_STOP.test(nm) || NAME_BAD.test(nm) || NAME_BAD_HEAD.test(nm)) return false;
+    if (new RegExp('^(?:' + ADV_SRC + ')$').test(nm)) return false;
+    return true;
+  }
+  function castNames(text) {
+    var hit = {}, A = '(?:' + ADV_SRC + ')*', V = '(?:' + SPEAK_VERB + ')';
+    var pats = [
+      new RegExp('([\\u4e00-\\u9fa5]{2,3})' + A + V + '(?:道|说|着)?[：:，,。]', 'g'),
+      new RegExp('([\\u4e00-\\u9fa5]{2,4})(?:对|向|跟|朝)[\\u4e00-\\u9fa5]{1,4}' + V, 'g')
+    ];
+    pats.forEach(function (re) {
+      var m;
+      while ((m = re.exec(text))) {
+        var nm = m[1];
+        while (nm.length > 2 && ADV_TAIL.test(nm)) nm = nm.slice(0, -1);   // 剥掉粘上来的状语
+        if (!nameOk(nm)) continue;
+        hit[nm] = (hit[nm] || 0) + 1;
+      }
+    });
+    var out = [];
+    Object.keys(hit).forEach(function (nm) {
+      var c = text.split(nm).length - 1;                   // 全书提及次数 ≈ 戏份
+      if (c < 2) return;                                   // 只出现一次的，多半是误抓
+      out.push({ n: nm, c: c });
+    });
+    out.sort(function (a, b) { return b.c - a.c || b.n.length - a.n.length; });
+    return out;
+  }
+  function buildCast(ch) {
+    if (!CFG.roleOn || !localReady() || !BK) return 0;
+    var c = (ch === undefined || ch === null) ? (BK.ch | 0) : ch;
+    if (SPK.castAt === c + '|' + CFG.localVoice) return 0;   // 这一段已经排过，别每句都重扫
+    var text = castWindowText(c, 2);
+    /* 第一次读这本书时，把开篇三章也扫进来：主角几乎一定在前三章露过面，
+       这样即使从第 50 章开始听，主角一开口用的也是「主角那个声音」，不会因为
+       没在附近出场而被排到后面的次要声线去。 */
+    if (!BK.meta || !BK.meta.cast || !Object.keys(BK.meta.cast).length) {
+      if (c > 2) text = castWindowText(0, 2) + '\n' + text;
+    }
+    if (!text) return 0;
+    var list = castNames(text);
+    if (!list.length) return 0;
+    // 先把性别扫一遍：代词就在名字附近，一次扫完，后面配声才不会配反
+    list.slice(0, CAST_MAX * 2).forEach(function (it) {
+      var i = -1, guard = 0;
+      while ((i = text.indexOf(it.n, i + 1)) >= 0 && guard++ < 40) {
+        learnSex(it.n, text, i, text.slice(i + it.n.length));
+      }
+    });
+    // 戏份最多的先配：好的声线留给主角，后面的角色分剩下的，整本不再变动
+    list.slice(0, CAST_MAX).forEach(function (it) {
+      var g = genderOf(it.n);
+      if (g === 'f' && !SPK.main.f) SPK.main.f = it.n;
+      if (g === 'm' && !SPK.main.m) SPK.main.m = it.n;
+      if (!SPK.cast[it.n]) castVoice(it.n);
+    });
+    SPK.castAt = c + '|' + CFG.localVoice;
+    if (BK.meta) { BK.meta.cast = SPK.cast; BK.meta.sex = SPK.sex; savePos(); }
+    return list.length;
+  }
+  /* 打开书时把上次定好的声线接回来：同一本书第二次听，人物声音一模一样 */
+  function loadCast(meta) {
+    if (!meta) return;
+    var all = {}, list = LOCAL.list || LOCAL_VOICES;
+    list.forEach(function (x) { all[x[0]] = 1; });
+    SPK.cast = {}; SPK.used = {}; SPK.castName = {};
+    var c = meta.cast || {};
+    Object.keys(c).forEach(function (k) {
+      if (!all[c[k]]) return;                    // 语音包换过，旧声线编号可能已经不存在
+      SPK.cast[k] = c[k];
+      SPK.used[c[k]] = (SPK.used[c[k]] || 0) + 1;
+    });
+    if (meta.sex) SPK.sex = meta.sex;
+    SPK.main = { f: '', m: '' };
+    // 主要男女从旧的配音表里恢复：先认戏份，认不出就按已有声线挡着
+    Object.keys(SPK.cast).forEach(function (k) {
+      var g = genderOf(k);
+      if (g === 'f' && !SPK.main.f) SPK.main.f = k;
+      if (g === 'm' && !SPK.main.m) SPK.main.m = k;
+    });
+  }
+  function sceneName(g) {
+    var s = SPK.scene || {}, m = SPK.main || {};
+    return (g === 'f' ? (s.f || m.f) : (s.m || m.m)) || '';
+  }
+  /* 代词「他/她」先在本段里找最近的同性别名字，找不到再用这一场的在场人物 */
+  function nearName(text, at, g) {
+    var best = '', bi = -1, aft = '', ai = 1e9;
+    Object.keys(SPK.cast || {}).forEach(function (nm) {
+      if (!nm || nm.charAt(0) === '?') return;
+      if (genderOf(nm) !== g) return;
+      var i = text.lastIndexOf(nm, at);
+      if (i >= 0 && i > bi) { bi = i; best = nm; }
+      var j = text.indexOf(nm, at);
+      if (j >= 0 && j < ai) { ai = j; aft = nm; }
+    });
+    if (best) return best;
+    if (aft && ai - at <= 24) return aft;        // 「……」赵长河说：紧跟引号后面那种
+    return '';
+  }
+  function bindWho(who, full, at) {
+    if (!who || who === '我') return who;
+    if (who === '他' || who === '她') {
+      var g = who === '他' ? 'm' : 'f';
+      return nearName(full, at, g) || sceneName(g) || who;
+    }
+    return who;
+  }
 
   function speakerOf(full, at, after) {
     var pre = full.slice(Math.max(0, at - 26), at).replace(/[\s\n]+/g, '');
     var V = '(' + SPEAK_VERB + ')';
     // ① 「张三对俞猴子说」：先认「对 / 跟 / 向 / 朝」，这类里紧贴动词的那个人是听话人，不是说话人
-    var toM = pre.match(new RegExp('([\\u4e00-\\u9fa5]{2,4})(?:对|跟|向|朝)([\\u4e00-\\u9fa5]{2,4})(?:' + SPEAK_VERB + ')'));
+    //    听话人允许只有 1 个字：「张三对她说」里的「她」最常见，用 {2,4} 会整条匹配不上，
+    //    于是掉到 ② 把「她」当成说话人——男角色一开口就是女声，正是最容易被听出来的错。
+    var toM = pre.match(new RegExp('([\\u4e00-\\u9fa5]{2,4})(?:对|跟|向|朝)([\\u4e00-\\u9fa5]{1,4})(?:' + SPEAK_VERB + ')'));
     if (toM && !NAME_STOP.test(toM[1])) return toM[1].slice(-3);
     // ② 主语在句子里（允许中间隔逗号和动作）：「他盯我一眼，说：」「我气喘吁吁跑进去…说：」
     var subj = '';
     var sm = pre.match(new RegExp('(我|他|她)(?![们])[^。！？]{0,16}?' + V));
     if (sm) subj = sm[1];
     if (subj) return subj;
-    // ③ 人名紧贴动词：「俞猴子说：」
-    var m = pre.match(new RegExp('([\\u4e00-\\u9fa5]{2,4})(?:' + SPEAK_VERB + ')(?:道|说)?[：:，,]?$'));
-    if (m && !NAME_STOP.test(m[1])) return m[1].slice(-3);
+    // ③ 人名 +（状语）+ 动词：「俞猴子说：」「女子平静回应：」「赵长河忽然开口：」
+    //    {2,3}? 用非贪婪：先把名字按最短算，多出来的交给状语。不这样，
+    //    「张三便道」会被截成「张三便」，名字错一次，整本书这个人的声线都错。
+    var m = pre.match(new RegExp('([\\u4e00-\\u9fa5]{2,3}?)(?:(?:' + ADV_SRC + '))*(?:'
+      + SPEAK_VERB + ')(?:道|说|着)?[：:，,]?$'));
+    if (m && !NAME_STOP.test(m[1]) && !(new RegExp('^(?:' + ADV_SRC + ')$')).test(m[1])) return m[1];
     // ④ 引号后紧跟「她/他」：中文小说里最常见的主语后置
     var post = String(after || '').replace(/^[\s\u3000]+/, '').slice(0, 24);
     var pm = post.match(/^([他她])(?![们])/);
     if (pm) return pm[1];
-    // ⑤ 引号后是「某某放下报纸，慢慢问道」：名字锚在开头，动词可隔几个字
+    // ⑤ 「女子头也不抬，似是早已知道他的到来：」——主语在最前面，冒号前全是神态和动作。
+    //    只认称谓（女子/老头/少年…）和已经见过的名字，不然「他看着窗外：」会被当成
+    //    「他看着」这么个人。②③都没认出来才走这里，所以不会把「张三说」带偏。
+    if (/[：:]$/.test(pre)) {
+      var head = pre.slice(-26);
+      var nm2 = head.slice(0, 2), nm3 = head.slice(0, 3);
+      // 先试 2 字：「女子头也不抬」里的「女子」是称谓，取 3 字会变成「女子头」
+      if (FEMALE_HINT.test(nm2) || MALE_HINT.test(nm2) || SPK.cast[nm2] || SPK.sex[nm2]) return nm2;
+      if (FEMALE_HINT.test(nm3) || MALE_HINT.test(nm3) || SPK.cast[nm3] || SPK.sex[nm3]) return nm3;
+    }
+    // ⑥ 引号后是「某某放下报纸，慢慢问道」：名字锚在开头，动词可隔几个字
     //    3 字只在「名字紧贴动词」时采用，避免把「老人放下」当成名字
     var cand = [];
     [2, 3].forEach(function (L) {
       var nm = post.slice(0, L);
       if (nm.length < L || /[^\u4e00-\u9fa5]/.test(nm) || NAME_STOP.test(nm)) return;
-      var rest = post.slice(L, L + 14);
-      var vm = rest.match(new RegExp('^[^。！？]{0,12}?(?:' + SPEAK_VERB + ')'));
+      var rest = post.slice(L, L + 16);
+      var vm = rest.match(new RegExp('^[^。！？]{0,12}?(?:(?:' + ADV_SRC + '))*(?:' + SPEAK_VERB + ')'));
       if (vm) cand.push({ nm: nm, gap: vm[0].length, len: L });
     });
     if (!cand.length) return '';
-    var three = cand.filter(function (x) { return x.len === 3 && x.gap <= 1; })[0];
-    return (three || cand.filter(function (x) { return x.len === 2; })[0] || cand[0]).nm;
+    // 「女子平静回应」里 two=「女子」是称谓，three=「女子平」是称谓＋状语的一半，
+    // 这种时候必须取 2 字。只有「赵长河忽然开口」这种 2 字认不出的才用 3 字。
+    var two = cand.filter(function (x) { return x.len === 2; })[0];
+    var three = cand.filter(function (x) { return x.len === 3 && x.gap <= 8; })[0];
+    if (two && (FEMALE_HINT.test(two.nm) || MALE_HINT.test(two.nm)
+      || SPK.cast[two.nm] || SPK.sex[two.nm])) return two.nm;
+    return (three || two || cand[0]).nm;
   }
   /* 把一段切成 [{t: 文本, role: 'narr'|'say', who: 人名}] */
   function roleSegments(text) {
@@ -2691,33 +3068,123 @@
       var before = text.slice(last, m.index);
       if (before.trim()) out.push({ t: before, role: 'narr' });
       if (inner && inner.trim()) {
-        out.push({ t: inner, role: 'say', who: speakerOf(text, m.index, text.slice(m.index + m[0].length)) });
+        var after = text.slice(m.index + m[0].length);
+        /* 代词「他/她」在这里就换成具体人物，别让它作为一个「新人物」去占一条声线。
+           以前「她」和「女子」各配一个女声，同一段里一个人两种嗓子，就是这么来的。 */
+        var who = bindWho(speakerOf(text, m.index, after), text, m.index);
+        learnSex(who, text, m.index, after);       // 顺手把「他是男是女」记下来
+        out.push({ t: inner, role: 'say', who: who });
+        // 这一场谁在场：代词和无名对白都靠它接住
+        if (who && who !== '我' && who !== '他' && who !== '她') {
+          var wg = genderOf(who);
+          if (wg === 'f') SPK.scene.f = who; else if (wg === 'm') SPK.scene.m = who;
+          SPK.scene.lastWho = who;
+        }
       }
       last = m.index + m[0].length;
     }
     var tail = text.slice(last);
     if (tail.trim() || !out.length) out.push({ t: tail || text, role: 'narr' });
+    /* 对白交替推断（最后一道兜底）：一问一答的小说里，没写是谁说的那对引号，
+       几乎总是换个人在说。只在「上一句有明确归属 + 两句之间几乎没有旁白 +
+       本句也短」时才敢这么判——把一段独白硬拆成两个人，比不换声更难受。
+       换成的是**已经定好声线的那个对手**，不是凭空再配一个「男声二号」。 */
+    // 上一段最后开口的人：单句成段的对话（「你连拐杖都没有，忽悠谁呢。」）
+    // 全靠它才知道该换谁——否则每段都从「无人」起算，永远接不上。
+    var prev = (SPK.scene && SPK.scene.lastWho) ? { role: 'say', who: SPK.scene.lastWho } : null;
+    for (var i = 0; i < out.length; i++) {
+      var s = out[i];
+      if (s.role !== 'say') continue;
+      if (!s.who && prev && prev.who) {
+        var gapLen = 0;
+        for (var j = i - 1; j >= 0 && out[j].role === 'narr'; j--) gapLen += out[j].t.length;
+        if (gapLen <= 4 && s.t.length <= 42) {
+          var pg = genderOf(prev.who);
+          var mate = pg === 'f' ? sceneName('m') : pg === 'm' ? sceneName('f') : '';
+          if (mate && mate !== prev.who) { s.who = mate; s.guess = 1; }
+        }
+      }
+      prev = s;
+    }
+    /* 旁白里紧贴着对白的那一小截，本来就是说话人的动作：
+       「女子平静回应：」「赵长河忽然开口。」。用旁白声念，会在一个人说话中间
+       硬插进另一个嗓子，听起来就是「声线不停变」。短句且有相邻对白时跟着那个人走：
+       以冒号/逗号收尾的，是引出下一句对白；以句号收尾的，是给上一句对白收尾。 */
+    for (i = 0; i < out.length; i++) {
+      var nb = out[i];
+      if (nb.role !== 'narr') continue;
+      var tx = String(nb.t || '').replace(/\s+$/, '');
+      var leadIn = /[：:，,]$/.test(tx);
+      /* 只有「说话动作」才跟着角色走：带说话动词（道/说/问/回应/开口…）或引到对白的冒号。
+         纯动作描写（「她抬头看了一眼窗外。」）仍归旁白——那是叙述者的声音，
+         不该被塞进任何一个角色的嗓子里。 */
+      var speechy = new RegExp('(?:' + SPEAK_VERB + ')').test(tx);
+      if (!leadIn && !speechy) continue;
+      if (tx.length > (leadIn ? 30 : 16)) continue;
+      var nx = out[i + 1], pv = out[i - 1];
+      var nxw = (nx && nx.role === 'say') ? nx.who : '';
+      var pvw = (pv && pv.role === 'say') ? pv.who : '';
+      /* 承接下一句的，用下一句的人；下一句没写主（「她合上账本，“……”」），
+         就用上一句那位——这两个本来就是同一个人。 */
+      if (leadIn) nb.vWho = nxw || pvw;
+      else nb.vWho = pvw || nxw;
+    }
     return out;
   }
   function genderOf(who) {
     if (!who) return '';
     if (who === '他') return 'm';
     if (who === '她') return 'f';
+    /* 「?m / ?f」是交替推断出来的「没点名的那位」：一段对白谁也认不出是谁说的，
+       但上一句明明是女声，按一问一答的常态这一句就该换个人。整本书只给它
+       一个固定声线，不会每句乱跳。 */
+    if (who.charAt(0) === '?') return who.charAt(1) === 'f' ? 'f' : 'm';
+    if (SPK.sex && SPK.sex[who]) return SPK.sex[who];      // 上文认出来的最可靠
     if (FEMALE_HINT.test(who)) return 'f';
     if (MALE_HINT.test(who)) return 'm';
+    var fc = (who.match(FEMALE_CHAR) || []).length;
+    var mc = (who.match(MALE_CHAR) || []).length;
+    if (fc > mc) return 'f';
+    if (mc > fc) return 'm';
     return '';
   }
-  /* 候选声线：精选 21 个 + 补充男声；按「男女混合 / 全女声 / 全男声」过滤 */
+  /* 从上下文认性别：中文小说里人名几乎不自带性别，但代词每段都有。
+     「张三冷笑一声，他没有马上回答」这种一抓一个准，引号后紧跟「他/她」也极常见。
+     认一次就记进 SPK.sex，整本书都按同一个判断——不会这一段男声、下一段又变女声。 */
+  function learnSex(who, full, at, after) {
+    if (!who || who === '他' || who === '她' || who === '我' || who.charAt(0) === '?') return;
+    /* 「女子」「老头」这类称谓本身就把性别写清楚了，再拿代词去「学」只会学坏：
+       「女子头也不抬，似是早已知道他的到来」里的「他」指的是对面那个人。 */
+    if (FEMALE_HINT.test(who)) { SPK.sex[who] = 'f'; return; }
+    if (MALE_HINT.test(who)) { SPK.sex[who] = 'm'; return; }
+    if (SPK.sex[who]) return;
+    var post = String(after || '').replace(/^[\s\u3000]+/, '');
+    var pm = post.match(/^([他她])(?![们])/);
+    if (pm) { SPK.sex[who] = pm[1] === '他' ? 'm' : 'f'; return; }
+    var pre = String(full.slice(0, at)).slice(-46).replace(/[\s\u3000]+/g, '');
+    var i = pre.lastIndexOf(who);
+    if (i < 0) return;
+    var seg = pre.slice(i + who.length, i + who.length + 16);
+    // 只认「，他/她」这种主语位置的代词：「张三对她说」里的她是听话人，不能算
+    var cm = seg.match(/[，,、][^，,。！？]{0,6}?([他她])(?![们])/);
+    if (cm) SPK.sex[who] = cm[1] === '他' ? 'm' : 'f';
+  }
+  /* 候选声线：精选那 8 个快声线（x0/c0 + f0~f3/m0~m3）；按「男女混合 / 全女声 / 全男声」过滤。
+     只有用户主动选了「全部声线」才允许动用 187 人那套慢库——那套一句二十字要十几秒，
+     自动扩进去会让角色一多就开始干等，跟 1.14.8 的速度目标正好相悖。 */
   function rolePool(gender) {
     var all = LOCAL.list || LOCAL_VOICES, band = {};
     all.forEach(function (x) { band[x[0]] = x[2] || ''; });
     var cur = (LOCAL.info && LOCAL.info.curated) || [];
+    var wide = CFG.voiceSet === 'all';
     var keys = cur.length ? cur.slice() : all.map(function (x) { return x[0]; });
-    EXTRA_MALE.forEach(function (k) { if (band[k] !== undefined && keys.indexOf(k) < 0) keys.push(k); });
-    /* 人物比手头的声线还多时，自动扩到全部声线：
-       书里几十号人也不至于挤在几个声音上（旁白那个声线仍然避开） */
-    var used = Object.keys(SPK.cast || {}).length;
-    if (used >= keys.length && all.length > keys.length) keys = all.map(function (x) { return x[0]; });
+    if (wide) {
+      EXTRA_MALE.forEach(function (k) { if (band[k] !== undefined && keys.indexOf(k) < 0) keys.push(k); });
+      /* 人物比手头的声线还多时，自动扩到全部声线：
+         书里几十号人也不至于挤在几个声音上（旁白那个声线仍然避开） */
+      var used = Object.keys(SPK.cast || {}).length;
+      if (used >= keys.length && all.length > keys.length) keys = all.map(function (x) { return x[0]; });
+    }
     var want = CFG.rolePool || 'mix';
     if (want === 'mix') want = (gender === 'm' ? 'male' : gender === 'f' ? 'female' : 'mix');
     return keys.filter(function (k) {
@@ -2728,18 +3195,62 @@
       return true;
     });
   }
+  /* 音色属于哪一档（「男声 · 中年」「女声 · 青年」…），用来核对配上的声音对不对性别 */
+  function voiceBand(k) {
+    var all = LOCAL.list || LOCAL_VOICES;
+    for (var i = 0; i < all.length; i++) if (all[i][0] === k) return all[i][2] || '';
+    return '';
+  }
   /* 给一个人物挑声音：先按性别过滤，再挑「被用得最少」的那个，保证几个人物声音不撞 */
   function castVoice(who) {
-    var pool = rolePool(genderOf(who));
-    if (!pool.length) return CFG.localVoice;
-    if (who && SPK.cast[who]) return SPK.cast[who];
-    var pick = pool[0], best = 1e9;
-    pool.forEach(function (k) { var c = SPK.used[k] || 0; if (c < best) { best = c; pick = k; } });
-    if (who) { SPK.cast[who] = pick; SPK.castName[pick] = who; }
-    SPK.used[pick] = (SPK.used[pick] || 0) + 1;
-    return pick;
+    /* 「我说」＝旁白在说话。第一人称书里说话的人就是念旁白那个人，
+       换成别的声线等于书里凭空多出一个人，最容易让人搞不清谁在开口。 */
+    if (who === '我') {
+      if (SPK.scene) { SPK.scene.lastV = CFG.localVoice; SPK.scene.lastWho = who; }
+      return CFG.localVoice;
+    }
+    /* 认不出是谁的那一句：沿用上一位的声音。
+       以前这里会从池子里挑「用得最少」的那个——于是一段对话里每句换一个嗓子，
+       男声女声来回跳，正是最刺耳的听感。宁可少换，也不能乱换。 */
+    if (!who) return (SPK.scene && SPK.scene.lastV) || CFG.localVoice;
+    var g = genderOf(who);
+    var key = SPK.cast[who];
+    if (key && g) {
+      /* 先前没认出性别、随手配了一个；后来从上下文认出来了。
+         配上的声音跟性别对不上就换掉——宁可换一次，也不能让男角色一直用女声。 */
+      var band = voiceBand(key);
+      if (band && ((g === 'm') !== /^男/.test(band))) {
+        if (SPK.castName[key] === who) delete SPK.castName[key];
+        delete SPK.cast[who];
+        key = '';
+      }
+    }
+    var pool = rolePool(g), out = key || '';
+    if (!pool.length) out = CFG.localVoice;
+    else if (!out) {
+      var pick = pool[0], best = 1e9;
+      pool.forEach(function (k) { var c = SPK.used[k] || 0; if (c < best) { best = c; pick = k; } });
+      out = pick;
+      SPK.cast[who] = pick;
+      if (who.charAt(0) !== '?') SPK.castName[pick] = who;
+      SPK.used[pick] = (SPK.used[pick] || 0) + 1;
+    }
+    // 记住这一场是谁在说话：代词与无名对白都靠它接住，不再另配新声
+    if (SPK.scene) {
+      if (out !== CFG.localVoice) SPK.scene.lastV = out;
+      if (who !== '他' && who !== '她' && who.charAt(0) !== '?') {
+        if (g === 'f') SPK.scene.f = who; else if (g === 'm') SPK.scene.m = who;
+        SPK.scene.lastWho = who;
+      }
+    }
+    return out;
   }
-  function resetCast() { SPK.cast = {}; SPK.used = {}; SPK.castName = {}; }
+  function resetCast() {
+    SPK.cast = {}; SPK.used = {}; SPK.castName = {}; SPK.sex = {};
+    SPK.scene = { f: '', m: '', lastWho: '', lastV: '' }; SPK.main = { f: '', m: '' }; SPK.castAt = '';
+    SPK.pre = {};          // 预排结果里存的是旧声线，必须一起作废
+    CASTTX = {};           // 换书 / 换声线后重新取正文
+  }
   function roleLabel() {
     if (!CFG.roleOn) return '';
     if (!localReady()) return '';
@@ -2775,15 +3286,92 @@
     }
     $('spNow').innerHTML = '<span class="spdot"></span>' + who + esc(t);
   }
+  /* 纯外文块（一个汉字都没有、只有英文字母）：中文模型念不出来。
+     按优先顺序走三条路，都不能算「引擎故障」：
+       ① 装了英文模型的本地引擎 —— 照常走神经语音（服务端自己会分派英文模型）；
+       ② 系统里有英文语音 —— 用它念这一块。语言换了，声音本来就不该是同一副；
+       ③ 两条都没有 —— 按这段字该念多久留白，然后继续往下念，只轻提示一次。
+     以前这里会 500 -> 「本地语音引擎不可用」-> 整场退回机械音，
+     一本书里只要有一段英文信就毁掉整章听感，是最冤的一种降级。 */
+  var FOREIGN_TIP = 0;
+  function englishVoice() {
+    var vs = SYN ? (SYN.getVoices() || []) : [];
+    var en = vs.filter(function (v) { return /^en/i.test(v.lang || ''); });
+    if (!en.length) return null;
+    en.sort(function (a, b) {
+      // 本地语音优先：英文块本来就短，不值得为它去联网
+      var al = a.localService === false ? 1 : 0, bl = b.localService === false ? 1 : 0;
+      if (al !== bl) return al - bl;
+      return (isNatural(a) ? 0 : 1) - (isNatural(b) ? 0 : 1);
+    });
+    return en[0];
+  }
+  function skipForeign(txt) {
+    if (!SPK.playing) return;
+    SPK.gen++;
+    clearTimeout(SPK.watch); clearTimeout(SPK.gapT);
+    stopLocalAudio();
+    if (!FOREIGN_TIP) {
+      FOREIGN_TIP = 1;
+      toast(T('这一段是英文，本机没有英文语音，按语速留白后继续往下念'), 4200);
+    }
+    // 留白长度按字母数估（约每 6 个字符 0.5 秒），最长 4.5 秒
+    var w = Math.min(4500, Math.max(500,
+      Math.round(String(txt || '').replace(/\s/g, '').length * 85)));
+    SPK.ci++;
+    if (SPK.ci < SPK.chunks.length) { speakChunk(w); return; }
+    speakNext(true);
+  }
+  function speakForeign(txt) {
+    var v = SYN ? englishVoice() : null;
+    if (!v) { skipForeign(txt); return; }
+    var g = ++SPK.gen;
+    stopLocalAudio();
+    highlight();
+    var u = new UTT(txt);
+    u.voice = v; u.lang = v.lang || 'en-US';
+    u.rate = Math.min(1.5, Math.max(0.6, (Number(CFG.rate) || 1) * 0.95));
+    u.pitch = 1; u.volume = Number(CFG.volume);
+    u.onend = function () {
+      if (g !== SPK.gen || !SPK.playing) return;
+      clearTimeout(SPK.watch); speakNext(false);
+    };
+    u.onerror = function () {
+      if (g !== SPK.gen || !SPK.playing) return;
+      clearTimeout(SPK.watch);
+      // 英文语音自己出错（没装语音包 / 系统拒绝）也别当引擎坏了，留白过去
+      skipForeign(txt);
+    };
+    try { SYN.speak(u); } catch (e) { skipForeign(txt); return; }
+    clearTimeout(SPK.watch);
+    SPK.watch = setTimeout(function () {
+      if (g !== SPK.gen || !SPK.playing) return;
+      try { SYN.cancel(); } catch (e) {}
+      skipForeign(txt);
+    }, Math.max(6000, Math.min(30000, String(txt).length * 260 + 4000)));
+  }
   function speakChunk(delay) {
     if (!SPK.playing) return;
+    /* 纯标点块：本来就没有字可念，按它的长度留一段安静就走。
+       既不发合成请求（服务端会回 empty text），也不会被误判成引擎坏了。 */
+    var head = SPK.chunks[SPK.ci];
+    if (head !== undefined && !sayable(head)) {
+      SPK.ci++;
+      var w = punctPause(head);
+      if (SPK.ci < SPK.chunks.length) { speakChunk(Math.max(Number(delay) || 0, w)); return; }
+      speakNext(true); return;
+    }
+    /* 纯外文块：有英文模型的本地引擎能念，其余的交给英文语音 / 留白。 */
+    if (head !== undefined && foreignOnly(head) && !(enLocal() && !SPK.degraded)) {
+      return speakForeign(head);
+    }
     // 句间 / 段间留白：神经网络语音靠完整句子产生语调，句与句之间留一点静默更接近真人
     if (delay > 0) {
       clearTimeout(SPK.gapT);
       SPK.gapT = setTimeout(function () { if (SPK.playing) speakChunk(0); }, delay);
       return;
     }
-    if (localReady()) return localSpeakChunk();
+    if (localReady() && !SPK.degraded) return localSpeakChunk();
     if (!SYN || !UTT) return;
     var txt = SPK.chunks[SPK.ci];
     if (txt === undefined) { speakNext(true); return; }
@@ -2828,28 +3416,105 @@
       stopSpeak(false); toast(T('朗读结束')); return;
     }
     setPara(SPK.pi);
-    // 换段先把手头第一句送去合成，否则「换行」会先干等一次合成
-    if (localReady()) localPrefetch(0);
+    // 换段先把这一段排进合成队列，别等播到第一句才发请求
+    if (localReady()) fillPara(SPK.pi, 0);
     speakChunk(Math.min(700, (Number(CFG.pause) || 0) * 2));
+  }
+  /* ---------------- 整段预排（跨段预取） ----------------
+     换段时最难受的不是「合成慢」，而是「这一段播完了才开始合成下一段」。
+     一段十几句的旁白，常驻引擎也要 2~3 秒，而它播放要十几秒——
+     只要在播这一段的时候就把下一段排好，换段就是无缝的。
+     所以这里做两件事：
+       ① prefPara(pi) 先把某一段的「句子 + 声线」算出来（纯计算，几毫秒）。
+          提前算还有个副作用正好是想要的：人物的声线在那时就定死了，
+          播到那儿不会再临时换人。算完存下，setPara 直接复用。
+       ② fillPara(pi) 按句子顺序一句一句送去合成，结果按「段号:句号」存，
+          播放时 localSpeakChunk 直接取现成的，不用等。
+     串行而不是一起发：同一时刻只让一个合成请求占着引擎，正在播的那句
+     才不会被一堆预取挤到后面（实测并发发 8 条，第一条反而慢一倍）。 */
+  function pcmKey(pi, ci) { return pi + ':' + ci; }
+  function chunkMax() {
+    // 与 setPara 完全同一套口径：换段数和预演必须算出同样的句子，否则缓存对不上
+    var natural = localReady() || isNatural(curVoice());
+    var M = CFG.whole ? (natural ? 90 : 42) : 30;
+    return Math.round(M * Math.min(1, Number(CFG.rate) || 1));
+  }
+  function prefPara(pi, M) {
+    var p = SPK.paras[pi];
+    if (!p) return null;
+    M = Math.max(16, M || chunkMax());
+    var text = p.textContent || '';
+    var k = (CFG.roleOn ? 'r' : 's') + '|' + CFG.localVoice + '|' + M + '|' + text;
+    var it = SPK.pre[pi];
+    if (it && it.k === k) return it;
+    var out = { k: k, ch: [], cv: [] };
+    if (CFG.roleOn && localReady()) {
+      roleSegments(text).forEach(function (seg) {
+        var v = seg.role === 'say' ? castVoice(seg.who)
+          : (seg.vWho ? castVoice(seg.vWho) : CFG.localVoice);
+        splitSpeak(seg.t, M).forEach(function (t) { out.ch.push(t); out.cv.push(v); });
+      });
+    }
+    if (!out.ch.length) {
+      out.ch = splitSpeak(text, M);
+      out.cv = out.ch.map(function () { return CFG.localVoice; });
+    }
+    SPK.pre[pi] = out;
+    return out;
+  }
+  function dropPcm(pi) {
+    Object.keys(SPK.pcm).forEach(function (k) {
+      if (+k.split(':')[0] !== pi) return;
+      var it = SPK.pcm[k];
+      delete SPK.pcm[k];
+      if (it && it.p) it.p.then(function (u) { revokeURL(u); }, function () {});
+    });
+  }
+  var AHEAD = 3;                 // 提前排几段：短句（「对。」）一秒就播完，只排下一段来不及
+  function fillPara(pi, at) {
+    if (!localReady()) return;
+    var g = ++SPK.fillGen;
+    var beg = pi, from = at || 0, idx = from;
+    function step() {
+      if (g !== SPK.fillGen) return;
+      var it = SPK.pre[pi];
+      if (!it) return;
+      // 纯标点块不送去合成（引擎没字可念），播放时按长度留白；
+      // 纯外文块在本机没英文模型时也一样——送了只会反复拿回 415
+      while (idx < it.ch.length && (SPK.pcm[pcmKey(pi, idx)] || !sayable(it.ch[idx]) ||
+             (foreignOnly(it.ch[idx]) && !enLocal()))) idx++;
+      if (idx >= it.ch.length) {
+        // 这一段排完了，接着排下一段（最多提前 AHEAD 段）
+        if (pi + 1 < SPK.paras.length && (pi + 1) - SPK.pi < AHEAD) {
+          pi++; idx = 0;
+          prefPara(pi, chunkMax());
+          if (!SPK.pre[pi]) return;
+          SPK.fillQ = setTimeout(step, 0);
+        }
+        return;
+      }
+      var ci = idx, key = pcmKey(pi, ci);
+      var item = { text: it.ch[ci], v: it.cv[ci] };
+      SPK.pcm[key] = item;
+      item.p = localURL(item.text, item.v);
+      var okp = function () { SPK.fillQ = setTimeout(step, 0); };
+      item.p.then(function (u) { item.u = u; okp(); },
+        function () { delete SPK.pcm[key]; SPK.fillQ = setTimeout(step, 900); });
+    }
+    step();
+  }
+  function takePcm(pi, ci, text, v) {
+    var k = pcmKey(pi, ci), it = SPK.pcm[k];
+    if (!it || it.text !== text || it.v !== v) return null;
+    delete SPK.pcm[k];                 // 马上要播，blob 交给 stopLocalAudio 收
+    return it;
   }
   function setPara(i) {
     SPK.pi = Math.max(0, Math.min(SPK.paras.length - 1, i));
-    // 自然语音喂整句才有连贯韵律；本地老引擎用短句规避长文本静默停止
-    var natural = localReady() || isNatural(curVoice());
-    var M = CFG.whole ? (natural ? 90 : 42) : 30;
-    M = Math.round(M * Math.min(1, Number(CFG.rate) || 1));
-    var text = (SPK.paras[SPK.pi] || {}).textContent || '';
-    SPK.chunks = []; SPK.cv = [];
-    if (CFG.roleOn && localReady()) {
-      // 分角色：旁白用所选声线，引号里的对白按人物换声（同一人物全书同一个声音）
-      roleSegments(text).forEach(function (seg) {
-        var v = seg.role === 'say' ? castVoice(seg.who) : CFG.localVoice;
-        splitSpeak(seg.t, Math.max(16, M)).forEach(function (t) {
-          SPK.chunks.push(t); SPK.cv.push(v);
-        });
-      });
-    }
-    if (!SPK.chunks.length) SPK.chunks = splitSpeak(text, Math.max(16, M));
+    // 分段表换成这一段：句子与声线走 prefPara，播到这儿时通常已经预演过了
+    var it = prefPara(SPK.pi, chunkMax());
+    SPK.chunks = it ? it.ch.slice() : [];
+    SPK.cv = it ? it.cv.slice() : [];
     SPK.ci = 0;
     // 记住「听到哪」，下次可从书架一键续听（与「读到哪」分开记，互不打扰）
     if (BK && BK.meta && SPK.on) {
@@ -2886,8 +3551,11 @@
       return;
     }
     CFG.roleOn = CFG.roleOn ? 0 : 1; CFG.roleTouched = 1; saveCfg(); syncRoleBtn(); resetCast();
+    // 刚打开的这本书，先把人物声线一次配齐，再开念
+    if (CFG.roleOn && BK && localReady()) buildCast(BK.ch);
     if (SPK.playing) speakJump(0);
     else if (SPK.on) setPara(SPK.pi);
+    if (CFG.roleOn) warmLib();
     toast(CFG.roleOn ? T('分角色朗读已开启：旁白照旧，对白按人物换声') : T('已回到单一声音'), 3000);
   }
   var ROLE_TRY = '他把伞靠在门边，抖了抖上面的水。“外面雨真大。”她抬头看了一眼，又说：“今晚就别走了。”';
@@ -2932,13 +3600,23 @@
   function speakBlocked() {
     var e = speakEnv(), title, body, btns, eng = (LOCAL.info && LOCAL.info.engine) || '';
     var info = LOCAL.info || {};
-    if (e.android && e.apk && info.loading) {
-      // 安卓版自带神经语音，第一次启动要解压 32 MB 模型，别把它说成「手机缺中文语音」
-      title = T('语音引擎正在准备');
-      body = '<p>' + T('安卓版第一次启动要把 32 MB 的中文语音模型解压到应用目录，通常十几秒；之后就不用再等了。') + '</p>' +
+    if (e.android && e.apk && info.ok === true) {
+      /* 引擎已经连上却走到这里：几乎都是首段合成慢、或上一段播放被打断。
+         这时候去讲「手机缺中文语音」纯属误导——手机一点都不缺。 */
+      title = T('语音引擎已连上，再点一次朗读');
+      body = '<p>' + T('刚才这一次没出声，通常是第一段要现建推理会话、稍慢了一点。再点一下朗读，第二次就顺了。') + '</p>' +
+        '<p class="kv">' + T('当前音色：{v}', { v: localVoiceName(CFG.localVoice) || CFG.localVoice }) + '</p>';
+      btns = [
+        { label: T('再试一次'), cls: 'pri', fn: function () { closeModal(); SPK.connecting = false; SPK.slow = false; LOCAL.firstSynth = true; startSpeak(); } },
+        { label: T('关闭') }
+      ];
+    } else if (e.android && e.apk && (info.loading || LOCAL.slow)) {
+      // 安卓版自带神经语音，第一次启动要解压 18 MB 模型，别把它说成「手机缺中文语音」
+      title = LOCAL.slow ? T('语音引擎还在准备') : T('语音引擎正在准备');
+      body = '<p>' + T('安卓版第一次启动要把中文语音模型解压到应用目录，一般十几秒；机器慢的时候会到半分钟。之后就不用再等了。') + '</p>' +
         '<p>' + T('稍等一下再点朗读就行，先看字也不耽误。') + '</p>';
       btns = [
-        { label: T('再试一次'), cls: 'pri', fn: function () { closeModal(); LOCAL.ready = false; localProbe(true); } },
+        { label: T('再试一次'), cls: 'pri', fn: function () { closeModal(); SPK.slow = false; startSpeak(); } },
         { label: T('关闭') }
       ];
     } else if (e.android && e.apk && info.detail) {
@@ -2987,7 +3665,9 @@
     if (SPK.playing) { stopSpeak(false); toast(T('已暂停书本朗读，开始试听')); }
     if (localReady()) {
       toast(T('正在试听免费离线音色：') + localVoiceName(CFG.localVoice) + ' …', 3200);
-      withTimeout(localURL(TRY_TEXT), 30000).then(function (u) {
+      // 第一次合成要在手机上现建推理会话，放宽到 90 秒；成功后回到正常档位
+      withTimeout(localURL(TRY_TEXT), LOCAL.firstSynth ? 90000 : 45000).then(function (u) {
+        LOCAL.firstSynth = false;
         var a = new Audio(); a.src = u; a.playbackRate = Number(CFG.rate) || 1;
         try {
           var q = a.play(); if (q && q.catch) q.catch(function () {});
@@ -3007,31 +3687,65 @@
     u.onend = u.onerror = function () { SPK.trying = false; };
     try { SYN.speak(u); } catch (e) { SPK.trying = false; toast(T('试听失败：') + e.message); }
   }
-  function startSpeak(fromPi) {
+  function startSpeak(fromPi, noWait) {
     /* 安卓壳里 System WebView 会给出一个「哑」的 speechSynthesis：对象建得出来、
        也能调 speak()，就是不出声。所以只要在安卓壳里，就必须等本机 127.0.0.1 的桥，
        不能因为 SYN 存在就走系统语音那条路——否则用户点了朗读，界面在动，耳朵里没有声音。
        注意必须连 Android 一起判：桌面 exe 也是从 127.0.0.1 加载的，那上面 SYN 是真的能用。 */
     var env0 = speakEnv();
     var needBridge = env0.android && env0.apk && CFG.localOn;
-    if (!SYN || !UTT || (needBridge && !LOCAL.ready)) {
-      if (CFG.localOn && !LOCAL.ready) {
-        if (SPK.connecting) return;
-        SPK.connecting = true;
-        toast(T('正在连接手机语音引擎…'), 3000);
-        localProbe(true).then(function (ok) {
-          SPK.connecting = false;
-          if (ok) startSpeak(fromPi); else speakBlocked();
+    /* 桌面端同样不能「一看没连上就用系统音」：刚打开软件就点朗读时，语音引擎
+       往往还在解压模型、建常驻实例，这一刻探不到，于是开头几句先被系统机械音
+       念掉；十几秒后引擎就绪，又中途换回神经语音——同一段话两种嗓子，
+       正是「前几句不可用、几句后自动恢复」的来源。
+       所以先等它一会儿（最多 8 秒，够冷启动把池子建好），等不到才退回系统语音。
+       noWait 保证只等这一回：等不到就走系统语音，不在 8 秒后再来 8 秒。 */
+    if (!needBridge && CFG.localOn && !LOCAL.ready && BK && !SPK.connecting && !noWait) {
+      SPK.connecting = true;
+      var tW = Date.now();
+      toast(T('正在连接本地语音引擎…'), 2600);
+      (function waitLocal() {
+        localProbe(false).then(function (ok) {
+          if (ok || Date.now() - tW >= 8000) { SPK.connecting = false; startSpeak(fromPi, true); return; }
+          setTimeout(waitLocal, 900);
         });
+      })();
+      return;
+    }
+    /* 安卓壳里根本没有 speechSynthesis（System WebView 不实现 Web Speech API），
+       SYN 一直是 null。原来的判断是「!SYN 就拦」，于是桥明明已经就绪、
+       只差合成那一步，也会被挡回去弹「引擎已连上，再点一次朗读」——
+       再点一次还是同一句，永远进不了朗读。桥能用的时候，有没有 SYN 都无所谓。 */
+    if (!(needBridge && LOCAL.ready)) {
+      if (needBridge && !LOCAL.ready) {
+        if (SPK.connecting) { toast(T('语音引擎正在准备，稍等一下…'), 2200); return; }
+        SPK.connecting = true;
+        /* 安卓端第一次启动要先解压 18 MB 模型、再建推理会话，十几秒到半分钟都算正常。
+           以前只探一次（2.2 秒就超时）就断定「没有引擎」，于是立刻回退系统语音，
+           弹出「这台手机没有中文语音」——而引擎往往下一秒就好了，那条提示纯属误导。
+           现在改成一直等到就绪，最多 60 秒；真出错（有 detail）才立刻放弃。 */
+        var t0 = Date.now();
+        toast(T('正在准备语音引擎，首次约十几秒…'), 4000);
+        (function step() {
+          localProbe(false).then(function (ok) {
+            if (ok) { SPK.connecting = false; LOCAL.slow = false; startSpeak(fromPi); return; }
+            var inf = LOCAL.info || {};
+            if (inf.detail) { SPK.connecting = false; LOCAL.slow = false; speakBlocked(); return; }
+            if (Date.now() - t0 >= 60000) { SPK.connecting = false; LOCAL.slow = true; speakBlocked(); return; }
+            setTimeout(step, 1500);
+          });
+        })();
         return;
       }
-      speakBlocked(); return;
+      // 走到这里只剩桌面端：没有系统语音才是真没法读
+      if (!SYN || !UTT) { speakBlocked(); return; }
     }
     if (!BK) return;
+    SPK.connecting = false;             // 走到这里说明桥已经就绪，别把上一次的等待状态留着
     autoStop(true);                     // 朗读和自动阅读会互相抢滚动，先停自动
     SPK.on = true; SPK.fb = 0; SPK.seenEnd = false;
     wakeKeep(true);                     // 听书时别让屏幕自己熄了，一熄音频就断
-    SPK.prefetch = null; stopLocalAudio(); voiceBadge(curVoice());
+    clearPref(); stopLocalAudio(); voiceBadge(curVoice());
     $('speakBar').classList.add('on'); syncRoleBtn();
     if (!$('spVoice').options.length || $('spVoice').options[0].value === '') fillVoices();
     SPK.paras = Array.prototype.slice.call($('page').querySelectorAll('.rdp'));
@@ -3045,10 +3759,18 @@
       }
       if (!SPK.paras.length) { toast(T('这几章都没有可朗读的文字')); return; }
     }
+    /* 开口之前先把人定好：这一章前后几章里说过话的人一次性配好声线，
+       之后不管认成名字、代词还是没写主，都只会落到这些人身上，不会临时换嗓子。 */
+    SPK.scene = { f: '', m: '', lastWho: '', lastV: '' };
+    SPK.castAt = '';
+    if (CFG.roleOn && localReady()) buildCast(BK.ch);
     setPara(fromPi === undefined ? currentPara() : fromPi);
     SPK.playing = true;
+    SPK.fails = 0; SPK.skipped = 0;     // 每次开念都重新计：上次跳过的段不该赖到这次
+    SPK.degraded = 0;                   // 重新点朗读时再给本地语音一次机会
     try { SYN.cancel(); } catch (e) {}
     speakChunk(0); $('spPlay').textContent = '❚❚';
+    warmLib();
     if (!$('spVoice').options.length || $('spVoice').options[0].value === '') fillVoices();
     var cv = curVoice();
     if (SYN && !(SYN.getVoices() || []).length) toast(T('系统未检测到朗读语音；Windows 可在「设置→时间和语言→语音」添加中文语音'), 5200);
@@ -3073,7 +3795,7 @@
   function stopSpeak(hide) {
     wakeKeep(false);
     SPK.playing = false; SPK.gen++; clearTimeout(SPK.watch); clearTimeout(SPK.gapT);
-    stopLocalAudio(); SPK.prefetch = null;
+    stopLocalAudio(); clearPref();
     clearInterval(SPK.timer); SPK.deadline = 0; $('spLeft').textContent = '';
     try { if (SYN) SYN.cancel(); } catch (e) {}
     $('page').querySelectorAll('.rdp.speaking').forEach(function (e) { e.classList.remove('speaking'); });
@@ -3084,7 +3806,7 @@
     if (!SPK.paras.length) return;
     var wasPlaying = SPK.playing;
     SPK.gen++; clearTimeout(SPK.watch); clearTimeout(SPK.gapT);
-    stopLocalAudio(); SPK.prefetch = null;
+    stopLocalAudio(); clearPref();
     try { SYN.cancel(); } catch (e) {}
     SPK.playing = false;
     setPara(Math.max(0, Math.min(SPK.paras.length - 1, SPK.pi + d)));
@@ -3183,7 +3905,7 @@
       '<p><b>为什么 187 个声音却不占体积</b>：它们全部来自同一份 fanchen-C 中文多说话人模型（打包时把权重压成 8 位整数，从 115 MB 降到 38 MB），切换只是换一个 <code>--sid</code> 编号，所以放开到 187 个也是<b>零体积成本</b>。压缩的代价是合成慢一些（同一句话约慢 10 倍），所以它只当配角用，男女主角和旁白走那两份 22 kHz 模型。官方只给编号没有花名，「男声低沉 / 女声清亮」是按每个说话人实测的中位基频（F0）分档的，描述词只便于分辨，<b>建议点「试听音色」挑自己最喜欢的那一个</b>。</p>' +
       '<p class="kv">长篇小说先试默认的「声线 12」（温润偏低），想换亮一点的试「声线 160」或「声线 150」，要男声试「声线 110」。合成很快（一句 4~7 秒音频约 1 秒生成）。下拉只列出本机已装好的音色，缺模型文件会自动隐藏。</p>' +
       '<h3>分角色朗读（多人对话自动换声）</h3>' +
-      '<p>点朗读条上的「多角色」按钮，或到「阅读设置 → 分角色朗读」开启：<b>旁白还是用你选的声线，引号里的对白按人物自动换成不同的声音</b>。同一个人物整本书都是同一个声音，不同人物不会串；认不出人名时按出场顺序轮换，也不会和旁白混成一个声音。</p>' +
+      '<p>点朗读条上的「多角色」按钮，或到「阅读设置 → 分角色朗读」开启：<b>旁白还是用你选的声线，引号里的对白按人物自动换成不同的声音</b>。开始朗读前会先把这一章前后几章里说过话的人扫一遍、一次性把声线定好，同一个人物整本书都是同一个声音（代词「他 / 她」也会绑回那个人，不另起一条声线）；认不出是谁的那句沿用上一位的声音，只有真的换了人才变。</p>' +
       '<p>角色音色池可选「男女混合 / 全女声 / 全男声」。设置里的「试听效果」会念一小段带对白的示例，直接听差别。正在念的时候开或关都立刻生效，并从当前这一段重新开始念。</p>' +
       '<p class="kv">只在「免费神经语音」下生效——系统语音一次只能出一个声音，做不到分角色。旁白声线就是你在音色里选的那个；想换最常出现的那个角色声音，直接换旁白声线（角色池会自动避开它）。</p>' +
       '<h3>工作原理</h3>' +
@@ -3238,6 +3960,59 @@
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + 三份中文 VITS 模型）：不联网、不收费、无需账号，主角是 22.05 kHz 的「墨吟 · 女声」与「墨吟 · 男声」，另带 187 个配角说话人（148 女 + 39 男），精选 21 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.14.11 改了什么</h3><ul>' +
+      '<li><b>念到英文不再报错、不再切回系统语音</b>：三份中文模型的词典里一个英文字母都没有（实测 68 012 条词条，连 hello / OK / CPU 都查不到），整段英文送进去就是「一个字都没念出来」，旧版会报 HTTP 500 并退回系统朗读。</li>' +
+      '<li><b>现在这样处理</b>：纯英文（一个汉字都没有）的句子，交给系统英文语音念——语言换了，声音本来就不该是同一副；机器上没有英文语音就按字母数留一段空白（最长 4.5 秒）再往下念，只轻提示一次，不弹窗、不算失败、不降级。<b>中英混排</b>（「他打开 iPhone 看了一眼」）照常用人物的声音念中文，英文单词按语言切开后交给英文模型补上（需 VoicePack/models/piper-en，可选装；没装则那一个词略过，中文不受影响）。</li>' +
+      '<li><b>安卓端不再为一段英文弹「语音没有出声」</b>：手机壳里的中文模型同样不认字母，以前一段英文就会弹诊断窗、整场朗读停在那儿。现在这类句子按语速留白跳过，接着念下一句。</li>' +
+      '<li><b>纯符号、开头几句的修正都保留</b>：1.14.10 那三处（「？？？」按长度留白、单句失败只跳这一句、开头先等引擎 8 秒）一个没动。</li>' +
+      '</ul>' +
+      '<h3>1.14.10 改了什么</h3><ul>' +
+      '<li><b>念到「？？？」不再忽然换成系统语音</b>：这种整段只有标点的地方，本来就没有一个字可以念，引擎会判成空文本（HTTP 500 empty text），页面一收到就当引擎坏了、切回系统朗读——听感上就是「念到问号忽然换了个人」。现在按符号长度留一段安静（一个问号约 0.3 秒，最多 0.8 秒），后面照常用原来的人物声音念下去。</li>' +
+      '<li><b>一句没合成出来，只跳这一句</b>：多角色朗读最怕中途换嗓子。现在单句失败只丢那一句，接着念下一句，段里其它内容不受影响；只有连不上引擎、或者连着好几段都出不来，才退回系统朗读。</li>' +
+      '<li><b>刚打开软件就点朗读，开头不再变成机械音</b>：此前页面一进去就探一次引擎，那时它往往还没解压完模型，探不到就用系统语音念掉开头几句；十几秒后又恢复，同一段话两种嗓子。现在点朗读会先等引擎最多 8 秒，等到了就用神经语音从头念。万一真的退回了系统语音，这一场朗读就一直用它，不在半路换回来（下次点朗读再重试）。</li>' +
+      '<li><b>服务端兜底</b>：任何只有标点、没有可念字的请求，返回等长静音而不是报错，旧版页面也不会再被这一下吓回系统语音。</li>' +
+      '</ul>' +
+      '<h3>1.14.9 改了什么</h3><ul>' +
+      '<li><b>一个人只有一个声音了</b>：以前是「谁先开口，谁就从声线池里挑一个还没被用过的」，于是同一个人在不同段落被认成不同写法（赵长河 / 他 / 赵长河道），各抢一条声线；认不出说话人那句又再抢一条。听感就是一段两人对话里男女声来回跳。这一版改成<b>先定人、再开口</b>：开始朗读前先把这一章连同前后各两章（第一次读这本书还会加上开篇三章）里说过话的人全扫一遍，按戏份排好，一次性把声线定死，并写进书里，下次打开还是这些声音。</li>' +
+      '<li><b>「他 / 她」不再算新人物</b>：代词现在会绑到本段最近提到的那位同性别角色，绑不上就用这一场在场的那位。以前「女子」和「她」各配一个女声，同一段里一个人两种嗓子，就是这么来的。</li>' +
+      '<li><b>认不出是谁的那句不换声</b>：改成沿用上一位的声音。以前这里会挑一个「用得最少」的声线，每句换一个，最刺耳。<b>只有真的换了人</b>（上一句明确是别人、两句紧挨着）才跟着换。</li>' +
+      '<li><b>「他平静回应：」这种归属句用他自己的声音</b>：带说话动词或引来对白的冒号小句，跟着那个人走，不会在一个人说话中间硬插进旁白的嗓子；纯动作描写（「她抬头看了一眼窗外。」）仍然归旁白。</li>' +
+      '<li><b>不再自动用到慢声线</b>：人物一多，旧逻辑会自动扩到那 187 人的慢库，一句要十几秒。现在只在「声线范围」里主动选「全部」时才动用，人物多出来就共用快声线。</li>' +
+      '</ul>' +
+      '<h3>1.14.8 改了什么</h3><ul>' +
+      '<li><b>对话前等十几秒的毛病，根子找到了</b>：电脑版以前的语音是「一句话起一个进程」，引擎光是启动、把模型读进内存就要 1.9 秒，一段对白十几个短句，排着队合成就是九秒、十秒。实测数据就摆在那儿：长段 9.9 秒，短句也要 1.9 秒。这一版把模型改成<b>常驻内存</b>，加载一次反复用，同样那一段 <b>9.9 秒 → 2.7 秒</b>，短句 <b>1.9 秒 → 0.19 秒</b>。</li>' +
+      '<li><b>配角声线换成 8 个快的</b>：原来那 187 人的配角库音色最自然，但推理慢二十倍——一句二十字要十二秒以上，只要配角一开口就必然干等。现在改用男女主角两份 22 kHz 模型各做四个音高变体（低沉／原声／沉稳／明亮），一句二十字约 0.5 秒。代价说明白：配角之间的音色差别不如原来那 187 人明显，但每个角色仍然固定一个声音，男女绝不会搞反。想换回旧音色，在语音下拉里选带「音色 N」字样的仍在。</li>' +
+      '<li><b>整章先排好，播到哪儿都不断</b>：开始朗读时就把后面几段的对白分析完、句子切好、声音定死，然后按播放顺序一句一句提前合成。以前是「这一段播完了才开始合成下一段」，现在是一边播一边备，换段、换人都是无缝的。</li>' +
+      '<li><b>认人更准了</b>：修好三类最容易配错性别的句子——「赵长河忽然开口」「女子平静回应」（名字后面隔着一层状语，旧版会把「赵长河忽」「女子平」当人名），以及「女子头也不抬，似是知道他的到来：」这种主语在整句最前面、冒号前全是动作神态的句子。另外一问一答里没写是谁说的那对引号，会按「上句是女声，这句就换男声」来判，不再一律当旁白。</li>' +
+      '</ul>' +
+      '<h3>1.14.7 改了什么</h3><ul>' +
+      '<li><b>角色开口前不再干等</b>：分角色时旁白与对白用的是两套模型，旧版把两套合成排成一个队，还只预取下一句——上一句快播完了才轮到合成角色那句，听感就是每次换声都卡一下。现在提前两段排队，两套模型各自并行合成，换声那句往往在上上句还在播时就备好了。</li>' +
+      '<li><b>第一个角色不再等十几秒</b>：配角库（187 人那份 38 MB 模型）原来要等第一次对白才解压。现在开始朗读时就先把它预热，藏在开头几句旁白里。</li>' +
+      '<li><b>男女声不会再配反</b>：修掉「张三对她说」被认成「她说的」——这类句子以前会把听话人当说话人，于是男角色一开口就是女声。同时按名字用字判断性别（阿芳 / 王强），并从上下文里的「他 / 她」认人，认一次整本书沿用；「我说」直接用旁白的声音，第一人称书里不会凭空多出一个人。</li>' +
+      '<li><b>配错了会自己改</b>：万一先前没认出性别、随手配了一个，后面认出来了而声音跟性别对不上，会自动换掉，不会让男角色一直用女声。</li>' +
+      '</ul>' +
+      '<h3>1.14.6 改了什么</h3><ul>' +
+      '<li><b>点朗读终于会出声了</b>：安卓的系统浏览器内核里根本没有网页朗读接口，程序一直拿它当前置条件。于是「手机自带的语音引擎明明已经连上」，一点朗读还是被拦回去弹「引擎已连上，再点一次朗读」；再点一次，还是同一句。现在只要本机语音引擎就绪就直接读，不再依赖那个不存在的接口。</li>' +
+      '<li><b>合成失败会说实话</b>：以前失败时只在屏幕底部闪一条 6 秒的小字，还会悄悄退回手机系统语音（那个是哑的）。现在弹一个能看清的对话框，里面直接写引擎给的原因和自检结果，截图就能定位。</li>' +
+      '<li><b>声音很轻的片段会被抬起来</b>：压缩过的模型偶尔输出峰值很低的波形，旧版当成「没出声」整段丢掉。现在先把它抬到正常音量再播，不会再有整段空白。</li>' +
+      '<li><b>加载完先自动试合成一句</b>：把推理会话提前热起来，也顺手检查引擎到底能不能出声。</li>' +
+      '</ul>' +
+      '<h3>1.14.5 改了什么</h3><ul>' +
+      '<li><b>点朗读不再误报「手机没有中文语音」</b>：安卓版第一次启动要先把十几 MB 的语音模型解压好，这段时间引擎还没就绪。旧版只探一次（2.2 秒就超时），探不到就立刻回退到系统语音，再弹出一条「这台手机没有可用的中文语音」——可你自己的引擎往往下一秒就好了，等于冤枉了手机。现在会一直等到引擎就绪（最多 60 秒），期间只提示「正在准备语音引擎」。</li>' +
+      '<li><b>第一段朗读放宽到 90 秒</b>：手机上第一句要现建推理会话，慢的时候三十秒都打不住，旧版 30 秒就判超时。第一段成功后回到 45 秒。</li>' +
+      '<li><b>真的失败时说人话</b>：安卓壳里的系统语音其实是哑的，切过去等于没声音。现在合成失败会直说「这一段没合成出来」，不再假装已经切到系统朗读。</li>' +
+      '<li><b>状态探测从 2.2 秒放宽到 4 秒</b>：引擎解压时机器很忙，状态接口偶尔要两三秒才回，超时就会被误判成「没连上」。</li>' +
+      '</ul>' +
+      '<h3>1.14.4 改了什么</h3><ul>' +
+      '<li><b>修好安卓端点图标黄屏、反复闪退</b>：1.14 给手机加了离线神经语音，引擎启动时把解压后的模型用「文件绝对路径」喂进去，却顺手把安卓的资源管理器（AssetManager）也传了。引擎看到资源管理器就以为路径是包内的相对路径，去包里找 <code>model.onnx</code>，当然找不到；而那段代码在底层库（native）里没有异常保护，找不到的那一刻整个进程被直接终止——所以手机上既没有弹窗、也没有报错，只有一片窗口底色，系统又把界面反复拉起来。现在改成只走文件路径，模型加载、建引擎都正常了。</li>' +
+      '<li><b>语音改成界面画好之后才加载</b>：以前是一进 App 就和浏览器内核同时去加载几十 MB 的底层库，部分机型会因此卡死在启动。现在先让你看到书架，约 9 秒后再在后台准备语音，朗读之前就绪。</li>' +
+      '<li><b>只有安卓包受影响</b>：电脑版、网页版走的是本机 Python 语音服务，没有这段代码，此前各版一直正常。</li>' +
+      '</ul>' +
+      '<h3>1.14.1 改了什么</h3><ul>' +
+      '<li><b>修好安卓端点朗读弹「语音引擎没能启动」</b>：1.14.0 的安卓包里，引擎配置只用得上 VITS 一种声音模型，剩下六种（matcha、kokoro 等）当初图省事填了空值。新版引擎库把这几个位置声明成「不许为空」，于是在建配置的那一刻就抛异常，模型连加载都没轮到——报告里的 <b>NullPointerException ... parameter matcha</b> 就是这一句。现在改成填空对象，已用同一份引擎库在本机复现报错并验证通过。</li>' +
+      '<li><b>只有安卓包需要换</b>：电脑版和网页版走的是本机 Python 语音服务，压根没有这个配置类，不受影响。</li>' +
+      '<li><b>万一还有别的错</b>：弹窗里「先用手机自带的中文语音顶上」那条建议依然有效，可以先听着，把新弹窗的报错原文发过来。</li>' +
+      '</ul>' +
       '<h3>1.14 改了什么</h3><ul>' +
       '<li><b>男主、女主都换成 22.05 kHz</b>：以前只有女声是高清，男声只能从配角库里挑，听着发闷发远。现在男女主角各有一份 22.05 kHz 的模型，配角库也升到 16 kHz——原来 4 kHz 以上整段是空的，现在是真实的高频。</li>' +
       '<li><b>187 个配角，按年龄层分组挑</b>：老生、中年男、青年男、沉稳女、成年女、青年女、童声共七档，每档都有几个人可选，档内按音高排好。它们全部来自同一份模型，放开多少个都不增加体积。</li>' +
@@ -3336,7 +4111,7 @@
       '<li><b>桌面版终于能划线了</b>：桌面外壳默认把网页的文字选择关掉了，导致选中正文没反应、浮动色块也不出来。已放开，Windows 版的划线与批注和其他版本一样。</li>' +
       '<li><b>导入文件夹不再像在上传</b>：桌面版改用系统的「选择文件夹」对话框，不再是浏览器那个「选择要上传的文件夹 … 上传」的选择器。</li>' +
       '<li><b>左侧导航能退出了</b>：标签栏右侧加了 ×，再点同一个按钮也能收起，点正文空白处自动收起（有选区时不收，免得把手选的位置抖掉）。</li></ul>' +
-      '<p class="kv">版本 1.11.0 · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
+      '<p class="kv">版本 ' + VER + ' · 单文件 · 默认零联网 · 数据仅存本机<br>作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）<br>问题反馈与源码：随发行包附带的 README 里有仓库地址</p>']
   };
   function showDoc(k) {
     var d = DOCS[k] || DOCS.help;
@@ -3923,7 +4698,7 @@
       var p = e.target.closest('.rdp');
       if (p && SPK.on) {
         var i = SPK.paras.indexOf(p);
-        if (i >= 0) { SPK.gen++; clearTimeout(SPK.watch); clearTimeout(SPK.gapT); stopLocalAudio(); SPK.prefetch = null; try { SYN.cancel(); } catch (er) {} setPara(i); highlight(); if (SPK.playing) speakChunk(0); }
+        if (i >= 0) { SPK.gen++; clearTimeout(SPK.watch); clearTimeout(SPK.gapT); stopLocalAudio(); clearPref(); try { SYN.cancel(); } catch (er) {} setPara(i); highlight(); if (SPK.playing) speakChunk(0); }
       }
     };
     /* 选中文字 → 浮动工具条（桌面上 mouseup，触屏上 touchend） */

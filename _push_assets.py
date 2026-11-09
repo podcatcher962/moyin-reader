@@ -24,7 +24,7 @@ import time
 REPO = 'podcatcher962/moyin-reader'
 TOKEN_FILE = r'D:\Desktop\send-to-mainpc\podcatcher962-token.txt'
 API = 'https://api.github.com'
-VER = '1.14.0'
+VER = '1.14.11'
 
 # --all 时传的全套（改版本号时一起改）
 ALL = [
@@ -39,6 +39,10 @@ ALL = [
 
 
 def token():
+    # 优先读环境变量，方便别人或 CI 用自己的 token；没有才退回本机文件
+    t = (os.environ.get('GITHUB_TOKEN') or os.environ.get('GH_TOKEN') or '').strip()
+    if t:
+        return t
     return open(TOKEN_FILE, encoding='utf-8').read().strip()
 
 

@@ -19,6 +19,10 @@ API = 'https://api.github.com'
 
 
 def token():
+    # 优先读环境变量，方便别人或 CI 用自己的 token；没有才退回本机文件
+    t = (os.environ.get('GITHUB_TOKEN') or os.environ.get('GH_TOKEN') or '').strip()
+    if t:
+        return t
     return open(TOKEN_FILE, encoding='utf-8').read().strip()
 
 
@@ -33,7 +37,7 @@ def curl(args, timeout=900):
 
 def main():
     apply = '--apply' in sys.argv
-    tag = 'v1.14.0'
+    tag = 'v1.14.11'
     apk = 'docs/download/MoYinReader.apk'
     if not os.path.isfile(apk):
         print('找不到', apk)
@@ -52,12 +56,11 @@ def main():
         return 0
 
     if rel is None:
-        payload = {'tag_name': tag, 'name': '墨吟阅读器 1.14.0',
-                   'body': ('手机端也能跑 174 个离线神经声线。\n\n'
-                            '* 安卓包内置 sherpa-onnx 与 AISHELL3 模型，断网也能听\n'
-                            '* 手机顶栏收进「⋯」，按键 44px；首启按屏宽给 18px/1.9\n'
-                            '* 返回键逐层退：弹窗 → 批量选择 → 侧栏 → 书架\n'
-                            '* 听书时屏幕常亮\n'),
+        notes = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_notes_1.14.11.md')
+        body_txt = (open(notes, encoding='utf-8').read() if os.path.isfile(notes)
+                    else '语音系统升级：男女主角各一份 22.05 kHz 模型，配角库 16 kHz / 187 人。\n')
+        payload = {'tag_name': tag, 'name': '墨吟阅读器 1.14.11',
+                   'body': body_txt,
                    'draft': False, 'prerelease': False}
         tmp = os.path.join(os.environ['TEMP'], '_rel.json')
         with open(tmp, 'w') as f:
