@@ -117,22 +117,33 @@ function get(port, p, method) {
       vis:getComputedStyle(e).display!=='none'&&r.height>0};});
     return o;})()`);
   const shown = Object.keys(rdVis).filter(k => rdVis[k].vis);
-  ok(shown.length === 5 && rdVis.btnToc.vis && rdVis.btnFind.vis && rdVis.btnType.vis
-     && rdVis.btnSpeak.vis && rdVis.btnMore.vis, '阅读页一级正好 5 个键', shown);
+  /* 1.14.12 起手机阅读页一级只留 3 个键：目录、朗读、⋯。
+     搜索和排版进了「⋯」里（build.py 的窄屏样式把 #btnFind/#btnType 一起收），
+     这里按当前设计断言，并在下面确认它们展开后仍可达。 */
+  ok(shown.length === 3 && rdVis.btnToc.vis && rdVis.btnSpeak.vis && rdVis.btnMore.vis,
+     '阅读页一级正好 3 个键', shown);
   ok(!rdVis.btnMarks.vis && !rdVis.btnNotes.vis && !rdVis.btnSet.vis, '书签 / 笔记 / 设置默认收起');
-  const rMinH = Math.min(rdVis.btnToc.h, rdVis.btnFind.h, rdVis.btnType.h, rdVis.btnSpeak.h);
-  ok(rMinH >= 44, '阅读页按钮高度 ≥ 44px（实测 ' + rMinH + '）', rMinH);
+  ok(!rdVis.btnFind.vis && !rdVis.btnType.vis, '搜索 / 排版默认收进「⋯」',
+     { find: rdVis.btnFind.vis, type: rdVis.btnType.vis });
+  const rMinH = Math.min(rdVis.btnToc.h, rdVis.btnSpeak.h, rdVis.btnMore.h);
+  /* 1.14.12「顶栏压成一行」后按钮是 38px，是为了给正文让高度刻意做的取舍，
+     44px 的旧门槛已经不适用。这里守 36px：再矮就是样式被改坏了（或某条 CSS 掉了）。 */
+  ok(rMinH >= 36, '阅读页按钮高度 ≥ 36px（实测 ' + rMinH + '）', rMinH);
   const topRows = await ev(`(function(){var s=new Set();
-    ['btnToc','btnFind','btnType','btnSpeak','btnMore'].forEach(function(k){
+    ['btnToc','btnSpeak','btnMore'].forEach(function(k){
       s.add(Math.round(document.getElementById(k).getBoundingClientRect().top));});
     return s.size;})()`);
-  ok(topRows === 1, '5 个一级键在同一行', topRows);
+  ok(topRows === 1, '3 个一级键在同一行', topRows);
   await shot('shot_21_mobile_readbar.png');
 
   await ev("document.getElementById('btnMore').click()"); await sleep(320);
   const rdOpen = await ev(`(function(){var e=document.getElementById('btnSet');
-    return {vis:getComputedStyle(e).display!=='none'};})()`);
+    var f=document.getElementById('btnFind'), t=document.getElementById('btnType');
+    return {vis:getComputedStyle(e).display!=='none',
+            find:getComputedStyle(f).display!=='none',
+            type:getComputedStyle(t).display!=='none'};})()`);
   ok(rdOpen.vis === true, '阅读页「⋯」展开设置等次要键');
+  ok(rdOpen.find && rdOpen.type, '「⋯」展开后搜索 / 排版可见', rdOpen);
   await shot('shot_22_mobile_readbar_open.png');
 
   // 点其中一项应自动收起，且功能真的触发（设置面板弹出）

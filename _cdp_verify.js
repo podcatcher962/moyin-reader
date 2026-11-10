@@ -205,8 +205,14 @@ async function main() {
   ok(nav.side > 5, '目录侧栏有条目', nav.side);
   const tocClick = await ev("(function(){const b=document.querySelector('#side .it[data-ch=\"2\"]');if(b)b.click();return MY.BK.ch;})()");
   ok(tocClick === 2, '点击目录跳章', tocClick);
-  const scroll = await ev("(async()=>{const w=document.getElementById('pageWrap');w.scrollTop=w.scrollHeight*0.5;" +
-    "w.dispatchEvent(new Event('scroll'));await new Promise(r=>setTimeout(r,120));return {r:MY.BK.ratio,tx:document.getElementById('progTx').textContent};})()");
+  /* 1.14.12 起默认翻页，正文靠 translateX 走，scrollTop 恒为 0。
+     这一条要验的是滚动模式的进度回写，所以先临时切到滚动模式，验完再切回来。 */
+  const scroll = await ev("(async()=>{MY.CFG.mode='scroll';MY.renderChapter(MY.BK.ch,{silent:true});" +
+    "await new Promise(r=>setTimeout(r,120));" +
+    "const w=document.getElementById('pageWrap');w.scrollTop=w.scrollHeight*0.5;" +
+    "w.dispatchEvent(new Event('scroll'));await new Promise(r=>setTimeout(r,200));" +
+    "const o={r:MY.BK.ratio,tx:document.getElementById('progTx').textContent};" +
+    "MY.CFG.mode='page';MY.renderChapter(MY.BK.ch,{silent:true});return o;})()");
   ok(scroll.r > 0 && scroll.r < 1, '章内滚动进度', scroll.r);
   ok(scroll.tx.indexOf('%') > 0, '进度文字', scroll.tx);
   await ev('MY.addMark()');
@@ -274,6 +280,9 @@ async function main() {
 
   console.log('=== 朗读');
   await ev('MY.CFG.pause=0');
+  /* localOn 默认是开的：startSpeak 会先花最多 8 秒去连 127.0.0.1 的常驻引擎，
+     等不到才退回系统语音。这一组验的是系统语音那条路，先关掉别白等。 */
+  await ev('MY.CFG.localOn=false');
   const sp = await ev("(async()=>{MY.renderChapter(0);window.__spoken=[];MY.startSpeak(0);await new Promise(r=>setTimeout(r,160));" +
     "return {n:window.__spoken.length,playing:MY.SPK.playing,hi:document.querySelectorAll('#page .rdp.speaking').length," +
     "now:document.getElementById('spNow').textContent,voice:document.getElementById('spVoice').options.length," +
@@ -300,6 +309,7 @@ async function main() {
   await ev('MY.stopSpeak(false)');
   ok(await ev('MY.SPK.playing') === false, '停止朗读');
   ok(await ev("document.querySelectorAll('#page .rdp.speaking').length") === 0, '高亮已清除');
+  await ev('MY.CFG.localOn=true');      // 朗读这一组验完，恢复默认，别影响后面的用例
   const tm = await ev("(function(){const s=document.getElementById('spTimer');s.value='10';s.dispatchEvent(new Event('change'));" +
     "return {d:MY.SPK.deadline,tx:document.getElementById('spLeft').textContent};})()");
   ok(tm.d > Date.now(), '定时停止已设置');

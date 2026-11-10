@@ -261,9 +261,12 @@ def real_run(exe):
     p = subprocess.Popen([exe])
     try:
         time.sleep(6)
-        assert p.poll() is None, 'exe 秒退'
+        # Nuitka onefile 的引导进程有时在这几秒里已经把活交给子进程就退了，
+        # 直接判「秒退」会误报（1.14.21 实测过一次）。所以先看服务与窗口，
+        # 两个都不在才认定真崩了，并把返回码打出来。
+        gone = p.poll()
         ok = False
-        for _ in range(10):
+        for _ in range(15):
             try:
                 with urllib.request.urlopen('http://127.0.0.1:38975/__ping', timeout=2) as r:
                     j = json.loads(r.read())
@@ -272,7 +275,7 @@ def real_run(exe):
                     break
             except Exception:
                 time.sleep(1)
-        assert ok, '窗口起来后本地服务不可访问'
+        assert ok, '窗口起来后本地服务不可访问（进程返回码 %s）' % gone
         titles = []
         EnumWindows = ctypes.windll.user32.EnumWindows
         cb_t = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)

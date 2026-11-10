@@ -109,12 +109,21 @@ FANCHEN_DIR = 'fanchen'                # 187 人配角库
 # 英文模型（可选装）。三个中文模型一个英文字母都不认识——实测 lexicon 里
 # 连 hello / CPU / OK 都没有，送进去就是「一个字都没念出来」，整句 500。
 # 所以小说里夹的 iPhone / WiFi / GDP 以前是被静默吞掉的，纯英文段落更是
-# 直接报错。装一个 piper 英文模型（int8，约 22 MB）就能把这块补上：
-#   models/piper-en/model.onnx + tokens.txt + espeak-ng-data/
+# 直接报错。装一个英文模型（约 40 MB）就能把这块补上：
+#   models/en-ljs/model.onnx + tokens.txt + lexicon.txt
+#
+# 用的是 icefall 的 vits-ljs（LJSpeech，22.05 kHz），靠自己的音素词典发音，
+# **不需要 espeak**。这一点很关键：piper 系英文模型（en_US-lessac 之类）都要
+# espeak-ng 前端，而 sherpa-onnx 2.0.1 的 Windows 包已经把 espeak 编掉了
+# （2026-11-10 实测：二进制里搜不到 espeak_Initialize，任何 piper 模型都报
+#  「no lexicon, and no frontend available」）。espeak-ng 是 GPLv3，不编进去
+#  对许可证反而更干净——我们用 Apache-2.0 的 icefall 模型，正好对得上。
+#
 # 没装也不影响中文朗读，页面会拿系统英文语音顶这一段（见 app.js 的 speakForeign）。
-EN_DIR = 'piper-en'
+EN_DIR = 'en-ljs'
 EN_SID = 0                             # 多说话人模型里挑的那个英文声线
 EN_F0 = 200                            # 只用于界面显示分档
+EN_SR = 22050                          # vits-ljs 就是按 22.05 kHz 训的
 
 SID_F0 = {
       0: 260,
@@ -609,19 +618,19 @@ def en_ready():
     if not FAST:
         return False
     d = _en_dir()
-    if not (os.path.isfile(os.path.join(d, 'model.onnx'))
-            and os.path.isfile(os.path.join(d, 'tokens.txt'))):
-        return False
-    return os.path.isdir(os.path.join(d, 'espeak-ng-data'))
+    return all(os.path.isfile(os.path.join(d, f))
+               for f in ('model.onnx', 'tokens.txt', 'lexicon.txt'))
 
 
 def _en_cfg():
     so = RES['mod']
     d = _en_dir()
+    # 有 lexicon 就不需要 espeak 前端：词表里没有的词 sherpa 会跳过（Ignore OOV），
+    # 念不出来的整句会返回空音频，由 _synth_en 抛 NoEnVoice 交给页面兜底。
     v = so.OfflineTtsVitsModelConfig(
         model=os.path.join(d, 'model.onnx'),
         tokens=os.path.join(d, 'tokens.txt'),
-        data_dir=os.path.join(d, 'espeak-ng-data'))
+        lexicon=os.path.join(d, 'lexicon.txt'))
     m = so.OfflineTtsModelConfig(vits=v, num_threads=2, debug=False, provider='cpu')
     c = so.OfflineTtsConfig(model=m)
     c.silence_scale = SILENCE_SCALE
@@ -643,13 +652,21 @@ def _en_pool():
 
 
 def _synth_en(text, speed):
-    """英文片段：走 piper 模型，不和中文声线抢实例池。"""
+    """英文片段：走 icefall 英文模型，不和中文声线抢实例池。
+
+    词典全是小写词条（12.3 万条，零个大写开头），所以先 lower()——
+    否则 Hello / CPU 这类词会被当成 OOV 直接跳过，念出来缺字。
+    合成结果为空 = 整句一个词都不认识，抛 NoEnVoice 让页面换系统英文语音，
+    总比静音好。
+    """
     p = _en_pool()
     inst = p['q'].get()
     try:
-        au = inst.generate(text, sid=EN_SID, speed=speed or 1.0)
+        au = inst.generate((text or '').lower(), sid=EN_SID, speed=speed or 1.0)
     finally:
         p['q'].put(inst)
+    if not len(au.samples):
+        raise NoEnVoice(text)
     return _pcm16(au.samples, au.sample_rate)
 
 
@@ -816,6 +833,8 @@ def health():
         'curated': order or list(VOICES),
         'count': len([v for v in VOICES if voices.get(v)]),
         'en': en_ready(),
+        # 配角库模型在不在。页面用它决定要不要提示「正在准备语音库」，在就一次都别弹。
+        'lib': voice_ready(CURATED[0][0]) if CURATED else False,
         'version': 8,
         'engineKind': VOICES[DEFAULT_VOICE]['kind'] if DEFAULT_VOICE in VOICES else 'vits',
     }
@@ -871,19 +890,25 @@ def clean_text(s):
 def prosody_split(text):
     """把文本切成 [(片段, 其后停顿秒数, 该停顿对应的标点)]，停顿按标点类型分层。
 
-    切分原则跟人备稿一样：标点处断开，标点本身不喂给引擎（引擎读不了标点，
-    喂进去只会被丢掉），停顿由调用方按秒数插。
+    只在句末标点处断段（句号、问号、叹号、分号、省略号），逗号/顿号/冒号留在
+    段内——引擎自己会按标点停顿，而且长段合成的音质明显比切成 3~6 字的小块好。
+    段内超过 MAX_SEG 字才在最近的一个句内标点处兜底断开，避免一句过长时
+    引擎把后半句念飘。
     """
     out = []
     buf = []
+
+    def flush(gap, punct):
+        seg = ''.join(buf).strip()
+        if seg:
+            out.append((seg, gap, punct))
+        del buf[:]
+
     i, n = 0, len(text)
     while i < n:
         ch = text[i]
         if ch == '\n':
-            seg = ''.join(buf).strip()
-            if seg:
-                out.append((seg, PARA_PAUSE, '。'))
-            buf = []
+            flush(PARA_PAUSE, '。')
             i += 1
             continue
         # 小数点与时间里的冒号不是标点（3.5、12:30），别在这里断
@@ -891,28 +916,38 @@ def prosody_split(text):
             buf.append(ch)
             i += 1
             continue
-        if ch in PAUSE:
+        if ch in HARD_STOP:
             # 连续标点（？！ …… ——）取最长的那个，不要再叠
             j, gap = i, 0.0
             while j < n and text[j] in PAUSE:
                 gap = max(gap, PAUSE[text[j]])
                 j += 1
-            seg = ''.join(buf).strip()
-            if seg:
-                out.append((seg, gap, text[j - 1]))
-            buf = []
+            flush(gap, text[j - 1])
             i = j
             continue
         buf.append(ch)
         i += 1
-    seg = ''.join(buf).strip()
-    if seg:
-        out.append((seg, 0.0, ''))
+        if ch in SOFT_STOP and _cjk_len(''.join(buf)) >= MAX_SEG:
+            flush(PAUSE.get(ch, 0.38), ch)
+    flush(0.0, '')
     return out
 
 
 MIN_SEG = 2                            # 少于这个字数的片段并进相邻片段
 INNER_PUNCT = '，,、；;：:。！？!?…—～~'
+
+# 只在这些标点处真正断段；逗号、顿号、冒号留在段内交给引擎自己停。
+# 为什么不再按逗号切：一段话被切成一串 3~6 字的小块，每块单独合成再拼接，
+# 一来语调断成一片，二来短输入正是量化模型失真最重的区间（实测 4 字段
+# 的谱平坦度比 14 字段高一倍），听感就是「几个字糊成一团」。
+# 现在一段 = 一整句，15~30 字，既连贯又落在失真小的区间。
+HARD_STOP = '。！？!?；;….'
+SOFT_STOP = '，,、：:—～~'
+MAX_SEG = 34                           # 长句保护：超过这个字数才在逗号处兜底断开
+
+
+def _cjk_len(s):
+    return sum(1 for c in s if '\u4e00' <= c <= '\u9fff' or c.isdigit())
 
 
 def _inner_scale(text):

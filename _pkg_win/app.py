@@ -35,7 +35,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 APP = 'MoYinReader'
 APP_CN = '墨吟阅读器'
-VER = '1.14.12'
+VER = '1.14.21'
 VOICE_PORT = 8177
 PORTS = (38975, 38976, 0)
 CREATE_NO_WINDOW = 0x08000000
@@ -740,7 +740,8 @@ BUNDLE_MUST = (
     'models/shared/date.fst',
     'models/shared/number.fst',
     'models/shared/phone.fst',
-    # 配角库：fanchen 187 人（16 kHz int8），自带词典与 jieba 分词表
+    # 配角库：fanchen 187 人（16 kHz 半精度 fp16，61 MB），自带词典与 jieba 分词表
+    # 注：int8 会把字错率翻倍（见 _notes_1.14.17.md），体积不能靠量化省
     'models/fanchen/model.onnx',
     'models/fanchen/lexicon.txt',
     'models/fanchen/tokens.txt',

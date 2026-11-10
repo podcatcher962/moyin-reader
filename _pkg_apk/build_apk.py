@@ -100,8 +100,8 @@ os.makedirs(STAGE, exist_ok=True)
 MANIFEST = '''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="%s"
-    android:versionCode="11412"
-    android:versionName="1.14.12">
+    android:versionCode="11421"
+    android:versionName="1.14.21">
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
     <!-- 只有两条：WebView 访问本机 127.0.0.1 需要明文 http；
          不申请麦克风、定位、通讯录、存储，读书不需要这些。 -->
@@ -681,8 +681,11 @@ def audit(allcls, dexfile, has_neuro):
     ok &= ck(not third, 'dex 无第三方 SDK 类')
     size = os.path.getsize(FINAL)
     if has_neuro:
-        ok &= ck(20 * 1048576 < size < 90 * 1048576,
-                 'APK 体积 %.1f MB（含 89 MB 语音模型与 sherpa 引擎）' % (size / 1048576))
+        # 上限放到 175 MB：配角库改回原版 fp32（121 MB）后成品约 158 MB。
+        # 体积换音质是刻意的取舍——压缩过的 int8 版实测字错率翻倍（11% → 25%），
+        # 耳朵里就是「每句有几个字囫囵吞枣」，再多省 80 MB 也不值得。
+        ok &= ck(20 * 1048576 < size < 175 * 1048576,
+                 'APK 体积 %.1f MB（含 209 MB 语音模型与 sherpa 引擎）' % (size / 1048576))
     else:
         # 不带模型时 dex 里仍有 sherpa + kotlin 的类，所以下限放宽到 8 MB 以内
         ok &= ck(50 * 1024 < size < 8 * 1024 * 1024, 'APK 体积 %.1f MB' % (size / 1048576))

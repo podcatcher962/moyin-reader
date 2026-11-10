@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.14.12';
+  var VER = '1.14.21';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -433,7 +433,7 @@
     d.sort(function (a, b) { return a - b; });
     return d[d.length >> 1];
   }
-  function pgMeasure() {
+  function pgMeasure(keepPos) {
     var el = $('page');
     if (!el) return PG;
     if (!pgEnabled()) { pgReset(); return PG; }
@@ -442,6 +442,7 @@
     if (wrap) wrap.style.setProperty('--pcols', cols);   // 容器靠它算 max-width
     el.style.removeProperty('--pcols');
     el.style.columnCount = cols;
+    var keepX = keepPos ? el.style.transform : '';        // 量完要还原，别把页面闪回第一页
     el.style.transform = 'translateX(0px)';
     var m = pgGeo();
     var real = pgRealStep();                    // 实测「列宽 + 栏距」
@@ -455,10 +456,19 @@
       // 除以「列宽 + 栏距」（单列步距），得到的是第几列；m.step 是一屏宽，别混用
       col = Math.max(0, Math.round((r.left - base) / (m.cw + m.gap)));
     }
+    /* 交叉校验：多列布局下 scrollWidth 就是所有列的总宽，比「最后一块的 left」抗造。
+       两个都算，取大的那个——算少了会让「下一页」误以为已经到章末，直接跳到下一章
+       （用户投诉的「点下一页跳章节」就是这么来的）；算多的代价只是多一页空白。
+       差值超过 3 列就当 scrollWidth 里有异常（滚动条宽度之类），不采信。 */
+    if (el.scrollWidth > 0 && m.cw + m.gap > 1) {
+      var byScroll = Math.round(el.scrollWidth / (m.cw + m.gap)) - 1;
+      if (byScroll > col && byScroll <= col + 3) col = byScroll;
+    }
     PG.cols = m.cols; PG.cw = m.cw; PG.gap = m.gap; PG.padL = m.padL; PG.step = m.step;
     PG.count = Math.max(1, Math.ceil((col + 1) / m.cols));
     if (PG.i > PG.count - 1) PG.i = PG.count - 1;
     PG.ready = 1;
+    if (keepPos && keepX) el.style.transform = keepX;
     return PG;
   }
   function pgTo(i, opt) {
@@ -513,6 +523,40 @@
     pgMeasure();
     pgTo(anchor ? paraPage(anchor) : PG.i, { instant: true });
   }
+  /* 只在「页数真的变了」时才重排。
+     插图、自定义字体都是异步到的，尺寸晚一步才定；不重排就可能把一章算成只有一页，
+     于是点「下一页」直接跳到下一章。但又不能无条件重排——那样每次加载都闪一下。 */
+  function pgReflowIfNeeded() {
+    if (!BK || !pgEnabled() || !PG.ready) return;
+    var anchor = pgTopPara(), before = PG.count, keep = PG.i;
+    pgMeasure();
+    if (PG.count !== before) {
+      pgTo(anchor ? paraPage(anchor) : Math.min(keep, PG.count - 1), { instant: true });
+    }
+  }
+  /* 本章的插图加载完（或失败）后补一次重排 */
+  var imgWaitT = 0, imgPending = 0;
+  function waitChapterImages() {
+    if (!pgEnabled()) return;
+    var imgs = $('page') ? $('page').querySelectorAll('img') : [];
+    imgPending = 0;
+    Array.prototype.forEach.call(imgs, function (im) {
+      if (im.complete) return;
+      imgPending++;
+      var once = function () {
+        if (imgPending > 0) imgPending--;
+        if (imgPending === 0) {
+          clearTimeout(imgWaitT);
+          imgWaitT = setTimeout(pgReflowIfNeeded, 80);
+        }
+      };
+      im.addEventListener('load', once, { once: true });
+      im.addEventListener('error', once, { once: true });
+    });
+    // 兜底：没有图、或字体晚到时，也补一次（900ms 足够 web font 落地）
+    clearTimeout(imgWaitT);
+    imgWaitT = setTimeout(pgReflowIfNeeded, 900);
+  }
   /* 正文区域宽度变了（开合侧栏、切换视图、窗口缩放）就必须重新量：
      列宽、列数、一屏步长全都跟着变；放着不管的话 translateX 还按旧步长走，
      翻一页就会停在「半截列」，右边一大片空白。 */
@@ -554,6 +598,11 @@
     if (!BK) return;
     if (pgEnabled()) {
       if (PG.i < PG.count - 1) { pgTo(PG.i + 1); return; }
+      /* 走到「以为的」最后一页时先复核一次页数：插图、字体晚到，或某些机型取整不同，
+         都可能把一章算成一页。不复核就直接跳章，读者会莫名其妙丢掉一整个章节。 */
+      var before = PG.count;
+      pgMeasure(true);
+      if (PG.count > before) { pgTo(Math.min(PG.i + 1, PG.count - 1)); return; }
       if (CFG.autoNext !== 0 && BK.ch < chapterCount() - 1) { renderChapter(BK.ch + 1); return; }
       toast(T('已经是最后一页'), 1500); return;
     }
@@ -1425,9 +1474,46 @@
     if (e === 'txt' || e === 'text') return 'txt';
     return '';
   }
+  /* 文件名里没有后缀时靠文件头认书。
+     安卓有些文件管理器（小米、华为那几家）给 WebView 的显示名会丢掉扩展名，
+     甚至只剩一串数字，于是 .epub 被判成「不支持」——用户的尖叫点就在这里：
+     文件明明选进来了，却提示「跳过 1 本（重复或不支持）」。
+     EPUB 本质是个 ZIP，开头一定是 PK；剩下能读出文本的按 TXT 处理。 */
+  function sniffExt(buf) {
+    if (!buf || !buf.byteLength) return '';
+    var n = Math.min(buf.byteLength, 4096), h = new Uint8Array(buf, 0, n), i;
+    if (n >= 4 && h[0] === 0x50 && h[1] === 0x4b) return 'epub';   // PK\x03\x04 / PK\x05\x06 / PK\x07\x08
+    /* 下面这些是「选得到但读不了」的格式。1.14.19 起文件列表不再按类型过滤，
+       PDF / MOBI 也会出现在眼前；一律当 TXT 强行解码的话，会把二进制塞进书架、
+       读出来全是乱码——所以认不出来的宁可跳过并说清原因。 */
+    if (n >= 4 && h[0] === 0x25 && h[1] === 0x50 && h[2] === 0x44 && h[3] === 0x46) return '';   // %PDF
+    if (n >= 68) {                                                  // Kindle：偏移 60 处有 BOOKMOBI / TPZ
+      var tag = '';
+      for (i = 60; i < 68; i++) tag += String.fromCharCode(h[i]);
+      if (tag === 'BOOKMOBI' || tag.indexOf('TPZ') === 0) return '';
+    }
+    if (n >= 2 && ((h[0] === 0xff && h[1] === 0xfe) || (h[0] === 0xfe && h[1] === 0xff))) return 'txt';  // UTF-16 BOM
+    /* 剩下的按「像不像文本」判：前 4 KB 里出现 NUL、或成片控制字符，就不是文本。
+       GBK / GB18030 / Big5 的高位字节不进这个判断，照样认成 TXT。 */
+    var nul = 0, ctl = 0;
+    for (i = 0; i < n; i++) {
+      var c = h[i];
+      if (c === 0) nul++;
+      else if (c < 9 || (c > 13 && c < 32)) ctl++;
+    }
+    if (nul || ctl > n * 0.02) return '';
+    return 'txt';
+  }
   /* 扫描结果（原生选目录 / 网络位置）统一走这里：报数 → 确认 → 导入 */
   function applyScan(r) {
     if (!r || r.cancel) return;
+    if (r.error) {
+      showModal(T('没能读取这个文件夹'),
+        '<p>' + esc(r.error) + '</p>' +
+        '<p class="kv">' + esc(T('可以改用「导入书籍」，在文件管理器里多选几本一起导。')) + '</p>',
+        [{ label: T('知道了') }]);
+      return;
+    }
     if (!r.files || !r.files.length) {
       toast(r.skipped ? T('这个文件夹里只找到 {k} 个很小的 txt，看着不像书，没有导入', { k: r.skipped })
                       : T('这个文件夹里没有找到 TXT / EPUB'), 4200);
@@ -1489,15 +1575,23 @@
     setTimeout(function () { var b = $('netPath'); if (b) { b.focus(); b.select(); } }, 60);
   }
   async function importFiles(files) {
-    var okN = 0, skipN = 0, errs = [], total = files.length;
+    /* dropN：认不出是什么书的文件（PDF、MOBI、图片……）。
+       这类不报错、不进"跳过"清单——手机的文件列表为了让 epub 能显示，
+       本来就不按类型过滤，用户顺手点到 PDF 是常事；这时候弹一句
+       "不支持这种格式"，只会让人觉得这软件残缺。所以静默放过，
+       只有"一份都没导进来"时，才轻描淡写说一句 PDF 还在做。 */
+    var okN = 0, skipN = 0, dropN = 0, errs = [], total = files.length, skipped = [];
     for (var i = 0; i < files.length; i++) {
       var f = files[i], ext = readExt(f.name);
-      if (!ext) { skipN++; continue; }
       var bname = f.name.replace(/\.[^.]+$/, '');
-      if (BOOKS.some(function (b) { return b.name === bname && b.size === f.size; })) { skipN++; continue; }
+      if (ext && BOOKS.some(function (b) { return b.name === bname && b.size === f.size; })) {
+        skipN++; skipped.push(bname + T('（书架已有）')); continue;
+      }
       try {
         if (total > 3) toast(T('导入中… {a}/{b}', { a: i + 1, b: total }), 1500);
         var buf = await f.arrayBuffer();
+        if (!ext) ext = sniffExt(buf);        // 名字没后缀也认：EPUB 是 ZIP，认 PK 头
+        if (!ext) { dropN++; continue; }      // PDF 之类：静默略过
         var b = await parseBook(buf, bname, ext);
         var id = 'b' + Date.now() + Math.random().toString(36).slice(2, 7);
         await dbPut('blobs', { id: id, buf: buf });
@@ -1515,9 +1609,14 @@
     }
     renderShelf();
     var msg = T('已导入 {n} 本', { n: okN });
-    if (skipN) msg += ' · ' + T('跳过 {n} 本（重复或不支持）', { n: skipN });
+    if (skipN) {
+      msg += ' · ' + T('跳过 {n} 本：{list}', {
+        n: skipN, list: skipped.slice(0, 3).join('、') + (skipped.length > 3 ? '…' : '')
+      });
+    }
     if (errs.length) msg += T('，{n} 本失败', { n: errs.length });
-    if (okN || skipN || errs.length) toast(msg, 3000);
+    if (okN || skipN || errs.length) toast(msg, 4200);
+    else if (dropN) toast(T('这几本还读不了，先导入 TXT 或 EPUB 吧'), 3600);
     if (errs.length) showModal(T('部分文件未能导入'), '<p>' + errs.map(esc).join('</p><p>') + '</p>', [{ label: T('知道了') }]);
   }
 
@@ -1638,6 +1737,7 @@
       pgMeasure();
       var tp = opt.pg === 'last' ? PG.count - 1 : (opt.ratio ? Math.round((PG.count - 1) * opt.ratio) : 0);
       pgTo(tp, { instant: true });
+      waitChapterImages();          // 图/字体晚到时补测一次，免得页数被算少
     }
     applyCfg();
     if (!pgEnabled() && opt.ratio) setTimeout(function () {
@@ -2275,7 +2375,7 @@
   }
   /* slow：等到超时引擎仍没就绪；firstSynth：还没成功合成过（首段要建会话，慢得多） */
   var LOCAL = { ready: false, checking: false, info: null, list: null, miss: 0,
-                slow: false, firstSynth: true };
+                slow: false, firstSynth: true, lib: false };
   /* health().version 低于这个数，说明是升级前留下的旧语音服务（没有标点/英文修正）。
      桌面壳启动时会按这个号判断要不要把旧服务清掉重起，页面这里只做日志与提示。 */
   var LOCAL_MINVER = 8;
@@ -2301,6 +2401,8 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
         LOCAL.ready = !!(j && j.ok); LOCAL.info = j || null; LOCAL.checking = false;
+        /* 配角库是不是已经建好会话：库热了就不该再提示「正在准备语音库」 */
+        if (j && typeof j.lib !== 'undefined') LOCAL.lib = !!j.lib;
         LOCAL.list = buildVoiceList(j);
         LOCAL.miss = LOCAL.ready ? 0 : LOCAL.miss + 1;
         if (LOCAL.ready) fixLocalVoice();
@@ -2651,10 +2753,28 @@
       : (pf && pf.text === txt && pf.v === v && pf.ch === (BK ? BK.ch : -1)) ? pf.p
       : localURL(txt, v);
     /* 首段要现建推理会话，手机上第一次三十秒以上都有可能；之后每段快得多。
-       统一按 30 秒卡会把「第一次」判成失败，所以首段放宽到 90 秒。 */
-    withTimeout(p, LOCAL.firstSynth ? 90000 : 45000).then(function (u) {
+       统一按 30 秒卡会把「第一次」判成失败，所以首段放宽到 90 秒。
+       配角库（s0…s186）更重：187 人共用一份 38 MB 模型，第一次还要先把 51 MB
+       解压到应用目录，中端手机一分多钟都见过——单独给它 150 秒，别把「正在
+       准备」当成「没声音」。 */
+    var libVoice = /^s\d+$/.test(v);
+    var waitMs = libVoice ? (LOCAL.firstSynth ? 150000 : 90000)
+      : (LOCAL.firstSynth ? 90000 : 45000);
+    var slowTip = 0;
+    /* 只在语音库还没建好的那一次提示：库热了以后每段都弹一次，等于每段都
+       骚扰一遍——用户要的是「安静等一句」，不是「被反复告知在等」。 */
+    if (libVoice && !LOCAL.lib) {
+      slowTip = setTimeout(function () {
+        if (g === SPK.gen && SPK.playing) {
+          toast(T('第一次用配角声线：正在准备 187 人语音库，大约要半分钟'), 6000);
+        }
+      }, 5000);
+    }
+    withTimeout(p, waitMs).then(function (u) {
+      if (slowTip) clearTimeout(slowTip);
       if (g !== SPK.gen || !SPK.playing) { revokeURL(u); return; }
       LOCAL.firstSynth = false;
+      if (libVoice) LOCAL.lib = true;   // 能出音就说明库已经热了，后面别再提示
       SPK.fails = 0;                    // 念出来了，之前那些失败不再累计
       var a = new Audio(); a.src = u; a.playbackRate = Number(CFG.rate) || 1;
       SPK.audio = a;
@@ -2668,6 +2788,7 @@
       // 声音已经在播了，后台接着把这一段剩下的、再下一段提前合成好
       fillPara(SPK.pi, SPK.ci + 1);
     }).catch(function (e) {
+      if (slowTip) clearTimeout(slowTip);
       if (g === SPK.gen) localFail(e.message || T('请求失败'));
     });
   }
@@ -3707,8 +3828,10 @@
     if (SPK.playing) { stopSpeak(false); toast(T('已暂停书本朗读，开始试听')); }
     if (localReady()) {
       toast(T('正在试听免费离线音色：') + localVoiceName(CFG.localVoice) + ' …', 3200);
-      // 第一次合成要在手机上现建推理会话，放宽到 90 秒；成功后回到正常档位
-      withTimeout(localURL(TRY_TEXT), LOCAL.firstSynth ? 90000 : 45000).then(function (u) {
+      // 第一次合成要在手机上现建推理会话，放宽到 90 秒；配角库还要先解压
+      // 51 MB，给它 150 秒，成功后回到正常档位
+      var tryLib = /^s\d+$/.test(CFG.localVoice);
+      withTimeout(localURL(TRY_TEXT), tryLib ? 150000 : (LOCAL.firstSynth ? 90000 : 45000)).then(function (u) {
         LOCAL.firstSynth = false;
         var a = new Audio(); a.src = u; a.playbackRate = Number(CFG.rate) || 1;
         try {
@@ -4004,6 +4127,56 @@
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + 三份中文 VITS 模型）：不联网、不收费、无需账号，主角是 22.05 kHz 的「墨吟 · 女声」与「墨吟 · 男声」，另带 187 个配角说话人（148 女 + 39 男），精选 21 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.14.21 改了什么</h3><ul>' +
+      '<li><b>手机选书时，列表里只剩 TXT 和 EPUB</b>：PDF、图片、压缩包不再排在眼前让人误点。之前为了让 epub 能显示，把类型过滤整个放开了，代价是列表里什么都有；现在换成「按类型白名单」——把 epub 在国产系统上可能被认成的那几种形态一并列上（<code>epub+zip</code>、<code>octet-stream</code>、<code>zip</code>），PDF 不在名单里，自然就不出现。</li>' +
+      '<li><b>万一还是选到读不了的文件，不再弹「不支持这种格式」</b>：安静放过就好。只有一次都没导进来时才轻说一句，不把「格式不支持」摆到脸上。</li>' +
+      '<li><b>这一版要谢谢这些人</b>：@momo、@点赞提醒你开了仅限好友评论区、@终端虫虫、@“青青子衿，悠悠我心”、@常清静矣、@小红薯、@生活吖、@Apple、@如月隐。<br>' +
+      '「点下一页跳到下一章」「导入看不到 epub」「配角声线底噪和乱读」「安装包太大」——每一条都是他们先把现象说清楚，才定位得下去。</li>' +
+      '</ul>' +
+      '<h3>1.14.20 改了什么</h3><ul>' +
+      '<li><b>桌面版（Windows EXE / 网页版）跟上手机版</b>：EPUB 导入、防跳章、导入文件夹这三处改的是同一份代码，之前只重打了手机包，桌面 EXE 还是上午的旧包。这一版两边一起出，行为一致。</li>' +
+      '<li><b>PDF / MOBI 这类书不会再被当 TXT 硬塞进书架</b>：1.14.19 放开了文件筛选，所有文件都能看见，好处是 epub 终于能选；副作用是 PDF 也在眼前，若一律按 TXT 解码，就会导进一本满屏乱码的书。现在认不出来的格式直接跳过，并且写明是哪一本、为什么跳过。</li>' +
+      '<li><b>桌面配角声线同样是半精度</b>：配角库 61 MB（原来 121 MB），字错率与合成速度不变。Windows 引擎实测：一句 4 秒的话合成 0.88 秒，速度没受影响。</li>' +
+      '</ul>' +
+      '<h3>1.14.19 改了什么</h3><ul>' +
+      '<li><b>手机版终于能导入 EPUB 了</b>：以前点「导入书籍」，系统文件列表里根本看不到 epub —— 安卓的文件选择器按 MIME 类型筛，而 <code>.epub</code> 对应的 <code>application/epub+zip</code> 在不少国产系统（小米 / HyperOS、部分华为）的 MIME 库里没登记，于是目录里明明躺着 epub 却一个都不显示。现在不再按类型过滤，所有文件都能看见，认书的事交给墨吟自己判断。宣传里写的「能读 epub」，这次是真的能读。</li>' +
+      '<li><b>文件名丢了后缀也能认出来</b>：有些文件管理器递过来的名字没有扩展名，以前会被判成「不支持」。现在会看文件头——EPUB 本质是 ZIP，开头一定是 <code>PK</code>，认得出来就按 EPUB 打开。</li>' +
+      '<li><b>跳过的书会说清是哪一本、为什么</b>：以前只报「跳过 1 本（重复或不支持）」，等于没说。现在写明书名，重复的标注「书架已有」。</li>' +
+      '<li><b>手机版「导入文件夹」变成真的选文件夹</b>：安卓的 WebView 不支持网页选目录，以前点下去只会弹出普通的多选框，还得自己进目录一层层挑。现在改用系统目录选择器，选一个文件夹，里面所有 TXT / EPUB（含子目录）一次扫出来，确认后批量入库。</li>' +
+      '<li><b>「点下一页直接跳下一章」修了</b>：分页的页数是按内容位置算的，如果插图或字体还没加载完就测量，一章会被算成只有一页，于是一点「下一页」就跳章。现在会在插图加载完后复核一次页数，真到最后一页时也会再确认一遍，算少了就先补页，不会把整整一章跳过。</li>' +
+      '</ul>' +
+      '<h3>1.14.18 改了什么</h3><ul>' +
+      '<li><b>安装包从 158 MB 回到约 104 MB，音质一点没退</b>：配角库换成<b>半精度（fp16）</b>存权重。之前试过的 int8 是「把每个数砍成 256 档」，砍掉的是精度，所以字会被念歪；fp16 只砍小数位、保留数值范围，实测<b>字错率 11.6%（原版 fp32 是 11~14%）、每句合成 1.01 秒（原版 1.00 秒）</b>，体积却只有一半。</li>' +
+      '<li><b>说说还能怎么再小</b>：剩下的体积几乎全在语音库上（配角 61 MB、女主男主各 12 MB）。想压到 40 MB 以内，只有一条路——<b>把配角库从安装包里拿出去，第一次选用配角声线时再下载</b>。要不要这么做，等你试完这版再定。</li>' +
+      '</ul>' +
+      '<h3>1.14.17 改了什么</h3><ul>' +
+      '<li><b>「每句有几个字囫囵吞枣」的根找到了，也认了账</b>：是语音库压缩得太狠。我用语音识别把合成结果转回文字，和原文逐字比对（20 句，走完整朗读链路）：<b>原版 fp32 字错率 11~14%，压缩过的 int8 版 23~26%</b> —— 也就是说每二十个字里就有四五个被念歪，正是你听到的「一串听不懂的字」。</li>' +
+      '<li><b>换回原版 fp32，不再压缩</b>：把声码器、flow、文本编码器分别还原成 fp32 都试过，字错率还是 24% 上下 —— 失真是整层累积的，只有全 fp32 才能听清。代价是语音库从 41 MB 回到 121 MB，<b>安装包约 156 MB</b>（原来 76 MB）。这一步是拿体积换「听得清」。</li>' +
+      '<li><b>顺带两个真 bug 也修了</b>：① 安卓端「声音太轻就抬起来」没有上限，峰值千分之一的片段会被放大 <b>700 倍</b>，等于把噪声顶到正常音量；现在先重念一次，还轻就把这几个字带到下一句，放大也封顶 4 倍。② 一句话不再按逗号切成 3~6 字的小块，改成按句号断（超过 34 字才在逗号处兜底），拼接点和淡入淡出少了一半多。</li>' +
+      '<li><b>速度会慢一点</b>：配角声线每句约 1.5~2 秒（原来 0.5 秒），但引擎会把后面几句提前合成好，正常连着听基本感觉不到停顿。先前那个「快但听不清」的版本不再提供。</li>' +
+      '</ul>' +
+      '<h3>1.14.16 改了什么</h3><ul>' +
+      '<li><b>「有几个字囫囵吞枣、听不清」修掉了</b>：安卓端有个「声音太轻就抬起来」的保险，本来是好意，但它没有上限 —— 遇到峰值只有千分之一的片段时会放大到 <b>700 倍</b>，把一小段几乎只剩噪声的波形顶到正常音量播出去，听感就是「一串听不懂的怪字」。现在改成：先重念一次（模型每次采样不同，第二次通常就正常了），两次都轻就把这几个字带到下一句去念，<b>不再放大噪声</b>；真要放大也封顶 4 倍。</li>' +
+      '<li><b>一句不再被切碎</b>：以前按逗号断，一句话被拆成三四个 3~6 字的小块分别合成再拼起来，每块首尾都要淡入淡出，字音边缘被削掉一点，短块本身也是模型最不稳的地方。现在<b>按句号断</b>，一段就是一整句（超过 34 字才在逗号处兜底），拼接点少了一半多，语调也连着。</li>' +
+      '<li>停顿仍然按标点分层（逗号 0.38 秒、句号 0.75 秒），只是改成由引擎自己念出段内停顿，句与句之间还是我们插。</li>' +
+      '</ul>' +
+      '<h3>1.14.15 改了什么</h3><ul>' +
+      '<li><b>配角声线的「滋滋」底噪消掉了</b>：1.14.14 把量化方式换成静态量化后速度是快了，但压缩后的权重误差顺着声码器直接进了波形，听上去就是一层沙沙的高频嘶声。这次把最怕压的四类节点还原成 fp32 —— 输出层 <code>/dec/conv_post</code>、全部 LeakyRelu / Tanh / Div 激活、残差 Add、4 个转置卷积，其余照常压成 int8。谱平坦度从 0.42 降到 0.18（原版 fp32 是 0.15），6 kHz 以上能量从 6.6% 回到 3.2%，<b>和原版一模一样</b>。</li>' +
+      '<li><b>没有拿速度换音质</b>：同一句话 0.26 秒，和上一版 0.25 秒基本持平，换段落照样是接得上的。</li>' +
+      '<li><b>体积 33 → 41 MB</b>：只多这 8 MB，换来的是听感上没有量化痕迹。装好后首次启动会重新解压语音库（版本号 4→5），老文件不会带着旧模型跑。</li>' +
+      '<li>顺手把安装器里的量化参数同步改了，用 <code>python VoicePack/install.py</code> 现装的也是这一版，不会再装回带嘶声的模型。</li>' +
+      '</ul>' +
+      '<h3>1.14.14 改了什么</h3><ul>' +
+      '<li><b>配角声线「每换一段等半分钟」找到了</b>：不是缓存没留住，是那份 187 人语音库的 int8 模型有问题。当初为了省 80 MB，用「动态量化」把权重压成 int8，结果 189 个卷积层全变成了 ConvInteger —— 这种算子在 onnxruntime 的 CPU 后端只有参考实现，走不到优化内核。同一句话实测：原版 fp32 0.66 秒，动态量化版 12.9 秒，<b>慢了 20 倍</b>，换到手机上就是每段都要等半分钟。</li>' +
+      '<li><b>换成静态量化（QDQ）</b>：卷积走 QLinearConv 的优化内核，同一句话 <b>12.9 秒 → 0.24 秒</b>，比原版 fp32 还快一倍多，体积只有 33 MB（原来 39.8 MB）。音色、语速都还是原来那 187 个人，声音没有换。</li>' +
+      '<li><b>「正在准备语音库」只提示一次</b>：以前只要出现配角声线，每段超过 5 秒就弹一次，等于每段都被打断一次。现在只在语音库真的还没建好的那一次提示，热了就再也不弹。</li>' +
+      '<li>顺手：安卓包反而小了约 7 MB（模型 39.8 → 33 MB），解压和建会话的时间也一起短了。</li>' +
+      '</ul>' +
+      '<h3>1.14.13 改了什么</h3><ul>' +
+      '<li><b>187 个配角声线不再「点了没声音」</b>：配角库是一份 38 MB 的多说话人模型，第一次用要先把 51 MB 解到应用目录、再建推理会话，中端手机半分钟起步。以前是「点了才开始加载」，页面等 45 秒就判超时，看起来就是换声线全部失灵。现在应用启动三秒后就在后台悄悄把它热好，页面也把这一档的等待放宽到 150 秒，超过 5 秒还会提示「正在准备 187 人语音库」。</li>' +
+      '<li><b>诊断看得更清楚</b>：「语音没有出声」那张卡片现在会写配角库是「就绪 / 加载用了几秒 / 加载失败的具体原因」，截图就能定位。</li>' +
+      '<li><b>英文模型换了来源</b>：原来是 Piper 的 en_US，它必须带 espeak-ng 前端，而 espeak-ng 是 GPLv3、新版 sherpa-onnx 已经不再编进 Windows 包，装了也报 no frontend available。改用 icefall 的 vits-ljs（LJSpeech，Apache-2.0，自带音素词典），装好之后 WiFi / iPhone / GDP 这些词真能念出来。装法：<code>python VoicePack/install.py --en</code>。</li>' +
+      '</ul>' +
       '<h3>1.14.12 改了什么</h3><ul>' +
       '<li><b>手机上顶栏从两行压成一行</b>：以前「返回 / 书名 / 时钟」占一行，五个大按钮再占一行 44px，加起来一百多像素，一屏幕正文被吃掉一大块。现在一行放下 返回、书名、时钟、目录、朗读、⋯，高度减半；搜索、排版、书签、笔记、主题、自动、全屏、设置都收进「⋯」，点开是一个浮在正文上的面板，<b>不会把顶栏再撑高</b>。</li>' +
       '<li><b>工具栏可以收起来了</b>：点屏幕中间，上下两条工具栏一起滑走，正文占满整屏；再点中间，或者点屏幕最上面那条窄边，就唤回来。收起后仍停在原来那一页，不会跳。</li>' +
@@ -4013,7 +4186,7 @@
       '</ul>' +
       '<h3>1.14.11 改了什么</h3><ul>' +
       '<li><b>念到英文不再报错、不再切回系统语音</b>：三份中文模型的词典里一个英文字母都没有（实测 68 012 条词条，连 hello / OK / CPU 都查不到），整段英文送进去就是「一个字都没念出来」，旧版会报 HTTP 500 并退回系统朗读。</li>' +
-      '<li><b>现在这样处理</b>：纯英文（一个汉字都没有）的句子，交给系统英文语音念——语言换了，声音本来就不该是同一副；机器上没有英文语音就按字母数留一段空白（最长 4.5 秒）再往下念，只轻提示一次，不弹窗、不算失败、不降级。<b>中英混排</b>（「他打开 iPhone 看了一眼」）照常用人物的声音念中文，英文单词按语言切开后交给英文模型补上（需 VoicePack/models/piper-en，可选装；没装则那一个词略过，中文不受影响）。</li>' +
+      '<li><b>现在这样处理</b>：纯英文（一个汉字都没有）的句子，交给系统英文语音念——语言换了，声音本来就不该是同一副；机器上没有英文语音就按字母数留一段空白（最长 4.5 秒）再往下念，只轻提示一次，不弹窗、不算失败、不降级。<b>中英混排</b>（「他打开 iPhone 看了一眼」）照常用人物的声音念中文，英文单词按语言切开后交给英文模型补上（需 VoicePack/models/en-ljs，可选装，约 40 MB；没装则那一个词略过，中文不受影响）。</li>' +
       '<li><b>安卓端不再为一段英文弹「语音没有出声」</b>：手机壳里的中文模型同样不认字母，以前一段英文就会弹诊断窗、整场朗读停在那儿。现在这类句子按语速留白跳过，接着念下一句。</li>' +
       '<li><b>纯符号、开头几句的修正都保留</b>：1.14.10 那三处（「？？？」按长度留白、单句失败只跳这一句、开头先等引擎 8 秒）一个没动。</li>' +
       '</ul>' +

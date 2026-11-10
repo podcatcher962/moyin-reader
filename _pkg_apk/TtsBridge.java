@@ -147,6 +147,21 @@ public class TtsBridge {
                            看清是模型没出声还是根本没跑到合成的线索。 */
                         try { probe = e.selfTest(); }
                         catch (Throwable t) { probe = "自检异常 " + t.getClass().getSimpleName(); }
+                        /* 187 人配角库第一次用要先把 51 MB 解到 files、再建 38 MB 会话，
+                           中端手机半分钟起步——按需加载的话，用户点第一个配角声线就是
+                           「等 45 秒然后超时，没声音」。所以这里趁他还在听女声旁白，
+                           悄悄把它预热掉；延迟 3 秒是为了不跟第一句合成抢 CPU。 */
+                        try {
+                            Thread w = new Thread(new Runnable() {
+                                @Override public void run() {
+                                    try { Thread.sleep(3000); } catch (InterruptedException ignored) { }
+                                    try { e.preloadLib(); } catch (Throwable ignored) { }
+                                }
+                            }, "moyin-lib-preload");
+                            w.setDaemon(true);
+                            w.setPriority(Thread.MIN_PRIORITY);
+                            w.start();
+                        } catch (Throwable ignored) { }
                     }
                     else { neuroErr = e.lastError(); e.close(); }
                 } catch (Throwable t) {

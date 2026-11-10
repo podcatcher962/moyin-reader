@@ -83,8 +83,10 @@ public final class TtsEngine {
             "dict/stop_words.utf8", "dict/user.dict.utf8"
     };
 
-    /* 模型换代了就换版本号，老用户首次启动会重新解压，不会拿旧文件跑新代码。 */
-    private static final int MODEL_VER = 3;
+    /* 模型换代了就换版本号，老用户首次启动会重新解压，不会拿旧文件跑新代码。
+       v4：配角库从「动态量化 int8」换成「静态量化 QDQ int8」——同一份权重，
+       卷积走 QLinearConv 的优化内核，实测每句从 12.9 秒降到 0.24 秒。 */
+    private static final int MODEL_VER = 7;
 
     /** sid → 中位基频（Hz），离线逐人实测。手机端与桌面共用同一份分组依据。 */
     static final int[] SID_F0 = {
@@ -196,6 +198,9 @@ public final class TtsEngine {
         sb.append("\"ready\":").append(engineOk).append(",");
         sb.append("\"count\":").append(n).append(",");
         sb.append("\"en\":false,");
+        /* 配角库（187 人）是不是已经建好会话。页面靠它决定要不要提示
+           「正在准备语音库」——库热了就一次都不该再弹，弹多了就是骚扰。 */
+        sb.append("\"lib\":").append(lib != null).append(",");
         sb.append("\"version\":7,\"curated\":[\"").append(GIRL_VOICE).append("\",\"")
                 .append(BOY_VOICE).append("\"");
         for (int i = 0; i < CURATED_SID.length; i++) {
@@ -243,6 +248,9 @@ public final class TtsEngine {
     private int boyRate = 22050;
     private int libRate = 16000;
     private String lastError = "";
+    /** 配角库那次加载花了多久、失败时到底卡在哪一步——真机「选了声线没声音」全靠它定位。 */
+    private long libMs = -1;
+    private String libErr = "";
 
     /** 女主装好就算就绪——男主和配角库都是按需加载的，缺了不影响默认听书。 */
     public boolean ready() {
@@ -269,7 +277,15 @@ public final class TtsEngine {
         StringBuilder sb = new StringBuilder();
         sb.append("女主=").append(girl != null)
           .append(" 男主=").append(boy != null)
-          .append(" 配角库=").append(lib != null).append('\n');
+          .append(" 配角库=").append(lib != null);
+        if (lib != null) {
+            sb.append("（就绪，加载用 ").append(libMs >= 0 ? libMs + "ms" : "?").append("）");
+        } else if (!libErr.isEmpty()) {
+            sb.append("（加载失败：").append(libErr).append("）");
+        } else {
+            sb.append("（还没选过配角声线，未加载）");
+        }
+        sb.append('\n');
         if (girl == null) {
             return sb.append("女主引擎没建起来；lastError=").append(lastError).toString();
         }
@@ -467,26 +483,38 @@ public final class TtsEngine {
         }
     }
 
-    /** 按需载入配角库（第一次选 s* 时）。187 人共用一份模型，解压约 40 MB。 */
+    /** 按需载入配角库（第一次选 s* 时）。187 人共用一份模型，解压约 40 MB。
+     *
+     *  这一步是真机上最容易「点了没声音」的地方：要先把 51 MB（模型 + 词表 +
+     *  jieba 词典）从 assets 解到 files，再建 38 MB int8 会话，中端手机首跑
+     *  能到半分钟以上。所以除了这里按需加载，TtsBridge 还会在启动后主动
+     *  preloadLib()，用户点声线时通常已经就绪。 */
     private boolean ensureLib() {
         if (lib != null) return true;
         if (appCtx == null) return false;
         loadLock.lock();
         try {
             if (lib != null) return true;
+            long t0 = System.currentTimeMillis();
             String d = ensureAssets(appCtx, LIB_DIR, LIB_DIR, LIB_ASSETS, "lib");
+            long tUnzip = System.currentTimeMillis();
             OfflineTts t = build(appCtx, d + "/" + LIB_MODEL, d, d + "/dict", "");
             int sr = t.sampleRate();
             if (sr <= 0) {
                 t.free();
                 lastError = "lib sampleRate=0";
+                libErr = "会话建起来但采样率=0（解压 " + (tUnzip - t0) + "ms）";
                 return false;
             }
             libRate = sr;
             lib = t;
+            libMs = System.currentTimeMillis() - t0;
+            libErr = "";
+            mark("N2.9 配角库就位 解压=" + (tUnzip - t0) + "ms 总=" + libMs + "ms sr=" + sr);
             return true;
         } catch (Throwable e) {
             lastError = "lib: " + e.getClass().getSimpleName() + ": " + e.getMessage();
+            libErr = e.getClass().getSimpleName() + ": " + e.getMessage();
             lib = null;
             return false;
         } finally {
@@ -549,13 +577,31 @@ public final class TtsEngine {
             // 某段没出声时把它的文本连标点一起带到下一段重念，书里就不会出现空白。
             String carry = "";
             int genNull = 0;
+            int retried = 0;
             float topPeak = 0f;
             for (Unit u : units) {
                 String t = carry + u.text;
                 GeneratedAudio a = eng.generate(t, sid, speed);
                 float[] pcm = (a == null) ? null : a.getSamples();
+                float pk = peakOf(pcm);
+                /* 量化模型偶尔会吐出一段极轻、几乎只剩噪声的波形（ARM 上的 int8
+                   卷积比 x86 更容易出这种情况）。以前这里靠 boostQuiet 放大几百倍
+                   播出去，听感就是「几个字囫囵吞枣、听不清」。现在先重试一次——
+                   VITS 内部带随机采样，同一句第二次通常就正常了；两次都轻就把这段
+                   的字带到下一段重念，宁可少这一小截，也不播一串怪音。 */
+                if (pcm != null && pcm.length > 0 && pk < QUIET_PEAK) {
+                    GeneratedAudio a2 = eng.generate(t, sid, speed);
+                    float[] p2 = (a2 == null) ? null : a2.getSamples();
+                    float pk2 = peakOf(p2);
+                    retried++;
+                    if (pk2 > pk) {
+                        a = a2;
+                        pcm = p2;
+                        pk = pk2;
+                        if (a != null && a.getSampleRate() > 0) sr = a.getSampleRate();
+                    }
+                }
                 if (pcm == null || pcm.length == 0) genNull++;
-                float pk = (pcm == null || pcm.length == 0) ? 0f : peak(pcm);
                 if (pk > topPeak) topPeak = pk;
                 // 门槛压到 0.0008：int8 量化模型偶尔给得很轻，按旧的 0.01 丢
                 // 会把整段听书变成「没出声」；真有波形就抬起来播（见 boostQuiet）。
@@ -581,6 +627,7 @@ public final class TtsEngine {
             }
             if (parts.isEmpty()) {
                 lastError = "全段没出声（段数=" + units.size() + " 空返回=" + genNull
+                        + " 重试=" + retried
                         + " 最高峰值=" + String.format(java.util.Locale.US, "%.5f", topPeak)
                         + " 采样率=" + sr + " 声线=" + sid + "）";
                 return null;
@@ -617,6 +664,15 @@ public final class TtsEngine {
     /* ---------------- 韵律：停顿按标点分层 ---------------- */
 
     private static final String PUNCT = "，,、；;：:。！？!?…—～~";
+
+    /* 只在句末标点处断段，逗号/顿号/冒号留在段内交给引擎自己停。
+       原来按所有标点切，一句话被拆成一串 3~6 字的小块逐块合成再拼：
+       每块首尾都要淡入淡出，音节边缘被削；短输入本身也是模型最不稳的区间。
+       现在一段 = 一整句（超过 MAX_SEG 字才在逗号处兜底断开），拼接点少、
+       语调连贯。 */
+    private static final String HARD_STOP = "。！？!?；;….";
+    private static final String SOFT_STOP = "，,、：:—～~";
+    private static final int MAX_SEG = 34;
 
     private static final class Unit {
         String text;
@@ -675,7 +731,7 @@ public final class TtsEngine {
                 i++;
                 continue;
             }
-            if (PUNCT.indexOf(ch) >= 0) {
+            if (HARD_STOP.indexOf(ch) >= 0) {
                 int j = i;
                 float gap = 0f;
                 while (j < n && PUNCT.indexOf(text.charAt(j)) >= 0) {
@@ -691,10 +747,27 @@ public final class TtsEngine {
             }
             buf.append(ch);
             i++;
+            // 长句保护：一段超过 MAX_SEG 字就在最近的一个句内标点处兜底断开，
+            // 否则一句能有两百字，引擎念到后半段容易飘。
+            if (SOFT_STOP.indexOf(ch) >= 0 && cjkLen(buf) >= MAX_SEG) {
+                String seg2 = buf.toString().trim();
+                if (seg2.length() > 0) out.add(new Unit(seg2, pauseOf(ch), ch));
+                buf.setLength(0);
+            }
         }
         String seg = buf.toString().trim();
         if (seg.length() > 0) out.add(new Unit(seg, 0f, (char) 0));
         return out;
+    }
+
+    /** 数一段文本里的汉字与数字个数（标点、空格不算）。长句保护用它。 */
+    private static int cjkLen(CharSequence s) {
+        int k = 0;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if ((c >= '\u4e00' && c <= '\u9fff') || Character.isDigit(c)) k++;
+        }
+        return k;
     }
 
     /** 少于两个字的片段并进前一段，保留原标点。孤立的一两个字常常合成成静音。 */
@@ -730,6 +803,15 @@ public final class TtsEngine {
         return m;
     }
 
+    /** 峰值，容忍 null / 空数组。 */
+    private static float peakOf(float[] a) {
+        return (a == null || a.length == 0) ? 0f : peak(a);
+    }
+
+    /* 正常朗读的峰值在 0.1~0.5。低于这个数说明这一小段「没念清」——多半是
+       量化模型在 ARM 上偶发的极轻输出，靠放大救回来只会变成一串噪声。 */
+    private static final float QUIET_PEAK = 0.02f;
+
     /** 引擎偶尔给出很轻的波形（int8 量化模型的通病）。峰值低于 0.02 时
      *  直接丢掉会变成「整段都没出声」，这里把它抬到 0.7 再拼，听感正常也听得见；
      *  本来就是静音（峰值近乎 0）的原样返回，抬也没意义。 */
@@ -737,6 +819,10 @@ public final class TtsEngine {
         float pk = peak(pcm);
         if (pk >= 0.02f || pk < 0.0008f) return pcm;
         float g = 0.7f / pk;
+        /* 放大倍数封顶 4 倍。原来不封顶，峰值 0.001 的段落会被放大 700 倍——
+           那段如果只剩噪声，等于把噪声顶到正常音量播出去，就是「几个字糊成一团」。
+           真正很轻的好音频（少量）在 4 倍内也能听清；超过 4 倍说明这段本来就废。 */
+        if (g > 4f) g = 4f;
         float[] out = new float[pcm.length];
         for (int i = 0; i < pcm.length; i++) {
             float v = pcm[i] * g;

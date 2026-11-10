@@ -71,7 +71,8 @@ function get(port, p, method) {
 
   ok(await ev("!window.speechSynthesis && !window.SpeechSynthesisUtterance") === true, '已模拟无系统朗读环境');
   ok(await ev("window.matchMedia('(pointer: coarse)').matches") === true, '触摸模拟生效（pointer: coarse）');
-  ok(await ev('MY.CFG.mode') === 'scroll', '默认仍是滚动模式', await ev('MY.CFG.mode'));
+  // 1.14.12 起默认翻页（产品决定：点屏幕左右就翻一页），这里跟着断言当前设计
+  ok(await ev('MY.CFG.mode') === 'page', '默认是翻页模式', await ev('MY.CFG.mode'));
 
   await ev("(function(){try{MY.CFG.onboarded=1;MY.saveCfg();}catch(e){}return 1;})()");
   const pick = fs.readdirSync(path.join(HERE, '_samples')).filter(f => /\.epub$/i.test(f)).find(f => /rulin/i.test(f))
@@ -94,24 +95,32 @@ function get(port, p, method) {
     return ev(`(function(){var el=document.elementFromPoint(${x},${y})||document.getElementById('page');
       el.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,clientX:${x},clientY:${y}}));return 1;})()`);
   };
-  const top = () => ev("document.getElementById('pageWrap').scrollTop");
+  /* 翻页模式用 PG.i 判断翻了没翻：正文是靠 translateX 位移的，
+     scrollTop 恒为 0，用滚动位置量会误判成「没动」。 */
+  const pageIdx = async () => {
+    var v = await ev("MY.PG && MY.PG.ready ? MY.PG.i + '/' + MY.PG.count : 'x'");
+    var a = String(v).split('/');
+    return { i: parseInt(a[0], 10), n: parseInt(a[1], 10) };
+  };
 
-  const v0 = await top();
-  await tap(0.9, 0.55); await sleep(650);
-  const v1 = await top();
-  P('scrollTop', v0, '→', v1);
-  ok(typeof v1 === 'number' && v1 > v0 + 60, '点右侧翻一屏（滚动模式）', { v0, v1 });
+  const v0 = await pageIdx();
+  await tap(0.9, 0.55); await sleep(700);
+  const v1 = await pageIdx();
+  P('page', v0.i + '/' + v0.n, '→', v1.i + '/' + v1.n);
+  ok(v1.i === v0.i + 1, '点右侧翻到下一页', { v0, v1 });
 
-  await tap(0.5, 0.55); await sleep(450);
-  const v2 = await top();
-  ok(Math.abs(v2 - v1) < 6, '点中间不动（留给选字与链接）', { v1, v2 });
+  await tap(0.5, 0.55); await sleep(500);
+  const v2 = await pageIdx();
+  ok(v2.i === v1.i, '点中间不动（留给选字与链接）', { v1, v2 });
 
-  await tap(0.1, 0.55); await sleep(650);
-  const v3 = await top();
-  ok(v3 < v2 - 60, '点左侧回上一屏', { v2, v3 });
+  await tap(0.1, 0.55); await sleep(700);
+  const v3 = await pageIdx();
+  ok(v3.i === Math.max(0, v2.i - 1), '点左侧回上一页', { v2, v3 });
 
   // ── ② 无系统朗读 → 引导弹窗 ─────────────────────────────────────
-  await ev("(function(){document.getElementById('toast').classList.remove('on');MY.startSpeak(0);return 1;})()");
+  /* 关掉本地引擎：浏览器里 localOn 默认开着，startSpeak 会先等 8 秒连 127.0.0.1，
+     等不到才走「浏览器不支持朗读」分支。测试只想验那个弹窗，不必真的等满 8 秒。 */
+  await ev("(function(){MY.CFG.localOn=false;MY.saveCfg();document.getElementById('toast').classList.remove('on');MY.startSpeak(0);return 1;})()");
   await sleep(2600);
   const dlg = await ev(`(function(){var m=document.getElementById('modal');
     return {on:m.classList.contains('on'),title:document.getElementById('modalTitle').textContent,
@@ -121,14 +130,17 @@ function get(port, p, method) {
   ok(dlg && dlg.on === true, '点朗读弹出说明，而不是只闪一句 toast');
   ok(/手机浏览器不支持朗读/.test(dlg.title || ''), '标题点明是浏览器限制', dlg.title);
   ok(/在浏览器|安卓版/.test(dlg.body || ''), '正文给出可行出路');
-  ok((dlg.body || '').indexOf('MoYinReader.apk') >= 0, '弹窗里带可复制的直链');
+  // 直链在 1.14.x 改成了 Pages 下载页（不再指向 releases 里的裸 apk），断言跟着改
+  var dbody = dlg.body || '';
+  ok(dbody.indexOf('/download/') >= 0 || dbody.indexOf('MoYinReader.apk') >= 0,
+     '弹窗里带可复制的直链', dbody);
   ok(/去下载安卓版/.test(dlg.btn || ''), '主按钮是「去下载安卓版」', dlg.btn);
 
   // ── ③ 关掉弹窗后阅读仍正常 ──────────────────────────────────────
   await ev("document.getElementById('modalX').click()"); await sleep(200);
-  await tap(0.9, 0.55); await sleep(600);
-  const v4 = await top();
-  ok(v4 > v3 + 60, '关掉弹窗后点右侧仍能翻屏', { v3, v4 });
+  await tap(0.9, 0.55); await sleep(700);
+  const v4 = await pageIdx();
+  ok(v4.i === v3.i + 1, '关掉弹窗后点右侧仍能翻页', { v3, v4 });
 
   P('\nPASS', pass, 'FAIL', fail);
   ws.close();
