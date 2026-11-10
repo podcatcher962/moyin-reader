@@ -56,7 +56,10 @@ def main():
         return 0
 
     if rel is None:
-        notes = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_notes_1.14.21.md')
+        # Release 页面是给用户看的：优先用 _release_body.md（用户向说明），
+        # _notes_*.md 是内部技术笔记，含函数名与调试细节，不适合直接贴出去。
+        body_file = '_release_body.md'
+        notes = os.path.join(os.path.dirname(os.path.abspath(__file__)), body_file)
         body_txt = (open(notes, encoding='utf-8').read() if os.path.isfile(notes)
                     else '语音系统升级：男女主角各一份 22.05 kHz 模型，配角库 16 kHz / 187 人。\n')
         payload = {'tag_name': tag, 'name': '墨吟阅读器 1.14.21',
