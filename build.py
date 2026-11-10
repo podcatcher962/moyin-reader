@@ -10,24 +10,38 @@ PAGES = os.path.join(HERE, 'docs', 'index.html')
 
 # 窄屏版式只写一份，构建时生成「自动（媒体查询）」与「强制手机版」两份
 NARROW = r'''
-#libTop,#readTop{gap:7px;padding:8px}
+#libTop{gap:7px;padding:8px}
 .brand{width:100%;font-size:1.1em}
 .brand small{display:none}
 #libSearch{width:100%;order:3}
-#libTop .spacer,#readTop .spacer{display:none}
-/* 顶栏先只留 5 个常用键（各占 1/5 宽、44px 高，拇指点不错），
-   书签 / 笔记 / 主题 / 自动 / 全屏 / 设置这些收进「⋯」，点开再摊平。
-   原来 5 列 × 3 行、36px 高、.8em 小字，拇指经常摸到隔壁。 */
-#libActs,#readActs{width:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-#libActs .sec,#readActs .sec{display:none}
-#libActs.open .sec,#readActs.open .sec{display:block}
+#libTop .spacer{display:none}
+/* 书架顶栏：先只留 5 个常用键（各占 1/5 宽、44px 高，拇指点不错），
+   书签 / 笔记 / 主题 / 自动 / 全屏 / 设置这些收进「⋯」，点开再摊平。 */
+#libActs{width:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+#libActs .sec{display:none}
+#libActs.open .sec{display:block}
 /* 展开后键多了，改 6 列：12 个正好两行排满，不会留半行空格 */
-#libActs.open,#readActs.open{grid-template-columns:repeat(6,1fr)}
-#libActs .only-narrow,#readActs .only-narrow{display:block}
-#libActs button,#readActs button{font-size:.86em;padding:8px 2px;min-height:44px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#readTitle{max-width:100%}
-#readTitle{max-width:calc(100% - 112px)}
-#clock{font-size:.7em;padding:2px 6px;border-radius:9px;white-space:nowrap}
+#libActs.open{grid-template-columns:repeat(6,1fr)}
+#libActs .only-narrow{display:block}
+#libActs button{font-size:.86em;padding:8px 2px;min-height:44px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ---- 阅读器顶栏：单行，不再把两行按钮堆成 100 多像素高 ----
+   第一行只放 返回 / 书名 / 时钟 / 目录 / 朗读 / ⋯；搜索、排版、书签、笔记、
+   主题、自动、全屏、设置都收进「⋯」，展开成悬浮面板，压正文不撑顶栏。 */
+#readTop{padding:6px 8px;gap:6px;flex-wrap:nowrap;min-height:50px;position:relative}
+#readTop .spacer{display:none}
+#readTop #btnBack{font-size:0;padding:7px 11px;flex:0 0 auto}
+#readTop #btnBack::before{content:'←';font-size:17px;line-height:1}
+#readTitle{flex:1 1 auto;min-width:0;max-width:none;font-size:.94em}
+#clock{font-size:.68em;padding:2px 5px;border-radius:9px;white-space:nowrap;flex:0 0 auto}
+#readActs{width:auto;flex:0 0 auto;display:flex;flex-wrap:nowrap;gap:5px}
+#readActs .sec,#readActs #btnFind,#readActs #btnType{display:none}
+#readActs .only-narrow{display:block}
+#readActs button{font-size:.85em;padding:7px 9px;min-height:38px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#readActs.open{position:absolute;left:6px;right:6px;top:calc(100% + 2px);z-index:40;display:grid;
+  grid-template-columns:repeat(4,1fr);gap:6px;padding:8px 8px 10px;background:var(--card);
+  border:1px solid var(--line);border-radius:0 0 12px 12px;box-shadow:0 18px 40px rgba(0,0,0,.52)}
+#readActs.open .sec,#readActs.open #btnFind,#readActs.open #btnType{display:block}
+#readActs.open button{min-height:42px;padding:6px 2px;font-size:.84em}
 body.imm #clockFloat{font-size:.7em;top:6px;right:8px}
 #restTip{bottom:60px;left:8px;right:8px;max-width:none}
 #restTip.on{animation:none;transform:none}
@@ -40,7 +54,8 @@ body.imm #clockFloat{font-size:.7em;top:6px;right:8px}
 #readMain{position:relative}
 .side{position:absolute;left:0;top:0;bottom:0;width:86vw;max-width:330px;z-index:20;box-shadow:6px 0 24px rgba(0,0,0,.35)}
 #page{padding:18px min(var(--padx),18px) 60px}
-html[data-mode="page"] #page{padding:14px min(var(--padx),16px)}
+/* 翻页时底部要多留一点：不然最后一行会贴住屏幕下沿（收起工具栏后更明显） */
+html[data-mode="page"] #page{padding:14px min(var(--padx),16px) calc(16px + .8em)}
 #page h1{font-size:1.3em}
 #readFoot{padding:6px;gap:5px}
 #readFoot button{padding:6px 8px;font-size:.82em}
@@ -55,7 +70,7 @@ html[data-mode="page"] #page{padding:14px min(var(--padx),16px)}
 .mbox .mf button{flex:1}
 .foot{font-size:.78em}
 #autoPill{bottom:56px;font-size:.8em;padding:6px 8px 6px 11px}
-#pgHintL,#pgHintR{width:24%}
+#pgHintL,#pgHintR{width:33.3%}
 '''
 
 def scoped(css, prefix):

@@ -142,9 +142,9 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 
 不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本；或者用 **[在线版](https://podcatcher962.github.io/moyin-reader/)** 什么都不装。
 
-### 最近改动（1.14.8 → 1.14.11）
+### 最近改动（1.14.8 → 1.14.12）
 
-一口气四版，都是「听感」上的修补，读写界面没动。
+一口气五版，前四版是「听感」上的修补，1.14.12 是手机上的「手感」。
 
 **1.14.8 · 不再等十秒**
 
@@ -161,6 +161,12 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 **1.14.11 · 英文不炸**
 
 中文模型的词典里一个英文字母都没有，以前整段英文进去就是「一个字都没念出来」，500 之后整章退回系统朗读。现在纯英文走系统英文语音（语言换了，声音本该换人），没有就留白跳过；安卓端同理，不再弹「语音没有出声」把整场朗读卡住。中英混排里的英文词需要可选的 piper 英文模型（`VoicePack/models/piper-en/`，约 22 MB，**未随包**），没装只跳过那个词，中文不受影响。
+
+**1.14.12 · 手机上手顺了**
+
+真机上最难受的两件事：顶栏占掉一百多像素还不肯走，翻页只能靠手指滑。现在顶栏压成一行（返回 / 书名 / 时钟 / 目录 / 朗读 / ⋯），其余动作收进浮层面板，展开也不撑高；点屏幕中间上下工具栏一起收起，正文占满整屏，再点中间或点顶部窄边唤回。默认改成**翻页**：点右边三分之一翻下一页、左边三分之一翻上一页，中间留给选字和「朗读从这里念」，到章末自动接下一章。老配置只要没手动选过阅读方式就跟着切，选过的保持原样。
+
+
 
 ### 使用
 
@@ -260,14 +266,15 @@ _unit_zip.js                       ZIP 解压内核单测（482 项）
 
 Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 
-### What's new in 1.14.8 → 1.14.11
+### What's new in 1.14.8 → 1.14.12
 
-Four releases in a row, all about how it *sounds*; the reading UI is untouched.
+Five releases in a row: the first four are about how it *sounds*, the last one about how it *feels* on a phone.
 
 - **1.14.8 — no more ten-second gaps.** Every sentence used to spawn a fresh `sherpa-onnx-offline-tts` process (1.8 of its 1.9 seconds went on loading the model), and supporting characters were parked on a 16 kHz / 187-speaker library that took 12–16 seconds a sentence. The engine is now resident (Python bindings + a small instance pool) and the eight fast voices are pitch variants of the two 22 kHz leads. Measured: short sentence 1.90 s → 0.19 s, long dialogue 9.9 s → 2.7 s.
 - **1.14.9 — one voice per character.** Unrecognised speakers used to grab whichever voice was least used, and nothing was remembered, so a two-person conversation flipped voices every line. The cast is now cast *before* playback from the surrounding chapters, pronouns bind back to the nearest named character, and short unattributed lines reuse the previous speaker.
 - **1.14.10 — a question mark is not a bug.** Blocks of pure punctuation came back as `500 empty text`, which the page read as "engine broken" and answered with the system voice. The server now returns silence of matching length and the page simply pauses (about 0.3 s per mark). Single failed sentences are skipped individually instead of degrading the whole chapter, and pressing play right after launch waits up to 8 s for the engine instead of starting in a robot voice.
 - **1.14.11 — English no longer explodes.** The Chinese models contain no Latin letters at all (68,012 entries measured — not even `hello`, `OK` or `CPU`), so an English paragraph produced nothing and dragged the chapter back to system speech. Pure English now goes to the system English voice, or to a timed pause if the machine has none — never to an error, never a downgrade. Mixed Chinese/English keeps the character's voice for the Chinese and hands individual words to an optional Piper `en_US` model (`VoicePack/models/piper-en/`, ~22 MB, **not bundled**).
+- **1.14.12 — a phone that finally feels right.** The reader bar was two rows and 100+ px tall on a phone, and turning pages meant swiping. It is now a single row (back / title / clock / contents / read aloud / ⋯); every other action lives behind `⋯` in a floating panel that does not make the bar grow. Tap the middle of a page and both bars slide away — the body takes the full screen; tap the middle again, or the thin strip at the very top, to bring them back, without losing your page. Paged mode is now the default: tap the **right third** for the next page, the **left third** for the previous, and keep the middle for selecting text, links and "read from here". Existing settings that never touched *reading mode* follow this default; ones that did are left alone.
 
 ### Screenshots
 

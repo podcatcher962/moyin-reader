@@ -574,6 +574,8 @@
       'Fullscreen on — move the pointer to the top/bottom edge for the toolbars, Esc to exit',
     '全屏阅读：关': 'Fullscreen off',
     '退出全屏 / 关闭侧栏': 'Exit fullscreen / close panel',
+    '点屏幕左右翻页，点中间收 / 放上下工具栏':
+      'Tap left/right to turn pages, tap the middle to show or hide the toolbars',
     '翻页 / 翻屏': 'Page / screen',
     '下一屏（朗读中为暂停）': 'Next screen (pause while reading aloud)',
     '换主题': 'Cycle theme',

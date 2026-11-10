@@ -129,9 +129,9 @@ async function main() {
   ok(await ready(), '页面初始化完成');
   ok(vge(await ev('MY.VER'), '1.8.1'), '版本号 ≥ 1.8.1', await ev('MY.VER'));
 
-  console.log('=== 默认是滚动模式');
-  ok(await ev("document.documentElement.getAttribute('data-mode')") === 'scroll', '默认滚动模式');
-  ok(await ev("document.getElementById('page').style.columnCount") === '', '滚动模式没有残留分栏');
+  console.log('=== 默认是翻页（1.14.12 起）');
+  ok(await ev("document.documentElement.getAttribute('data-mode')") === 'page', '默认翻页');
+  ok(await ev("MY.CFG.mode") === 'page', '配置里也是 page');
 
   await ev(`(async()=>{var t='第一章 起风\\n';
     for(var i=0;i<60;i++)t+='夜色像一层薄薄的尘，落在旧城的瓦上没有声响。远处更鼓敲过三下，巷子里只剩水汽与灯影。\\n';

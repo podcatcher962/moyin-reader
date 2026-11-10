@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.14.11';
+  var VER = '1.14.12';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -64,7 +64,10 @@
     theme: 'dark', lay: 'auto', motion: 0, fs: 19, lh: 1.85, pagew: 720, fw: 400, hans: 0,
     ff: 'serif', align: 'justify', sort: 'last', txtEnc: 'auto',
     /* --- 1.8 排版与阅读方式 --- */
-    mode: 'scroll',        // scroll 滚动 / page 翻页
+    mode: 'page',          // scroll 滚动 / page 翻页（1.14.12 起默认翻页：点屏幕左右就翻）
+    modeRev: 0,            // 「默认翻页」迁移标记，只跑一次
+    modeTouched: 0,        // 自己动过阅读方式就一直听你的，不再跟着默认值变
+    tapTip: 0,             // 「点中间收放工具栏」的一次性提示是否已看过
     ps: 0.85,              // 段间距（em）
     ls: 0.02,              // 字间距（em）
     indent: 0,             // 首行缩进（em）
@@ -166,6 +169,13 @@
     if (!CFG.voiceRev) {
       CFG.voiceRev = 1;
       if (CFG.localVoice === 's12') CFG.localVoice = 'x0';
+      saveCfg();
+    }
+    // 1.14.12 起默认「翻页」：手机没有键盘和滚轮，点屏幕左右就翻最省事。
+    // 老配置只要没自己动过阅读方式，跟着切一次；动过的保持原样。
+    if (!CFG.modeRev) {
+      CFG.modeRev = 1;
+      if (!CFG.modeTouched) CFG.mode = 'page';
       saveCfg();
     }
     // 头一次在手机上打开（还没存过任何配置）：桌面那套 19px 字号 + 32px 边距，
@@ -646,9 +656,11 @@
     var d = new Date();
     var hm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     var ms = clkTotal(), m = Math.floor(ms / 60000);
-    // 窄屏标题要让位，时长用短写法
+    // 窄屏顶栏要单行排下书名和按钮：<640 只留时间，640~900 用短写法的时长
     var narrow = (window.innerWidth || 0) < 900;
-    el.textContent = hm + ' · ' + (narrow ? T('{n} 分', { n: m }) : T('已读 {n}', { n: fmtRead(ms) }));
+    var mini = (window.innerWidth || 0) < 640;
+    el.textContent = mini ? hm
+      : hm + ' · ' + (narrow ? T('{n} 分', { n: m }) : T('已读 {n}', { n: fmtRead(ms) }));
     el.title = T('当前时间 {t} · 本次已读 {n}', { t: hm, n: fmtRead(ms) });
     el.classList.toggle('warn', m >= 30 && m < 60);
     el.classList.toggle('tired', m >= 60);
@@ -750,9 +762,28 @@
     document.body.classList.toggle('imm', on);
     if (!on) {
       $('readTop').classList.remove('peek'); $('readFoot').classList.remove('peek');
+      document.body.classList.remove('barsOff');   // 退出全屏回到正常展开状态
     }
     syncFullBtn();
   }
+  /* ---------- 收起 / 唤出上下工具栏 ----------
+     手机上顶栏一直占着最上面那一条，读起来是真挤。点屏幕中间收起来，
+     再点一下（或点屏幕最上面一条）唤回来；沉浸模式走同一套，只是用 peek。 */
+  function barsVisible() {
+    if (inImm()) return $('readTop').classList.contains('peek');
+    return !document.body.classList.contains('barsOff');
+  }
+  function setBars(on) {
+    var acts = $('readActs');
+    if (acts && !on && acts.__shut) acts.__shut();   // 收工具栏时连带收起「⋯」面板
+    if (inImm()) {
+      $('readTop').classList.toggle('peek', !!on);
+      $('readFoot').classList.toggle('peek', !!on);
+      return;
+    }
+    document.body.classList.toggle('barsOff', !on);
+  }
+  function toggleBars() { setBars(!barsVisible()); }
   function toggleFull() {
     var next = !(inImm() || isFull());
     CFG.immersive = next ? 1 : 0; saveCfg(); applyImm();
@@ -1518,11 +1549,17 @@
     meta.last = Date.now();
     $('readTitle').textContent = meta.name;
     $('readTitle').title = meta.name + (meta.author ? ' · ' + meta.author : '');
+    document.body.classList.remove('barsOff');    // 进书先展开工具栏，别一进来就是收着的
     showView('read');
     hideSelTools();
     renderChapter(meta.ch || 0, { ratio: meta.ratio || 0, silent: true });
     renderSide();
     rtStart(id);
+    /* 头一次进阅读器，把新的点击方式说一遍；看过就不再打扰 */
+    if (!CFG.tapTip) {
+      CFG.tapTip = 1; saveCfg();
+      setTimeout(function () { toast(T('点屏幕左右翻页，点中间收 / 放上下工具栏'), 4600); }, 800);
+    }
   }
   /* 从书架「续听」：打开书 → 跳到上次听到的那一章那段 → 直接开念 */
   async function resumeListen(id) {
@@ -1543,6 +1580,7 @@
     CFG.immersive = 0; saveCfg(); clkStop();               // 回书架时退出全屏阅读，计时停表
     try { if (isFull()) { var ex = document.exitFullscreen || document.webkitExitFullscreen; if (ex) { var r = ex.call(document); if (r && r.catch) r.catch(function () { }); } } } catch (e) { }
     showView('lib');
+    document.body.classList.remove('barsOff');   // 回书架时工具栏状态归零，下次进来是展开的
     $('side').classList.remove('on'); $('speakBar').classList.remove('on');
     hideSelTools();
     clearAssets(); renderShelf();
@@ -3863,7 +3901,7 @@
   }
   var DOCS = {
     help: ['使用说明', '<h3>导入</h3><p>书架点「＋ 导入书籍」，可选多本 <code>.txt</code> / <code>.epub</code>。文件只保存在这台设备的浏览器数据库里，导入过程不上传、不联网。</p>' +
-      '<h3>阅读</h3><ul><li>顶部「目录」跳章，「搜索」全文找词，「＋书签」记位置。</li><li>底部进度条可拖到全书任意章节；滚动模式下 ← → 键翻章，空格向下翻一屏。</li><li>快捷方式：← / → 翻章（翻页模式下是翻页），空格 下翻一屏（朗读中则暂停 / 继续），Ctrl + F 搜索，Esc 退回书架或关掉弹窗。</li><li>「排版」一处调完：阅读方式（滚动 / 翻页）、分栏、翻页动画、字号、行距、段间距、字间距、首行缩进、字体、对齐、版心宽度、页边距、六套主题与自定义底色字色、亮度、自动阅读速度。</li><li>「主题」按顺序切六套配色；「自动」开关自动阅读；「全屏」进入沉浸模式。</li><li>阅读位置自动保存，下次打开接着读；翻页模式还会记住翻到第几页。</li></ul>' +
+      '<h3>阅读</h3><ul><li>顶部「目录」跳章，「搜索」全文找词，「＋书签」记位置。</li><li>底部进度条可拖到全书任意章节；滚动模式下 ← → 键翻章，空格向下翻一屏。</li><li>点正文：<b>左边三分之一</b>翻上一页、<b>右边三分之一</b>翻下一页（翻页模式下），<b>中间</b>收 / 放上下工具栏；收起后点屏幕最上面那条窄边也能唤回。</li><li>快捷方式：← / → 翻章（翻页模式下是翻页），空格 下翻一屏（朗读中则暂停 / 继续），Ctrl + F 搜索，Esc 退回书架或关掉弹窗。</li><li>「排版」一处调完：阅读方式（滚动 / 翻页）、分栏、翻页动画、字号、行距、段间距、字间距、首行缩进、字体、对齐、版心宽度、页边距、六套主题与自定义底色字色、亮度、自动阅读速度。</li><li>「主题」按顺序切六套配色；「自动」开关自动阅读；「全屏」进入沉浸模式。</li><li>阅读位置自动保存，下次打开接着读；翻页模式还会记住翻到第几页。</li></ul>' +
       '<h3>划线、批注与分享</h3>' +
       '<p>在正文里选中任意一句，会浮出一个小工具条：四色高亮、写笔记、复制、生成分享图。高亮和批注随书保存，右侧「笔记」页会按章节列出全部批注，点一条就能跳回去；在那里还能按「仅看有笔记的」筛选、改色、编辑或删除，并一键<b>导出成 Markdown</b> 或打开<b>阅读总结</b>（累计时长、进度、批注数、逐章摘录，可复制或导出）。</p>' +
       '<h3>书架与收藏</h3>' +
@@ -3932,9 +3970,9 @@
       '<h3>书架上的「续听」是什么？</h3><p>听到哪会被单独记住，和「读到哪」互不干扰。听完回到书架，书本卡片下方就有「▶ 续听 · 第 N 章」，点一下从上次听的那一段接着念。想按看书的位置念，点开书再点「朗读」即可。没听过这本书时不会出现这个按钮。</p>' +
       '<h3>念到一半想换个声音？</h3><p>直接点朗读条最左边的下拉，里面是本机精选 21 个声线；设置里「声线范围」可放开到全部 187 个。想把对话也换成不同声音，点旁边的「多角色」。换完会用新声线把当前这一段重念一遍，不用停也不用回书架。想先试听再决定，去「阅读设置 → 免费神经语音 → 试听音色」。</p>' +
       '<h3>手机上按钮挤？</h3><p>按钮会按屏幕宽度自动换成多行网格，不用手动切。手机上的正文一律单栏，横屏也不会硬分两栏。</p>' +
-      '<h3>怎么弄成两栏？</h3><p>点阅读器顶栏的「排版」→「阅读方式」：切到「翻页」，分栏选「自动分栏」在宽屏上就是左右两栏，选「双栏」可以强制（窗口够宽时）；窗口太窄或手机上会自动退回单栏，不会把字挤成一条。<br>顺带一提，翻页模式翻的是整屏而不是滚动：点屏幕左右两侧、滚轮、空格或 ← → 都能翻，手机可以左右滑。</p>' +
-      '<h3>自动阅读怎么用？</h3><p>点顶栏「自动」，滚动模式下会匀速往下滚，翻页模式下按你设的秒数自动翻页；再点一次暂停，暂停时会留一个胶囊提示，可以继续或退出。到本章末尾会自动接下一章。朗读和自动阅读不会同时抢滚动。</p>' +
-      '<h3>想看得更沉浸？</h3><p>点「全屏」，或用全屏快捷键：上下工具栏会收起，鼠标移到屏幕上边或下边再唤出来。想更暗一点，在「排版 → 配色 → 亮度」往下拉，正文会压暗一层夜里不刺眼。</p>' +
+      '<h3>怎么弄成两栏？</h3><p>点阅读器顶栏「⋯」里的「排版」→「阅读方式」：切到「翻页」，分栏选「自动分栏」在宽屏上就是左右两栏，选「双栏」可以强制（窗口够宽时）；窗口太窄或手机上会自动退回单栏，不会把字挤成一条。<br>顺带一提，翻页模式翻的是整屏而不是滚动：点屏幕<b>左边三分之一</b>回上一页、<b>右边三分之一</b>翻下一页，滚轮、空格或 ← → 也都行，手机上还能左右滑。点屏幕<b>中间</b>是收 / 放上下工具栏——收起来之后正文占满整屏，再点中间或点最上面那条窄边就能唤回。</p>' +
+      '<h3>自动阅读怎么用？</h3><p>点顶栏「⋯」里的「自动」，滚动模式下会匀速往下滚，翻页模式下按你设的秒数自动翻页；再点一次暂停，暂停时会留一个胶囊提示，可以继续或退出。到本章末尾会自动接下一章。朗读和自动阅读不会同时抢滚动。</p>' +
+      '<h3>想看得更沉浸？</h3><p>点屏幕<b>中间</b>就能把上下工具栏收起来（最省事）；想连窗口边框一起收，点「⋯」里的「全屏」或按 F11。收起后点屏幕中间或最上面那条窄边就能唤回，鼠标移到屏幕上边或下边也行。想更暗一点，在「排版 → 配色 → 亮度」往下拉，正文会压暗一层夜里不刺眼。</p>' +
       '<p class="kv">还有问题？读一下「关于」里的实现说明，或到发行包 README 里找反馈入口。</p>'],
     open: ['开源与许可', '<h3>许可证</h3>' +
       '<p><b>墨吟 · MoYin Reader</b> 以 <b>MIT 许可证</b>发布，版权归 <b>© 2026 永远的兰兰（Lanlan Eternal）</b>所有。</p>' +
@@ -3966,6 +4004,13 @@
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + 三份中文 VITS 模型）：不联网、不收费、无需账号，主角是 22.05 kHz 的「墨吟 · 女声」与「墨吟 · 男声」，另带 187 个配角说话人（148 女 + 39 男），精选 21 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.14.12 改了什么</h3><ul>' +
+      '<li><b>手机上顶栏从两行压成一行</b>：以前「返回 / 书名 / 时钟」占一行，五个大按钮再占一行 44px，加起来一百多像素，一屏幕正文被吃掉一大块。现在一行放下 返回、书名、时钟、目录、朗读、⋯，高度减半；搜索、排版、书签、笔记、主题、自动、全屏、设置都收进「⋯」，点开是一个浮在正文上的面板，<b>不会把顶栏再撑高</b>。</li>' +
+      '<li><b>工具栏可以收起来了</b>：点屏幕中间，上下两条工具栏一起滑走，正文占满整屏；再点中间，或者点屏幕最上面那条窄边，就唤回来。收起后仍停在原来那一页，不会跳。</li>' +
+      '<li><b>默认就是翻页，点一下就翻</b>：手机没有键盘也没有滚轮，以前得靠左右滑，划得手指累。现在点屏幕<b>右边三分之一</b>翻下一页、<b>左边三分之一</b>翻上一页，中间那块留给选字、点链接、点「朗读从这里念」。到章末会自动接下一章。</li>' +
+      '<li><b>老用户不会被硬改</b>：只有从没动过「阅读方式」的配置才跟着切到翻页；自己选过滚动的，保持滚动，设置和排版面板里随时能切回来。</li>' +
+      '<li><b>顺手</b>：窄屏顶栏的时钟只显示时:分，把宽度让给书名；翻页模式底部多留一点白，最后一行不再贴住屏幕下沿。</li>' +
+      '</ul>' +
       '<h3>1.14.11 改了什么</h3><ul>' +
       '<li><b>念到英文不再报错、不再切回系统语音</b>：三份中文模型的词典里一个英文字母都没有（实测 68 012 条词条，连 hello / OK / CPU 都查不到），整段英文送进去就是「一个字都没念出来」，旧版会报 HTTP 500 并退回系统朗读。</li>' +
       '<li><b>现在这样处理</b>：纯英文（一个汉字都没有）的句子，交给系统英文语音念——语言换了，声音本来就不该是同一副；机器上没有英文语音就按字母数留一段空白（最长 4.5 秒）再往下念，只轻提示一次，不弹窗、不算失败、不降级。<b>中英混排</b>（「他打开 iPhone 看了一眼」）照常用人物的声音念中文，英文单词按语言切开后交给英文模型补上（需 VoicePack/models/piper-en，可选装；没装则那一个词略过，中文不受影响）。</li>' +
@@ -4280,7 +4325,7 @@
       /* 多栏与翻页联动，两个入口（设置 / 排版面板）行为保持一致 */
       if (k === 'lay' && (LAYN[v] || 0) > 1) CFG.mode = 'page';
       if (k === 'mode' && v === 'scroll' && (LAYN[CFG.lay] || 0) > 1) CFG.lay = 'auto';
-      if (k === 'mode') PG.ready = 0;
+      if (k === 'mode') { PG.ready = 0; CFG.modeTouched = 1; }   // 自己选的阅读方式，以后不再跟着默认值改
       saveCfg(); applyCfg();
       if (v === 'voiceAuto' && CFG.voiceAuto) fillVoices();
       if (v === 'localOn') { LOCAL.ready = false; if (CFG.localOn) localProbe(); voiceBadge(curVoice()); }
@@ -4451,6 +4496,7 @@
       var b = e.target.closest('button[data-set]'); if (!b) return;
       var k2 = b.getAttribute('data-set'), v2 = b.getAttribute('data-v');
       var tip = '';
+      if (k2 === 'mode') CFG.modeTouched = 1;   // 同上：手动选过就一直听你的
       if (k2 === 'lay' && (LAYN[v2] || 0) > 1 && CFG.mode !== 'page') {
         /* 多栏要配合翻页才有意义，点了就直接带过去，别让人以为没反应 */
         CFG.mode = 'page'; tip = T('多栏需配合翻页，已切到翻页模式');
@@ -4520,6 +4566,7 @@
       b.textContent = '⋯';
       b.setAttribute('aria-expanded', 'false');
     }
+    box.__shut = shut;          // 外面（收工具栏、换章）也能把它关掉
     b.onclick = function (e) {
       e.stopPropagation();
       var on = !box.classList.contains('open');
@@ -4710,10 +4757,9 @@
     /* 选中文字 → 浮动工具条（桌面上 mouseup，触屏上 touchend） */
     $('page').addEventListener('mouseup', onSelUp);
     $('page').addEventListener('touchend', function () { setTimeout(onSelUp, 60); });
-    /* 点正文：先收侧栏；左右两侧点一下翻页（有选区时不动）。
-       手机上默认是滚动模式，没有键盘也没有滚轮 —— 所以触屏设备
-       在这里同样开放左右两侧轻点翻屏，中间 56% 留给选中文字、
-       点链接和「朗读从这里念」。 */
+    /* 点正文：左 1/3 上一页、右 1/3 下一页、中间收 / 放上下工具栏（有选区时不动）。
+       手机没有键盘也没有滚轮，点一下就翻最省事；中间那块留给选字、点链接、
+       点「朗读从这里念」，也用来收起顶栏（顶栏一直占着最上面一条太挤）。 */
     $('pageWrap').addEventListener('click', function (e) {
       if (e.target.closest('#selTools')) return;
       if (Date.now() - TAPMOVE < 700) return;          // 刚才是滑动，不是轻点
@@ -4723,12 +4769,19 @@
       var hasSel = !!(s && !s.isCollapsed);
       if ($('side').classList.contains('on')) { if (!hasSel) closeSide(); return; }
       if (hasSel) return;
-      if (!pgEnabled() && !touchy()) return;
       if (e.target.closest('a,button,mark,[data-act]')) return;
       if (SPK.on && e.target.closest('.rdp')) return;          // 朗读中点段落 = 从这里念
-      var box = $('pageWrap').getBoundingClientRect(), x = e.clientX - box.left;
-      if (x < box.width * 0.22) readPrev();
-      else if (x > box.width * 0.78) readNext();
+      var box = $('pageWrap').getBoundingClientRect();
+      var x = e.clientX - box.left, y = e.clientY - box.top;
+      /* 工具栏收着时，点屏幕最上面那条窄边就能唤回来，不用猜 */
+      if (!barsVisible() && y < 54) { setBars(true); return; }
+      if (!pgEnabled()) {
+        if (touchy()) toggleBars();            // 滚动模式：点一下收 / 放工具栏
+        return;
+      }
+      if (x < box.width / 3) { autoPause(); readPrev(); }
+      else if (x > box.width * 2 / 3) { autoPause(); readNext(); }
+      else toggleBars();
     });
     /* 滚轮翻页（翻页模式） */
     var wheelT = 0, TAPMOVE = 0;        // TAPMOVE：最近一次手指移动的时间，用来区分轻点与滑动
@@ -4970,6 +5023,7 @@
       pgTo: pgTo, pgReflow: pgReflow, paraPage: paraPage, readNext: readNext, readPrev: readPrev,
       autoToggle: autoToggle, autoStart: autoStart, autoStop: autoStop, autoPause: autoPause,
       autoResume: autoResume, AUTO: AUTO, toggleFull: toggleFull, setTheme: setTheme,
+      applyImm: applyImm, setBars: setBars, toggleBars: toggleBars, barsVisible: barsVisible,
       THEMES: THEMES, revealPara: revealPara, renderKeep: renderKeep,
       /* 1.11.1：检查更新（测试脚本要能直接调） */
       checkUpdate: checkUpdate, cmpVer: cmpVer, UPD: UPD

@@ -35,7 +35,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 APP = 'MoYinReader'
 APP_CN = '墨吟阅读器'
-VER = '1.14.11'
+VER = '1.14.12'
 VOICE_PORT = 8177
 PORTS = (38975, 38976, 0)
 CREATE_NO_WINDOW = 0x08000000
