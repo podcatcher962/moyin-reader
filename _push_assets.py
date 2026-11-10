@@ -30,8 +30,8 @@ VER = '1.14.12'
 ALL = [
     'MoYinReader.exe',
     'MoYinReader_Lite.exe',
+    'MoYinReader.apk',
     'MoYinReader.html',
-    'docs/download/MoYinReader.apk',
     'dist/moyin-reader_%s_amd64.deb' % VER,
     'dist/MoYinReader-Linux-%s.tar.gz' % VER,
     'dist/MoYinReader-macOS-%s.zip' % VER,

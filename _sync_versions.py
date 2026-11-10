@@ -22,7 +22,7 @@ REPO = 'podcatcher962/moyin-reader'
 SITE = 'podcatcher962/podcatcher962.github.io'
 TOKEN_FILE = r'D:\Desktop\send-to-mainpc\podcatcher962-token.txt'
 API = 'https://api.github.com'
-VER = '1.14.11'
+VER = '1.14.12'
 TAG = 'v' + VER
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -39,7 +39,7 @@ BUILDS = [
     ('dist/moyin-reader_%s_amd64.deb' % VER, 'linux', 'amd64'),
     ('dist/MoYinReader-Linux-%s.tar.gz' % VER, 'linux', 'x64'),
     ('dist/MoYinReader-macOS-%s.zip' % VER, 'macos', 'universal'),
-    ('docs/download/MoYinReader.apk', 'android', 'universal'),
+    ('MoYinReader.apk', 'android', 'universal'),
     ('MoYinReader.exe', 'windows', 'x64'),
     ('MoYinReader.html', 'web', None),
     ('MoYinReader_Lite.exe', 'windows', 'x64'),
