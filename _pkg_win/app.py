@@ -28,6 +28,7 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
@@ -35,7 +36,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 APP = 'MoYinReader'
 APP_CN = '墨吟阅读器'
-VER = '1.14.27'
+VER = '1.14.28'
 VOICE_PORT = 8177
 PORTS = (38975, 38976, 0)
 CREATE_NO_WINDOW = 0x08000000
@@ -399,6 +400,25 @@ window.__moyinScanDir=function(p){
 };
 })();</script>""" % TOKEN
 
+# 桌面版专用：网盘同步的代发通道。WebDAV 服务几乎都不发 CORS 头，页面里直接 fetch
+# 会被浏览器拦下，所以请求交给 Python 发，页面只跟 127.0.0.1 说话。
+WEBDAV_JS = """<script>(function(){
+if(window.__moyinWebdav)return;
+var TK='%s';
+window.__moyinWebdav=function(o){
+  return fetch('/__webdav?token='+TK,{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(o||{})}).then(function(r){
+    return r.text().then(function(s){
+      if(!r.ok) throw new Error(s||('HTTP '+r.status));
+      var j={};try{j=JSON.parse(s);}catch(e){throw new Error('通道返回异常');}
+      if(j.error) throw new Error(j.error);
+      return {status:j.status|0,body:j.body||''};
+    });
+  });
+};
+})();</script>""" % TOKEN
+
 BEACON_JS = """<script>(function(){function p(t){try{
 var d={tag:t,rs:document.readyState,title:document.title,
 ready:(window.MY&&MY.CFG)?1:0,nodes:document.querySelectorAll('*').length,
@@ -414,7 +434,7 @@ def page_bytes(with_beacon=False):
     if PAGE_CACHE is None:
         with open(page_file(), 'rb') as f:
             b = f.read()
-        inject = MARK + SAVE_JS.encode('utf-8') + PICK_JS.encode('utf-8')
+        inject = MARK + SAVE_JS.encode('utf-8') + PICK_JS.encode('utf-8') + WEBDAV_JS.encode('utf-8')
         if with_beacon:
             inject += BEACON_JS.encode('utf-8')
         i = b.find(b'</head>')
@@ -518,6 +538,62 @@ class Handler(BaseHTTPRequestHandler):
             'files': [{'i': i, 'name': f['name'], 'size': f['size']} for i, f in enumerate(files)],
         })
 
+    # ── 网盘同步：代发一次 WebDAV 请求 ──────────────────────────────────
+    #  只做搬运，什么都不存。密码不落盘（只随请求头过去），日志也不记。
+    #  为什么要代发：WebView 里页面直接 fetch WebDAV 必被拦，对方几乎都不发
+    #  Access-Control-Allow-Origin，浏览器连预检都过不去。
+    WD_METHODS = ('GET', 'PUT', 'POST', 'DELETE', 'HEAD', 'MKCOL', 'PROPFIND')
+
+    def _webdav(self):
+        try:
+            n = int(self.headers.get('Content-Length', '0'))
+        except ValueError:
+            n = 0
+        if n <= 0 or n > 4 * 1024 * 1024:
+            self._json({'error': '请求体大小不合法'})
+            return
+        try:
+            req = json.loads(self.rfile.read(n).decode('utf-8', 'replace'))
+            if not isinstance(req, dict):
+                raise ValueError('not object')
+        except Exception:
+            self._json({'error': '请求格式不对'})
+            return
+        url = str(req.get('url') or '')
+        method = str(req.get('method') or 'GET').upper()
+        if not url.lower().startswith(('http://', 'https://')):
+            self._json({'error': '只支持 http / https 地址'})
+            return
+        if method not in self.WD_METHODS:
+            self._json({'error': '不支持的方法 %s' % method})
+            return
+        body = req.get('body')
+        data = str(body).encode('utf-8') if body else None
+        r = urllib.request.Request(url, data=data, method=method)
+        for k, v in (req.get('headers') or {}).items():
+            if str(k).lower() in ('host', 'content-length', 'connection'):
+                continue                   # 这几个由 urllib 自己算，别让页面插手
+            try:
+                r.add_header(str(k), str(v))
+            except Exception:
+                pass
+        code, out = 0, b''
+        try:
+            with urllib.request.urlopen(r, timeout=45) as resp:
+                code = getattr(resp, 'status', 0) or 200
+                out = resp.read(4 * 1024 * 1024)
+        except urllib.error.HTTPError as e:
+            code = e.code
+            try:
+                out = e.read(1024 * 1024)
+            except Exception:
+                out = b''
+        except Exception as e:
+            # 连不上就当成一次失败，不抛给页面栈（页面只需看到一句人话）
+            self._json({'error': '连不上：%s' % (e,)})
+            return
+        self._json({'status': code, 'body': out.decode('utf-8', 'replace')})
+
     def _send(self, code, mime, body, extra=''):
         if isinstance(body, str):
             body = body.encode('utf-8')
@@ -576,12 +652,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split('?', 1)[0]
-        if path not in ('/__save', '/__pickdir', '/__scandir'):
+        if path not in ('/__save', '/__pickdir', '/__scandir', '/__webdav'):
             self._send(404, 'text/plain; charset=utf-8', '只读')
             return
         q = self._q()
         if q.get('token') != TOKEN:
             self._send(403, 'text/plain; charset=utf-8', '令牌不对')
+            return
+        if path == '/__webdav':
+            self._webdav()
             return
         if path == '/__pickdir':
             self._pickdir()
@@ -1089,7 +1168,7 @@ def selftest(out=None):
             body = r.read()
         ok &= ck(r.status == 200 and len(body) > len(raw), 'GET / 返回注入后的页面')
         ok &= ck(b'__MOYIN_DESKTOP__' in body and b'__moyinSave' in body, '桌面标记与备份通道已注入')
-        inject = MARK + SAVE_JS.encode('utf-8') + PICK_JS.encode('utf-8')
+        inject = MARK + SAVE_JS.encode('utf-8') + PICK_JS.encode('utf-8') + WEBDAV_JS.encode('utf-8')
         ok &= ck(body.replace(inject, b'', 1) == raw, '剥掉注入脚本后与源文件逐字节一致')
     except Exception as e:
         ok &= ck(False, 'GET / 失败: %s' % e)
@@ -1134,6 +1213,72 @@ def selftest(out=None):
         c.request('POST', '/__scandir?token=bad&path=X', b'')
         r = c.getresponse(); r.read(); c.close()
         ok &= ck(r.status == 403, '网络位置接口拒绝错误令牌')
+        # 网盘同步代理：起一个极小的 WebDAV 桩，走 /__webdav 真跑一趟 PUT + GET
+        store = {}
+
+        class _WDStub(BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def _empty(self, code):
+                self.send_response(code)
+                self.send_header('Content-Length', '0')
+                self.end_headers()
+
+            def do_PUT(self):
+                n = int(self.headers.get('Content-Length', '0') or 0)
+                store['f'] = self.rfile.read(n) if n else b''
+                self._empty(201)
+
+            def do_GET(self):
+                if 'f' not in store:
+                    self._empty(404)
+                    return
+                self.send_response(200)
+                self.send_header('Content-Length', str(len(store['f'])))
+                self.end_headers()
+                self.wfile.write(store['f'])
+
+            def do_MKCOL(self):
+                self._empty(201)
+
+            def do_PROPFIND(self):
+                self._empty(207)
+
+        wds = ThreadingHTTPServer(('127.0.0.1', 0), _WDStub)
+        wds.daemon_threads = True
+        wp = wds.server_address[1]
+        threading.Thread(target=wds.serve_forever, daemon=True).start()
+        wurl = 'http://127.0.0.1:%d/moyin-meta.json' % wp
+
+        def wdproxy(payload):
+            cc = http.client.HTTPConnection('127.0.0.1', PORT, timeout=20)
+            cc.request('POST', '/__webdav?token=' + TOKEN,
+                       json.dumps(payload, ensure_ascii=False).encode('utf-8'),
+                       {'Content-Type': 'application/json'})
+            rr = cc.getresponse()
+            raw2 = rr.read()
+            cc.close()
+            return rr.status, json.loads(raw2.decode('utf-8', 'replace'))
+
+        doc = {'app': 'MoYinReader', 'books': [{'key': 'k-1', 'name': '测试书'}]}
+        st, jj = wdproxy({'method': 'PUT', 'url': wurl,
+                          'headers': {'Content-Type': 'application/json'},
+                          'body': json.dumps(doc, ensure_ascii=False)})
+        ok &= ck(st == 200 and jj.get('status') == 201, '网盘代理能写（PUT → 201）')
+        st, jj = wdproxy({'method': 'GET', 'url': wurl})
+        ok &= ck(st == 200 and jj.get('status') == 200 and '测试书' in (jj.get('body') or ''),
+                 '网盘代理能读，中文原样回来')
+        st, jj = wdproxy({'method': 'GET', 'url': 'file:///c:/windows/win.ini'})
+        ok &= ck(st == 200 and bool(jj.get('error')), '非 http(s) 地址被挡在外面')
+        st, jj = wdproxy({'method': 'PROPFIND', 'url': wurl})
+        ok &= ck(st == 200 and jj.get('status') == 207, '桌面版支持 PROPFIND / MKCOL（建目录用）')
+        cc = http.client.HTTPConnection('127.0.0.1', PORT, timeout=8)
+        cc.request('POST', '/__webdav?token=bad', b'{}', {'Content-Type': 'application/json'})
+        rr = cc.getresponse(); rr.read(); cc.close()
+        ok &= ck(rr.status == 403, '网盘代理拒绝错误令牌')
+        ok &= ck('__moyinWebdav' in PAGE_CACHE.decode('utf-8', 'replace'), '网盘通道已注入页面')
+        wds.shutdown()
         tmpd = tempfile.mkdtemp(prefix='moyin_net_')
         try:
             fake = os.path.join(tmpd, '网络测试书.txt')

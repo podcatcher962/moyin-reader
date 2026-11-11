@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.14.27';
+  var VER = '1.14.28';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -142,6 +142,139 @@
     return u.buffer;
   }
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  /* ---------------- SHA-256（纯 JS） ----------------
+     只为「内容指纹」服务。不用 crypto.subtle：安卓页面从 127.0.0.1 进来算安全上下文，
+     但网页版被另存成 file:// 打开时就是 undefined。指纹一半设备算得出来、另一半算不出来，
+     同步直接废掉，所以自带一份，谁也不靠。 */
+  var SHA_K = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+  ];
+  function sha256Hex(u8) {
+    var ml = u8.length;
+    var blocks = ((ml + 8) >> 6) + 1;
+    var pad = new Uint8Array(blocks * 64);
+    pad.set(u8);
+    pad[ml] = 0x80;
+    var hi = Math.floor(ml / 536870912), lo = (ml * 8) >>> 0;
+    var e = blocks * 64;
+    pad[e - 8] = (hi >>> 24) & 255; pad[e - 7] = (hi >>> 16) & 255;
+    pad[e - 6] = (hi >>> 8) & 255; pad[e - 5] = hi & 255;
+    pad[e - 4] = (lo >>> 24) & 255; pad[e - 3] = (lo >>> 16) & 255;
+    pad[e - 2] = (lo >>> 8) & 255; pad[e - 1] = lo & 255;
+    var H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+             0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    var w = new Int32Array(64), i, off;
+    for (off = 0; off < e; off += 64) {
+      for (i = 0; i < 16; i++) {
+        w[i] = (pad[off + i * 4] << 24) | (pad[off + i * 4 + 1] << 16) |
+               (pad[off + i * 4 + 2] << 8) | pad[off + i * 4 + 3];
+      }
+      for (i = 16; i < 64; i++) {
+        var x = w[i - 15], y = w[i - 2];
+        var s0 = ((x >>> 7) | (x << 25)) ^ ((x >>> 18) | (x << 14)) ^ (x >>> 3);
+        var s1 = ((y >>> 17) | (y << 15)) ^ ((y >>> 19) | (y << 13)) ^ (y >>> 10);
+        w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
+      }
+      var a = H[0], b = H[1], c = H[2], d = H[3], f = H[4], g = H[5], hh = H[6], k = H[7];
+      for (i = 0; i < 64; i++) {
+        var S1 = ((f >>> 6) | (f << 26)) ^ ((f >>> 11) | (f << 21)) ^ ((f >>> 25) | (f << 7));
+        var ch = (f & g) ^ (~f & hh);
+        var t1 = (k + S1 + ch + SHA_K[i] + w[i]) | 0;
+        var S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+        var mj = (a & b) ^ (a & c) ^ (b & c);
+        var t2 = (S0 + mj) | 0;
+        k = hh; hh = g; g = f; f = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+      }
+      H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+      H[4] = (H[4] + f) | 0; H[5] = (H[5] + g) | 0; H[6] = (H[6] + hh) | 0; H[7] = (H[7] + k) | 0;
+    }
+    return H.map(function (v) { return ('0000000' + (v >>> 0).toString(16)).slice(-8); }).join('');
+  }
+  function utf8Bytes(s) {
+    var out = [], i, c, c2, cp;
+    for (i = 0; i < s.length; i++) {
+      c = s.charCodeAt(i);
+      if (c < 0x80) out.push(c);
+      else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));
+      else if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length &&
+               (c2 = s.charCodeAt(i + 1)) >= 0xdc00 && c2 <= 0xdfff) {
+        cp = 0x10000 + ((c - 0xd800) << 10) + (c2 - 0xdc00);
+        out.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 63), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+        i++;
+      } else out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+    }
+    return new Uint8Array(out);
+  }
+  /* 同一本书在两台机器上要认得出是同一本，靠的就是这个 key：
+     体积 + 规范化书名 + 首尾各 8 KB 的摘要。不 hash 全书——20 MB 的书在手机上
+     要几百毫秒，导入本来就慢，不值这个时间；而体积加首尾已经足够区分。 */
+  function normBookName(s) {
+    return String(s || '').toLowerCase().replace(/\.[^.]+$/, '')
+      .replace(/[\s_\-·・.,，。:：;；!！?？()（）\[\]【】〔〕《》<>'"“”‘’+&@#]/g, '');
+  }
+  function bookKey(buf, name, size) {
+    var u = (buf && buf.byteLength !== undefined && !(buf instanceof Uint8Array))
+      ? new Uint8Array(buf) : buf;
+    if (!u || u.length === undefined) return '';
+    var n = u.length || (Number(size) || 0);
+    var m = Math.min(8192, n);
+    var tag = utf8Bytes(normBookName(name) + '|' + n + '|');
+    var all = new Uint8Array(tag.length + m * 2);
+    all.set(tag, 0);
+    all.set(u.subarray(0, m), tag.length);
+    if (m) all.set(u.subarray(n - m, n), tag.length + m);
+    return n.toString(36) + '-' + sha256Hex(all).slice(0, 16);
+  }
+  /* 1.14.28 之前导入的书没有 key。补算要读一遍文件，慢，所以放后台一本一本过：
+     算过就写回，读不到文件（丢了）就跳过，下次同步前再试。 */
+  var KEYBUSY = 0;
+  async function ensureKeys(quiet) {
+    if (KEYBUSY) return 0;
+    var todo = BOOKS.filter(function (b) { return b && !b.key; });
+    if (!todo.length) return 0;
+    KEYBUSY = 1;
+    var n = 0;
+    for (var i = 0; i < todo.length; i++) {
+      try {
+        var rec = await dbGet('blobs', todo[i].id);
+        if (!rec || !rec.buf) continue;
+        todo[i].key = bookKey(rec.buf, todo[i].name, todo[i].size);
+        if (!todo[i].key) continue;
+        await dbPut('books', todo[i]);
+        n++;
+        if (n % 3 === 0) await sleep(0);      // 让出主线程，别卡着滚动
+      } catch (e) { /* 单本失败不影响其他 */ }
+    }
+    KEYBUSY = 0;
+    if (n && !quiet) toast(T('已为 {n} 本书建立同步指纹', { n: n }), 2400);
+    return n;
+  }
+  /* 导入同一本书时（换了机器、或本机删了又导回来、或同步先到了进度），
+     把旧条目的进度与笔记接过来。认的是内容指纹，跟文件名、跟 id 都无关。 */
+  function adoptByKey(meta) {
+    if (!meta.key) return '';
+    var prev = BOOKS.filter(function (x) { return x.key === meta.key; })[0];
+    if (!prev) return '';
+    meta.ch = prev.ch || 0; meta.ratio = prev.ratio || 0; meta.progress = prev.progress || 0;
+    meta.marks = (prev.marks || []).slice(); meta.hl = (prev.hl || []).slice();
+    meta.fav = prev.fav || 0; meta.rt = prev.rt || 0; meta.sessions = prev.sessions || 0;
+    meta.first = prev.first || meta.first;
+    if (prev.group) meta.group = prev.group;
+    if (prev.added) meta.added = prev.added;
+    var i = BOOKS.indexOf(prev);
+    if (i >= 0) BOOKS.splice(i, 1);
+    dbDel('books', prev.id).catch(function () { });
+    dbDel('blobs', prev.id).catch(function () { });
+    return prev.name || '';
+  }
 
   /* ---------------- IndexedDB：元数据与书籍二进制分库 ---------------- */
   function openDB() {
@@ -1659,12 +1792,16 @@
     for (var i = 0; i < files.length; i++) {
       var f = files[i], ext = readExt(f.name);
       var bname = f.name.replace(/\.[^.]+$/, '');
-      if (ext && BOOKS.some(function (b) { return b.name === bname && b.size === f.size; })) {
+      /* 同机重复导入就跳过。但「同步来的幽灵条目」（只有进度没有文件，noFile=1）
+         不算已有——那本书实际上还没进来，得让用户导进去才能读。 */
+      if (ext && BOOKS.some(function (b) { return b.name === bname && b.size === f.size && !b.noFile; })) {
         skipN++; skipped.push(bname + T('（书架已有）')); continue;
       }
       try {
         if (total > 3) toast(T('导入中… {a}/{b}', { a: i + 1, b: total }), 1500);
         var buf = await f.arrayBuffer();
+        /* 指纹必须在 parseBook 之前算：PDF.js 会把 buffer transfer 给 worker，算晚了这份就空了 */
+        var bkey = bookKey(buf, bname, f.size);
         if (!ext) ext = sniffExt(buf);        // 名字没后缀也认：EPUB 是 ZIP，PDF 是 %PDF
         if (!ext) { dropN++; continue; }      // MOBI 之类：静默略过
         /* PDF 要一页一页抽字，慢到能被当成卡死：给它一条页码进度 */
@@ -1677,7 +1814,7 @@
         var id = 'b' + Date.now() + Math.random().toString(36).slice(2, 7);
         await dbPut('blobs', { id: id, buf: buf, text: b.pdfText || '' });
         var meta = {
-          id: id, name: bname, ext: ext, size: f.size,
+          id: id, key: bkey, name: bname, ext: ext, size: f.size,
           added: Date.now(), last: Date.now(), ch: 0, ratio: 0, progress: 0,
           cover: b.cover || '', title: b.title, author: b.author || '', marks: [], hl: [],
           chapters: b.titles.slice(0, 1000), tocCount: b.toc.length, enc: b.enc || '',
@@ -1685,7 +1822,9 @@
           group: shelfView().indexOf('g:') === 0 ? shelfView().slice(2) : '',
           fav: 0, rt: 0, sessions: 0, first: 0
         };
+        var adopted = adoptByKey(meta);   // 同一本书上次读到的位置，直接接上
         await dbPut('books', meta); BOOKS.push(meta); okN++;
+        if (adopted) toast(T('《{n}》接上了上次的进度', { n: bname }), 2600);
         if (b.enc && b.enc !== 'UTF-8' && b.enc !== 'UTF-8 BOM') toast(T('《{n}》按 {e} 解码', { n: meta.name, e: b.enc }), 3200);
         if (looksEn(b) && !enLocal()) enBooks.push(bname);
       } catch (e) { errs.push(f.name + '：' + e.message); }
@@ -1722,7 +1861,11 @@
   }
   async function openBook(id) {
     var rec = await dbGet('blobs', id);
-    if (!rec) { toast(T('这本书的文件已丢失，请重新导入')); return; }
+    if (!rec) {
+      /* 两种来路：真丢了；或者是从网盘同步来的「有进度没文件」。后者导入原文件就自动接上。 */
+      toast(T('这本书的文件还不在本机：导入原文件后会从上次读到的位置接着读'), 4200);
+      return;
+    }
     var meta = BOOKS.filter(function (b) { return b.id === id; })[0] || await dbGet('books', id);
     stopSpeak(true);
     autoStop(true);
@@ -1784,6 +1927,7 @@
     $('side').classList.remove('on'); $('speakBar').classList.remove('on');
     hideSelTools();
     clearAssets(); renderShelf();
+    wdPushSoon();          // 开了网盘同步的话，离开这本书 30 秒后把进度推上去
   }
   /* 书里正文常自带一个章节标题，和顶部 #chTitle 重复 —— 去重，只留一个 */
   function dedupeHead() {
@@ -4714,6 +4858,13 @@
       '<p>它的声音理念很简单：<b>用普通人的声音，讲普通人的故事</b>。这里没有修得毫无瑕疵的录音棚嗓音——那种声音属于播音腔，听久了反倒离故事远。187 个人声，男女老少、清亮低沉都有，<b>总有一个让你心动的声音</b>；合耳的留下，不合耳的删掉，选择权在你手上。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + 三份中文 VITS 模型）：不联网、不收费、无需账号，主角是 22.05 kHz 的「墨吟 · 女声」与「墨吟 · 男声」，另带 187 个配角说话人（148 女 + 39 男），精选 21 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.14.28 改了什么</h3><ul>' +
+      '<li><b>换台机器接着读</b>：设置里新增<b>网盘同步（WebDAV）</b>，填上网盘地址、账号和应用密码，进度、书签、批注、分组就在两台机器之间对上了。默认关闭，开了才联网。</li>' +
+      '<li><b>不搬书，只对号</b>：每本书会算一个「内容指纹」（体积 + 书名 + 首尾各 8 KB 的摘要）。同一本书在另一台机器上再导一次，指纹一对上，进度自动接上——书文件一个字节都不用传，也不用等几十兆上传。旧书第一次同步前会自动补算。</li>' +
+      '<li><b>两台都改过也不打架</b>：进度只许前进、不会倒退，章节跟着进度走；书签和批注两边都留下（按内容去重）；其余以最后读的那台为准。手写的笔记宁可多留，绝不覆盖。</li>' +
+      '<li><b>应用密码只在本机</b>：密码单独存，不进设置、不进导出的备份，也不随同步上传。坚果云用「账户信息 → 安全选项 → 添加应用」生成的那个应用密码，别填登录密码。</li>' +
+      '<li><b>网页版会直说用不了</b>：浏览器存不进网盘（跨域限制），设置里会写明要用桌面版或手机版，不让人填半天空欢喜。</li>' +
+      '</ul>' +
       '<h3>1.14.27 改了什么</h3><ul>' +
       '<li><b>声线全部放开，只有原版男女主不可删</b>：以前六个音高变体跟着主角一起钉死，想只留听得顺的那一两个也不行。现在朗读条上固定的只剩「女声 1 · 原声」和「男声 1 · 原声」——它们是默认兜底，删了就没声音；其余包括六个变体、187 个配角、你自己挑的，都能删能加。</li>' +
       '<li><b>置顶位从 6 个放宽到 20 个</b>（女声、男声各 10）。删完想加回来不用先腾位置，也不会因为「满了」被拦住。</li>' +
@@ -5065,6 +5216,25 @@
         : T('⚠ 还没连上神经语音引擎：分角色现在不生效（系统语音只能发出一个声音）。完整版首次启动会自动准备；Lite 版双击「VoicePack/启动语音引擎.cmd」，再回这里点「重新检测」。')) + '</p>' +
       '<div class="row"><label>' + T('端口') + '</label><input type="number" data-set="localPort" min="1024" max="65535" step="1" value="' + (Number(CFG.localPort) || 8177) + '" style="width:96px"><span class="kv">' + T('默认 8177，需与启动器一致') + '</span></div>' +
       '<p class="kv">' + T('朗读文字只发给本机的 127.0.0.1 合成，不产生对外网络请求；引擎没启动时自动用系统语音，不影响看书。') + '</p>' +
+      '<h3>' + T('网盘同步 · WebDAV') + '</h3>' +
+      (!wdReady()
+        ? '<p class="kv">' + T('网页版用不了网盘同步：浏览器里的网页存不进网盘（网盘几乎都不允许跨域读写），要用桌面版或手机版。') + '</p>'
+        : '<div class="row"><label>' + T('自动同步') + '</label><div class="seg">' +
+            '<button data-act="wdOn"' + (WD.on ? ' class="on"' : '') + '>' + (WD.on ? T('自动同步：开') : T('自动同步：关')) + '</button>' +
+            '<button data-act="wdTest">' + T('测试连接') + '</button>' +
+            '<button data-act="wdNow">' + T('立即同步') + '</button></div></div>' +
+          '<div class="row"><label>' + T('服务器') + '</label>' +
+            '<input type="text" data-wd="url" spellcheck="false" placeholder="https://dav.jianguoyun.com/dav/" value="' + esc(WD.url) + '"></div>' +
+          '<div class="row"><label>' + T('账号') + '</label>' +
+            '<input type="text" data-wd="user" spellcheck="false" autocomplete="off" value="' + esc(WD.user) + '"></div>' +
+          '<div class="row"><label>' + T('应用密码') + '</label>' +
+            '<input type="password" data-wd="pass" autocomplete="new-password" value="' + esc(WD.pass) + '"></div>' +
+          '<div class="row"><label>' + T('远端目录') + '</label>' +
+            '<input type="text" data-wd="dir" spellcheck="false" placeholder="' + esc(T('留空 = 网盘根目录')) + '" value="' + esc(WD.dir) + '">' +
+            '<span class="kv">' + T('同步文件是 moyin-meta.json') + '</span></div>' +
+          '<div class="row"><label>' + T('状态') + '</label><span class="kv">' +
+            esc((WD.msg || T('还没同步过')) + (WD.at ? ' · ' + fmtDate(WD.at) : '')) + '</span></div>' +
+          '<p class="kv">' + esc(wdTip()) + '</p>') +
       '<h3>' + T('文件与界面') + '</h3><div class="row"><label>' + T('TXT 编码') + '</label><select data-set="txtEnc">' +
       encOpts.map(function (x) { return '<option value="' + x[0] + '"' + (CFG.txtEnc === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') +
       '</select><span class="kv">' + T('改完重新打开书生效') + '</span></div>' +
@@ -5074,6 +5244,9 @@
       '<p class="kv">' + T('设置即时生效并保存在本机。') + '</p>';
     showModal(T('阅读设置'), h, [{ label: T('恢复默认'), fn: function () { Object.assign(CFG, DEF); saveCfg(); applyCfg(); fillVoices(); showSettings(); toast(T('已恢复默认')); } }, { label: T('完成'), cls: 'pri' }]);
     $('modalBody').oninput = function (e) {
+      /* WebDAV 的四个输入框不进 CFG（密码尤其不能进），单独存 MOYIN_WD */
+      var wk = e.target.getAttribute('data-wd');
+      if (wk) { WD[wk] = e.target.value; wdSave(); return; }
       var k = e.target.getAttribute('data-set'); if (!k) return;
       CFG[k] = (k === 'fs' || k === 'pagew' || k === 'pause' || k === 'localPort' ||
         k === 'autoPageSec' || k === 'autoScrollSpeed' || k === 'restMin') ? parseInt(e.target.value, 10)
@@ -5146,6 +5319,13 @@
         return;
       }
       if (act === 'probe') { LOCAL.miss = 0; localProbe(true).then(function () { showSettings(); }); return; }
+      if (act === 'wdOn') {
+        WD.on = WD.on ? 0 : 1; wdSave(); showSettings();
+        if (WD.on && !WD.url) toast(T('记得把服务器、账号、应用密码填上，再点「测试连接」'), 3600);
+        return;
+      }
+      if (act === 'wdTest') { wdTest(); return; }
+      if (act === 'wdNow') { wdSync(true); return; }
       if (act === 'chkUpd') { checkUpdate(true); return; }
       var k = b.getAttribute('data-set'), v = b.getAttribute('data-v');
       if (k === 'bool') CFG[v] = CFG[v] ? 0 : 1;
@@ -5384,6 +5564,248 @@
       renderShelf();
       toast(T('已还原 {n} 条记录', { n: added }) + (keys.length ? T('、{n} 本书文件', { n: keys.length }) : T('（未含书文件，请重新导入原书）')), 4200);
     } catch (e) { showModal(T('导入失败'), '<p>' + esc(e.message) + '</p>', [{ label: T('关闭') }]); }
+  }
+
+  /* ---------------- 网盘同步（WebDAV） ----------------
+     只同步「读到哪儿、书签、批注、分组」，不搬书文件：两台机器上各自导入同一个文件时，
+     内容指纹一样，进度自动套上，一个字节都不用传。传整本书是下一步的事。
+
+     三条硬约束，改代码别看漏：
+     ① WebDAV 服务几乎都不发 CORS 头，页面里直接 fetch 必被拦。所以请求全部交给本地壳
+        发（桌面 Python / 安卓 Java），页面只跟 127.0.0.1 说话。网页版没有本地壳，不支持。
+     ② 应用密码绝不能进 CFG：exportBak 是 Object.assign({}, CFG) 全量导出，密码进了 CFG
+        就等于跟着备份文件走、还可能被传到别处。单独存 MOYIN_WD，导出时天然剔除。
+     ③ 默认关闭。这软件摆第一位的承诺是「默认零联网」，不能因为加了同步就破例。 */
+  var WDKEY = 'MOYIN_WD';
+  var WD = { url: '', user: '', pass: '', dir: '', on: 0, at: 0, msg: '', dev: '' };
+  var WDBUSY = 0, WDTIME = 0;
+  function wdLoad() {
+    try {
+      var s = JSON.parse(localStorage.getItem(WDKEY) || '{}');
+      Object.keys(WD).forEach(function (k) { if (s[k] !== undefined && s[k] !== null) WD[k] = s[k]; });
+    } catch (e) { /* 隐私模式：这次会话填了就管用，关掉就没了 */ }
+    if (!WD.dev) { WD.dev = 'd' + Math.random().toString(36).slice(2, 8); wdSave(); }
+  }
+  function wdSave() { try { localStorage.setItem(WDKEY, JSON.stringify(WD)); } catch (e) { } }
+  /* 有没有本地壳能代发请求。没有就是网页版——UI 上直说，别让人填完密码才发现不行。 */
+  function wdReady() { return typeof window.__moyinWebdav === 'function'; }
+  function wdBase() {
+    var u = String(WD.url || '').trim();
+    if (!u) return '';
+    if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+    if (u.slice(-1) !== '/') u += '/';
+    var d = String(WD.dir || '').replace(/^\/+|\/+$/g, '');
+    return u + (d ? d + '/' : '');
+  }
+  function wdMetaUrl() { return wdBase() + 'moyin-meta.json'; }
+  function b64u8(s) { return btoa(unescape(encodeURIComponent(String(s)))); }
+  /* 唯一的出口：交给本地壳。返回 {status, body}，网络错就 reject。 */
+  function wdCall(method, url, body, extra) {
+    var fn = window.__moyinWebdav;
+    if (typeof fn !== 'function') return Promise.reject(new Error(T('网页版没有本地通道')));
+    var head = {};
+    if (WD.user) head.Authorization = 'Basic ' + b64u8(WD.user + ':' + WD.pass);
+    if (extra) Object.keys(extra).forEach(function (k) { head[k] = extra[k]; });
+    return fn({ method: method, url: url, headers: head, body: body == null ? '' : String(body) });
+  }
+  function wdAuthErr(st) { return st === 401 || st === 403; }
+  function wdMkdir() {
+    var base = wdBase();
+    if (!base) return Promise.resolve(false);
+    return wdCall('MKCOL', base).then(function (r) {
+      /* 405 = 已经在了，409 = 上级目录不在（服务端不替我们建两层），都当「有了」 */
+      return (r.status >= 200 && r.status < 300) || r.status === 405 || r.status === 409;
+    }, function () { return false; });
+  }
+  function wdPull() {
+    return wdCall('GET', wdMetaUrl()).then(function (r) {
+      if (r.status === 404) return null;              // 第一次用，云端还没有
+      if (wdAuthErr(r.status)) throw new Error(T('账号或应用密码不对（WebDAV 要填「应用密码」，不是登录密码）'));
+      if (r.status < 200 || r.status >= 300) throw new Error('HTTP ' + r.status);
+      var d = null;
+      try { d = JSON.parse(r.body); } catch (e) { d = null; }
+      if (!d || d.app !== 'MoYinReader' || !Array.isArray(d.books)) throw new Error(T('云端那份不是墨吟的同步文件'));
+      return d;
+    });
+  }
+  function wdPut(doc, retried) {
+    return wdCall('PUT', wdMetaUrl(), JSON.stringify(doc),
+      { 'Content-Type': 'application/json; charset=utf-8' }).then(function (r) {
+      if (r.status >= 200 && r.status < 300) return true;
+      if (wdAuthErr(r.status)) throw new Error(T('账号或应用密码不对'));
+      /* 409：目录还不存在。建一次再传，只重试一次，别死循环。
+         手机端的 HttpURLConnection 发不了 MKCOL，所以目录不存在时给句明白话。 */
+      if (r.status === 409 && !retried) return wdMkdir().then(function () { return wdPut(doc, true); });
+      if (r.status === 409) throw new Error(T('远端目录不存在：把「远端目录」清空，或先在网盘里建好这个文件夹'));
+      throw new Error('HTTP ' + r.status);
+    });
+  }
+  /* 上传前先瘦身：chapters（一千条标题）和 cover（base64 图）都能由原文件重新生成，
+     传上去只会让清单涨到几 MB。进度和笔记才是这里唯一的正事。 */
+  function wdMetaOf(b) {
+    return {
+      key: b.key || '', name: b.name || '', ext: b.ext || '', size: b.size || 0,
+      title: b.title || '', author: b.author || '', tocCount: b.tocCount || 0,
+      pages: b.pages || 0, enc: b.enc || '', added: b.added || 0, first: b.first || 0,
+      last: b.last || 0, ch: b.ch || 0, ratio: b.ratio || 0, progress: b.progress || 0,
+      group: b.group || '', fav: b.fav || 0, rt: b.rt || 0, sessions: b.sessions || 0,
+      marks: b.marks || [], hl: b.hl || []
+    };
+  }
+  function wdUnion(x, y, idf) {
+    var out = [], seen = {};
+    (x || []).concat(y || []).forEach(function (it) {
+      if (!it) return;
+      var k = idf(it);
+      if (seen[k]) return;
+      seen[k] = 1; out.push(it);
+    });
+    return out;
+  }
+  /* 合并同一本：谁最后读就以谁为主，但进度只许前进，笔记两边都留。
+     两边都没动过时结果完全等于本机，不会凭空多出东西。 */
+  function wdJoin(a, b) {
+    var newer = (Number(a.last) || 0) >= (Number(b.last) || 0) ? a : b;
+    var o = {};
+    Object.keys(newer).forEach(function (k) { o[k] = newer[k]; });
+    o.last = Math.max(Number(a.last) || 0, Number(b.last) || 0);
+    o.progress = Math.max(Number(a.progress) || 0, Number(b.progress) || 0);
+    /* 章节与页内位置必须跟着「读得更靠后」的那一方，否则会出现进度 60% 却停在第 3 章 */
+    var pos = (Number(b.progress) || 0) > (Number(a.progress) || 0) ? b : a;
+    o.ch = Number(pos.ch) || 0; o.ratio = Number(pos.ratio) || 0;
+    o.marks = wdUnion(a.marks, b.marks, function (x) {
+      return (x.ch | 0) + '|' + (x.p | 0) + '|' + (x.text || '');
+    });
+    o.hl = wdUnion(a.hl, b.hl, function (x) {
+      return x.id || ((x.ch | 0) + '|' + (x.p | 0) + '|' + (x.s | 0) + '|' + (x.text || ''));
+    });
+    o.rt = Math.max(Number(a.rt) || 0, Number(b.rt) || 0);
+    o.sessions = Math.max(Number(a.sessions) || 0, Number(b.sessions) || 0);
+    var f = [Number(a.first) || 0, Number(b.first) || 0].filter(function (x) { return x > 0; });
+    o.first = f.length ? Math.min.apply(null, f) : 0;
+    o.added = Number(a.added) || Number(b.added) || 0;
+    o.key = a.key || b.key || '';
+    return o;
+  }
+  /* 把合并结果写回本机：只动会变的字段，绝不覆盖 chapters / cover / noFile */
+  async function wdLand(b, j) {
+    var was = JSON.stringify([b.ch, b.ratio, b.progress, b.last, b.fav, b.group,
+      (b.marks || []).length, (b.hl || []).length]);
+    b.ch = Number(j.ch) || 0; b.ratio = Number(j.ratio) || 0; b.progress = Number(j.progress) || 0;
+    b.marks = j.marks || []; b.hl = j.hl || [];
+    b.fav = Number(j.fav) || 0;
+    if (j.group) b.group = j.group;
+    b.last = Number(j.last) || b.last; b.first = Number(j.first) || b.first;
+    b.rt = Math.max(Number(b.rt) || 0, Number(j.rt) || 0);
+    b.sessions = Math.max(Number(b.sessions) || 0, Number(j.sessions) || 0);
+    var now = JSON.stringify([b.ch, b.ratio, b.progress, b.last, b.fav, b.group,
+      (b.marks || []).length, (b.hl || []).length]);
+    if (now === was) return false;
+    await dbPut('books', b);
+    return true;
+  }
+  /* 合并云端与本地，返回要写回云端的元数据清单 */
+  async function wdApply(doc) {
+    var remote = (doc && doc.books) || [], i, m;
+    var rmap = {}, used = {};
+    for (i = 0; i < remote.length; i++) {
+      m = remote[i];
+      if (m) rmap[m.key || ('id:' + m.id)] = m;
+    }
+    var out = [], touched = 0, added = 0;
+    for (i = 0; i < BOOKS.length; i++) {
+      var b = BOOKS[i], fid = b.key || ('id:' + b.id), r = rmap[fid];
+      var mine = wdMetaOf(b);
+      if (!r) { out.push(mine); continue; }
+      used[fid] = 1;
+      var j = wdJoin(mine, r);
+      out.push(j);
+      if (await wdLand(b, j)) touched++;
+    }
+    /* 云端有、本机没有：建一条「有进度没文件」的条目。书架上看得见进度，
+       把原文件导进来，指纹一对上就自动接上——这正是跨设备接着读的用法。 */
+    for (i = 0; i < remote.length; i++) {
+      m = remote[i];
+      if (!m) continue;
+      var k2 = m.key || ('id:' + m.id);
+      if (used[k2]) continue;
+      used[k2] = 1;
+      out.push(m);
+      var rid = 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      var nb = {
+        id: rid, key: m.key || '', noFile: 1, name: m.name || '', ext: m.ext || '', size: m.size || 0,
+        title: m.title || m.name || '', author: m.author || '', tocCount: m.tocCount || 0,
+        pages: m.pages || 0, enc: m.enc || '', added: m.added || Date.now(),
+        first: m.first || Date.now(), last: m.last || Date.now(),
+        ch: m.ch || 0, ratio: m.ratio || 0, progress: m.progress || 0, group: m.group || '',
+        fav: m.fav || 0, rt: m.rt || 0, sessions: m.sessions || 0,
+        marks: m.marks || [], hl: m.hl || [], chapters: [], cover: ''
+      };
+      await dbPut('books', nb); BOOKS.push(nb); added++;
+    }
+    return { books: out, touched: touched, added: added };
+  }
+  async function wdSync(manual) {
+    if (!wdReady()) {
+      if (manual) toast(T('网页版不支持网盘同步：要用桌面版或手机版'), 4200);
+      return false;
+    }
+    if (!WD.url) { if (manual) toast(T('先在设置里填 WebDAV 服务器地址')); return false; }
+    if (WDBUSY) { if (manual) toast(T('正在同步，稍等')); return false; }
+    WDBUSY = 1;
+    WD.msg = T('同步中…'); wdSave();
+    if (manual) { showSettings(); toast(T('正在和网盘同步…'), 1800); }
+    try {
+      await ensureKeys(true);                       // 老书先补指纹，不然对不上号
+      var doc = await wdPull();
+      var r = await wdApply(doc);
+      await wdPut({ app: 'MoYinReader', kind: 'meta', v: 1, at: Date.now(), dev: WD.dev, books: r.books });
+      WD.at = Date.now();
+      WD.msg = T('已同步：本机 {a} 本，云端新增 {b} 本', { a: BOOKS.length, b: r.added });
+      wdSave();
+      if (r.added || r.touched) renderShelf();
+      if (manual) toast(WD.msg, 3200);
+      return true;
+    } catch (e) {
+      WD.msg = T('同步失败：') + ((e && e.message) || T('网络不通'));
+      wdSave();
+      if (manual) toast(WD.msg, 4600);
+      return false;
+    } finally { WDBUSY = 0; }
+  }
+  /* 开机拉一次、离开阅读页推一次（防抖 30 秒）。只有开了开关才动，
+     默认一个包都不发——「默认零联网」是这软件摆在第一位的承诺。 */
+  function wdAutoPull() {
+    if (!WD.on || !WD.url || !wdReady()) return;
+    setTimeout(function () { wdSync(false); }, 1200);
+  }
+  function wdPushSoon() {
+    if (!WD.on || !WD.url || !wdReady()) return;
+    clearTimeout(WDTIME);
+    WDTIME = setTimeout(function () { wdSync(false); }, 30000);
+  }
+  function wdTest() {
+    if (!wdReady()) { toast(T('网页版不支持网盘同步'), 3600); return; }
+    if (!WD.url) { toast(T('先填服务器地址')); return; }
+    toast(T('正在连接…'), 1600);
+    /* 用 GET 探一次而不是 PROPFIND：安卓的 HttpURLConnection 发不了 PROPFIND，
+       而「连得上」这件事 200 / 404 都能说明——404 只是还没同步过。 */
+    wdCall('GET', wdMetaUrl()).then(function (r) {
+      if (wdAuthErr(r.status)) WD.msg = T('账号或应用密码不对');
+      else if (r.status === 200) WD.msg = T('连接正常，云端已有同步文件');
+      else if (r.status === 404) WD.msg = T('连接正常，云端还没有同步文件（第一次同步会建）');
+      else if (r.status === 409) WD.msg = T('连上了，但「远端目录」不存在，清空它或先在网盘里建好');
+      else WD.msg = 'HTTP ' + r.status;
+    }, function (e) {
+      WD.msg = T('连不上：') + ((e && e.message) || T('网络不通'));
+    }).then(function () {
+      wdSave(); showSettings(); toast(WD.msg, 3600);
+    });
+  }
+  function wdTip() {
+    return T('只同步「读到哪儿、书签、批注、分组」，不传书文件：两台机器上各自导入同一个文件，内容指纹一样，进度自动套上，不用搬书。') +
+      ' ' + T('应用密码只存在本机，不进备份、不上传。坚果云在「账户信息 → 安全选项 → 添加应用」里生成应用密码，用那个，别用登录密码。') +
+      ' ' + T('「远端目录」留空就写在网盘根目录（文件叫 moyin-meta.json）；想放子文件夹，先在网盘里建好再填名字。');
   }
 
   /* ---------------- 事件 ---------------- */
@@ -5782,6 +6204,7 @@
 
   async function init() {
     loadCfg(); loadStats(); bind(); fillVoices(); syncRoleBtn(); syncLangBtn(); syncTypeBtn(); syncAutoBtn(); syncFullBtn();
+    wdLoad();
     if (I18N) I18N.apply();
     // 自动探测本机免费神经语音引擎；没启动时静默用系统语音，不打扰
     localProbe();
@@ -5796,6 +6219,9 @@
     }, 2400);
     try { BOOKS = (await dbAll('books')) || []; } catch (e) { BOOKS = []; toast(T('本机存储不可用，书籍将无法保存'), 5000); }
     renderShelf();
+    /* 老书补指纹、开了同步就去拉一次云端进度。都排在书架出来之后，不挡首屏 */
+    setTimeout(function () { ensureKeys(true); }, 2000);
+    wdAutoPull();
     window.MY = {
       Z: Z, CFG: CFG, get BK() { return BK; }, get SPK() { return SPK; }, get BOOKS() { return BOOKS; },
       /* 安卓返回键：页面能自己处理就返回 true，处理不了（书架页）才让应用退出。
@@ -5813,16 +6239,23 @@
       importFolder: importFolder, openSide: openSide, closeSide: closeSide,
       importBuffer: async function (buf, name, ext) {
         var e0 = ext || readExt(name) || sniffExt(buf);
+        var bkey = bookKey(buf, name.replace(/\.[^.]+$/, ''), buf.byteLength);
         var b = await parseBook(buf, name, e0);
         var id = 'b' + Date.now() + Math.random().toString(36).slice(2, 7);
         await dbPut('blobs', { id: id, buf: buf, text: b.pdfText || '' });
-        var m = { id: id, name: name.replace(/\.[^.]+$/, ''), ext: e0, size: buf.byteLength, pages: b.pdfPages || 0,
+        var m = { id: id, key: bkey, name: name.replace(/\.[^.]+$/, ''), ext: e0, size: buf.byteLength, pages: b.pdfPages || 0,
           added: Date.now(), last: Date.now(), ch: 0, ratio: 0, progress: 0, cover: b.cover || '',
           title: b.title, author: b.author || '', marks: [], hl: [], chapters: b.titles.slice(0, 1000),
           tocCount: b.toc.length, enc: b.enc || '', group: '', fav: 0, rt: 0, sessions: 0, first: 0 };
+        adoptByKey(m);
         await dbPut('books', m); BOOKS.push(m); renderShelf(); return id;
       },
       exportBak: exportBak, importBak: importBak, dbGet: dbGet, dbAll: dbAll,
+      /* 内容指纹与网盘同步（测试脚本要能直接调） */
+      WD: WD, wdReady: wdReady, wdBase: wdBase, wdMetaOf: wdMetaOf, wdJoin: wdJoin,
+      wdApply: wdApply, wdSync: wdSync, wdTest: wdTest, wdLoad: wdLoad, wdSave: wdSave,
+      bookKey: bookKey, sha256Hex: sha256Hex, utf8Bytes: utf8Bytes, normBookName: normBookName,
+      ensureKeys: ensureKeys, adoptByKey: adoptByKey, wdPushSoon: wdPushSoon,
       startSpeak: startSpeak, stopSpeak: stopSpeak, toggleSpeak: toggleSpeak,
       doFind: doFind, addMark: addMark, showDoc: showDoc, closeBook: closeBook,
       diagText: diagText, copyDiag: copyDiag, packCard: packCard,

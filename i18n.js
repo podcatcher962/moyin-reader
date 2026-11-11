@@ -805,6 +805,61 @@
       'The fonts in this PDF have no Unicode mapping; the extracted text is garbage',
     'PDF 组件没加载起来，请用完整版打开': 'The PDF component failed to load — please use the full version',
     '（这一册 PDF 里没有抽到文字）': '(no text extracted from this PDF)',
+
+    /* ---------- 1.14.28：网盘同步（WebDAV）与内容指纹 ---------- */
+    '网盘同步 · WebDAV': 'Cloud sync · WebDAV',
+    '网页版用不了网盘同步：浏览器里的网页存不进网盘（网盘几乎都不允许跨域读写），要用桌面版或手机版。':
+      'Cloud sync is not available in the web version: browsers cannot write to a cloud drive (almost none allow cross-origin access). Use the desktop or phone build.',
+    '自动同步': 'Auto sync',
+    '自动同步：开': 'Auto sync: on',
+    '自动同步：关': 'Auto sync: off',
+    '测试连接': 'Test connection',
+    '立即同步': 'Sync now',
+    '服务器': 'Server',
+    '账号': 'Account',
+    '应用密码': 'App password',
+    '远端目录': 'Remote folder',
+    '留空 = 网盘根目录': 'blank = drive root',
+    '同步文件是 moyin-meta.json': 'the sync file is moyin-meta.json',
+    '状态': 'Status',
+    '还没同步过': 'Never synced',
+    '记得把服务器、账号、应用密码填上，再点「测试连接」':
+      'Fill in the server, account and app password, then tap “Test connection”',
+    '只同步「读到哪儿、书签、批注、分组」，不传书文件：两台机器上各自导入同一个文件，内容指纹一样，进度自动套上，不用搬书。':
+      'Only reading position, bookmarks, highlights and shelves are synced — not book files. Import the same file on both machines and the matching fingerprint carries the position over, with nothing to transfer.',
+    '应用密码只存在本机，不进备份、不上传。坚果云在「账户信息 → 安全选项 → 添加应用」里生成应用密码，用那个，别用登录密码。':
+      'The app password stays on this device: it is never written into a backup or uploaded. On Nutstore, create one under Account → Security → Add app; use that, not your login password.',
+    '「远端目录」留空就写在网盘根目录（文件叫 moyin-meta.json）；想放子文件夹，先在网盘里建好再填名字。':
+      'Leave the remote folder blank to use the drive root (the file is moyin-meta.json). For a subfolder, create it in your drive first and then type its name.',
+    '同步中…': 'Syncing…',
+    '正在和网盘同步…': 'Syncing with your cloud drive…',
+    '正在同步，稍等': 'Already syncing — one moment',
+    '已同步：本机 {a} 本，云端新增 {b} 本': 'Synced: {a} books here, {b} added from the cloud',
+    '同步失败：': 'Sync failed: ',
+    '网络不通': 'network unreachable',
+    '账号或应用密码不对（WebDAV 要填「应用密码」，不是登录密码）':
+      'Wrong account or app password (WebDAV needs an app password, not your login password)',
+    '账号或应用密码不对': 'Wrong account or app password',
+    '云端那份不是墨吟的同步文件': 'The file in the cloud is not a MoYin sync file',
+    '远端目录不存在：把「远端目录」清空，或先在网盘里建好这个文件夹':
+      'The remote folder does not exist — clear the folder field, or create it in your drive first',
+    '网页版不支持网盘同步：要用桌面版或手机版':
+      'Cloud sync needs the desktop or phone build — the web version cannot do it',
+    '网页版不支持网盘同步': 'Cloud sync is not available in the web version',
+    '网页版没有本地通道': 'No local channel in the web version',
+    '先在设置里填 WebDAV 服务器地址': 'Enter the WebDAV server address in Settings first',
+    '先填服务器地址': 'Enter the server address first',
+    '正在连接…': 'Connecting…',
+    '连接正常，云端已有同步文件': 'Connected — a sync file already exists',
+    '连接正常，云端还没有同步文件（第一次同步会建）':
+      'Connected — no sync file yet (the first sync will create one)',
+    '连上了，但「远端目录」不存在，清空它或先在网盘里建好':
+      'Connected, but the remote folder does not exist — clear it or create it first',
+    '连不上：': 'Cannot connect: ',
+    '已为 {n} 本书建立同步指纹': 'Built sync fingerprints for {n} books',
+    '《{n}》接上了上次的进度': '“{n}” resumed where you left off',
+    '这本书的文件还不在本机：导入原文件后会从上次读到的位置接着读':
+      'The file for this book is not on this device yet — import it and reading continues from where you left off',
   };
 
   /* 中文侧也可能需要「统一改写」的文案：留空表示中文原样 */
