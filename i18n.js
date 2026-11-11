@@ -831,6 +831,9 @@
       'The app password stays on this device: it is never written into a backup or uploaded. On Nutstore, create one under Account → Security → Add app; use that, not your login password.',
     '「远端目录」留空就写在网盘根目录（文件叫 moyin-meta.json）；想放子文件夹，先在网盘里建好再填名字。':
       'Leave the remote folder blank to use the drive root (the file is moyin-meta.json). For a subfolder, create it in your drive first and then type its name.',
+    '（实验性）': ' (experimental)',
+    '⚠ 这是第一版，还没在真实网盘上跑过（手边没有网盘账号）：连不上、同步不上都属正常，把现象告诉我，我来修。功能默认关着，不开不会影响看书。':
+      '⚠ First release: this has not been run against a real cloud drive yet (no account at hand). Failing to connect or sync is expected — tell me what you see and I will fix it. It is off by default; leaving it off does not affect reading.',
     '同步中…': 'Syncing…',
     '正在和网盘同步…': 'Syncing with your cloud drive…',
     '正在同步，稍等': 'Already syncing — one moment',
