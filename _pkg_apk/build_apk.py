@@ -147,7 +147,13 @@ def md5(b):
 
 # ---------------------------------------------------------------- 模板 patch
 def patch_main():
-    s = io.open(os.path.join(TPL, 'MainActivityHttp.java'), encoding='utf-8').read()
+    # 模板平时在构建目录里；换了台机器、构建目录重建过就会缺。仓库里留了一份同样的，
+    # 优先用构建目录那份（可能是本地调过的），没有才回退，免得「打包脚本第一步就崩」。
+    tpl = os.path.join(TPL, 'MainActivityHttp.java')
+    if not os.path.isfile(tpl):
+        tpl = os.path.join(PKG_DIR, 'MainActivityHttp.java')
+        assert os.path.isfile(tpl), '两处都找不到 MainActivityHttp.java'
+    s = io.open(tpl, encoding='utf-8').read()
 
     def rep(old, new, tag):
         nonlocal s
