@@ -100,8 +100,8 @@ os.makedirs(STAGE, exist_ok=True)
 MANIFEST = '''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="%s"
-    android:versionCode="11421"
-    android:versionName="1.14.21">
+    android:versionCode="11426"
+    android:versionName="1.14.26">
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
     <!-- 只有两条：WebView 访问本机 127.0.0.1 需要明文 http；
          不申请麦克风、定位、通讯录、存储，读书不需要这些。 -->
@@ -452,6 +452,9 @@ def prepare_sources():
     engine = engine.replace('{PKG}', PKG)
     engine = engine.replace('{DIAG_ON}', 'true' if DIAG else 'false')
     io.open(os.path.join(src, 'TtsEngine.java'), 'w', encoding='utf-8').write(engine)
+    # 男声降噪：与桌面 VoicePack/denoise.py 对应的 Java 实现，无占位符，直接拷贝
+    denoise = io.open(os.path.join(PKG_DIR, 'Denoise.java'), encoding='utf-8').read()
+    io.open(os.path.join(src, 'Denoise.java'), 'w', encoding='utf-8').write(denoise)
     io.open(os.path.join(STAGE, 'AndroidManifest.xml'), 'w', encoding='utf-8').write(MANIFEST)
     # res
     res = os.path.join(STAGE, 'res')
@@ -572,7 +575,7 @@ def build(src, res, assets):
     os.makedirs(dex, exist_ok=True)
     has_neuro, why = neuro_available()
     srcs = [os.path.join(src, 'MainActivity.java'), os.path.join(src, 'TtsBridge.java'),
-            os.path.join(src, 'TtsEngine.java')]
+            os.path.join(src, 'TtsEngine.java'), os.path.join(src, 'Denoise.java')]
     # 编译期永远要这两个 jar（TtsEngine 直接调 sherpa 的 Kotlin API）；
     # has_neuro 只决定 so 和两套语音模型要不要进包。
     cp = JAR + os.pathsep + SHERPA_JAR + os.pathsep + KOTLIN_JAR

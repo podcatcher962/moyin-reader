@@ -100,3 +100,11 @@ _en_*.bz2
 _rel.json
 _spd.bin
 *.bz2
+
+# ---- 1.14.25 起的 PDF 调试件：真实发票扫描件含隐私，只在本地当样本 ----
+_scan.pdf
+_tmp/
+_shot_pins.png
+
+# ---- 英文语音包的打包产物（26.7 MB，走 Release 资产，不入库） ----
+_dist_voice/

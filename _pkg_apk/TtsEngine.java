@@ -108,25 +108,30 @@ public final class TtsEngine {
             256, 168, 291, 169, 248, 266, 229,
     };
 
-    /** 用户逐条试听敲定的 21 个配角声线（与桌面端 curation 一致）。 */
+    /** 用户逐条试听敲定的 21 个配角声线（与桌面端 curation 一致）。
+     *  2026-11-11 按实测基频重排命名：「青年男」原来给了 4 个，实测只有 s32 够格，
+     *  s110/s52/s102 分别只有 133/144/151 Hz，都是中年男的音高。改成中性名，sid 不动。 */
     static final int[] CURATED_SID = {
-            124, 74, 58, 156, 167, 52, 110, 102, 32,
+            124, 74, 58, 156, 167, 110, 52, 102, 32,
             36, 169, 13, 149, 106, 19, 165, 129, 120, 20, 41, 105
     };
     static final String[] CURATED_LABEL = {
             "老生 · 低沉 1", "老生 · 低沉 2",
-            "中年男 1", "中年男 2", "中年男 3",
-            "青年男 1", "青年男 2", "青年男 3", "青年男 4",
-            "沉稳女 1", "沉稳女 2",
+            "中年男 1", "中年男 2", "中年男 3", "中年男 4",
+            "男声 · 中音 1", "男声 · 中音 2", "青年男 1",
+            "女声 · 低音 1", "沉稳女 2",
             "成年女 1", "成年女 2", "成年女 3", "成年女 4", "成年女 5",
             "青年女 1", "青年女 2", "青年女 3",
             "童声 1", "童声 2"
     };
 
     /** 与桌面 tts_server.py 的 band_of 完全一致，195 Hz 是男女分界。
-     *  41 号（童声 1）中位基频 251 Hz 会落进「女声 · 青年」，试听后单独指定档位。 */
+     *  41 号（童声 1）中位基频 251 Hz 会落进「女声 · 青年」，试听后单独指定档位。
+     *  52/110/102 的数据集标注基频（168/169/174）与实测（143/133/151）差得远，
+     *  按表值会落进「男声 · 偏高」，和精选里叫「中音」对不上，按实测归中年组。 */
     static String bandOf(int hz, int sid) {
         if (sid == 41) return "女声 · 高音";
+        if (sid == 52 || sid == 110 || sid == 102) return "男声 · 中年";
         if (hz < 140) return "男声 · 低沉";
         if (hz < 165) return "男声 · 中年";
         if (hz < 195) return "男声 · 偏高";
@@ -153,6 +158,17 @@ public final class TtsEngine {
     /** 该音色是否是男主。 */
     static boolean isBoy(String voice) {
         return voice != null && BOY_VOICE.equals(voice.trim());
+    }
+
+    /** 是否男声（决定要不要做降噪）。195 Hz 与 bandOf() 的男女分界一致。 */
+    static boolean isMaleVoice(String voice) {
+        if (voice == null) return false;
+        if (isBoy(voice)) return true;
+        if (isFanchen(voice)) {
+            int sid = sidOf(voice);
+            return sid >= 0 && sid < SID_F0.length && SID_F0[sid] < 195;
+        }
+        return false;                       // 女主模型，不动
     }
 
     /** 解析 "s124" / "124"，非法一律回落到第一个精选音色。 */
@@ -542,6 +558,14 @@ public final class TtsEngine {
      *  而是按人念书的规律切分，标点之间按类型插不同长度的静音。
      *  与桌面端 VoicePack/tts_server.py 的 PAUSE 表保持一致。 */
     public byte[] synth(String text, String voice, float speed) {
+        return synth(text, voice, speed, Denoise.OFF);
+    }
+
+    /**
+     * @param dn 男声降噪档位：Denoise.OFF / HARD / DD。只对男声生效，
+     *           女声原样返回（一个采样都不碰），与桌面端行为一致。
+     */
+    public byte[] synth(String text, String voice, float speed, int dn) {
         if (text == null) return null;
         boolean useLib = isFanchen(voice);
         boolean useBoy = isBoy(voice);
@@ -651,6 +675,11 @@ public final class TtsEngine {
                         all[p++] = (float) ((Math.random() - 0.5) * 0.0016);
                     }
                 }
+            }
+            // 男声降噪：整段拼好再处理一次，段间过渡也一起照顾到。
+            // 女声直接跳过——它的浊音段没有那层「沙沙」，处理只会白改音色。
+            if (dn != Denoise.OFF && isMaleVoice(voice)) {
+                all = Denoise.process(all, dn);
             }
             return wav(all, sr);
         } catch (Throwable e) {

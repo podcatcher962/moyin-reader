@@ -31,6 +31,12 @@ from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+# 男声降噪（可选）。numpy 缺失或模块损坏时静默禁用，绝不能影响朗读本身。
+try:
+    import denoise as _dn
+except Exception:
+    _dn = None
+
 # 源码运行时取脚本目录；PyInstaller 打成 MoYinVoice.exe 后取 exe 所在目录
 # （engine/ 与 models/ 就在 exe 旁边，_MEIPASS 里没有这些大文件）。
 def _here():
@@ -316,18 +322,23 @@ SID_F0 = {
 }
 
 # 用户逐条试听敲定的 20 个配角声线（2026-11-08），列表里排在最前，按年龄层从低到高：
-# 老生 2、中年男 3、青年男 4、沉稳女 2、成年女 5、青年女 3、童声 2。
+# 老生 2、中年男 4、男声中音 2、青年男 1、沉稳女 2、成年女 5、青年女 3、童声 2。
+#
+# 2026-11-11 按实测基频重命名（依据 _voice_audit.md，测试句「那年冬天老李拎着一篮梨从南方慢慢走来」）：
+# 原来的「青年男 1~4」名不副实——实测 s110 133 Hz 是全组第二低，s52 144、s102 151 都在中年男区间，
+# 只有 s32（174 Hz）真够青年。用户按「青年男」预期去选，听到的是中年嗓子，这才是「男声不对劲」的来源之一。
+# 现在改成不给年龄预期的中性名，编号也不再暗示高低。sid 不变，用户已选中的音色不受影响。
 CURATED = [
     ('s124', '老生 · 低沉 1'),
     ('s74',  '老生 · 低沉 2'),
     ('s58',  '中年男 1'),
     ('s156', '中年男 2'),
     ('s167', '中年男 3'),
-    ('s52',  '青年男 1'),
-    ('s110', '青年男 2'),
-    ('s102', '青年男 3'),
-    ('s32',  '青年男 4'),
-    ('s36',  '沉稳女 1'),
+    ('s110', '中年男 4'),
+    ('s52',  '男声 · 中音 1'),
+    ('s102', '男声 · 中音 2'),
+    ('s32',  '青年男 1'),
+    ('s36',  '女声 · 低音 1'),
     ('s169', '沉稳女 2'),
     ('s13',  '成年女 1'),
     ('s149', '成年女 2'),
@@ -357,6 +368,11 @@ BANDS = [
 # 人工校正：音高分档分不准的个别声线，档位单独指定。只加试听确认过的，别凭猜。
 BAND_OVERRIDE = {
     41: '女声 · 高音',   # 童声 1：中位基频 251 Hz 会落进「女声 · 青年」，实际听感是童声
+    # 下面三个：数据集的标注基频（168/169/174）与实测差得远（143/133/151 实测），
+    # 按表值会落进「男声 · 偏高」组，和它们在精选里叫「中音」对不上。按实测归中年组。
+    52: '男声 · 中年',
+    110: '男声 · 中年',
+    102: '男声 · 中年',
 }
 
 
@@ -835,6 +851,8 @@ def health():
         'en': en_ready(),
         # 配角库模型在不在。页面用它决定要不要提示「正在准备语音库」，在就一次都别弹。
         'lib': voice_ready(CURATED[0][0]) if CURATED else False,
+        # 男声降噪能不能用（numpy 在就可用）。页面据此决定三档开关是否可点。
+        'dn': bool(_dn is not None),
         'version': 8,
         'engineKind': VOICES[DEFAULT_VOICE]['kind'] if DEFAULT_VOICE in VOICES else 'vits',
     }
@@ -1277,8 +1295,12 @@ def _silence_wav(sec=0.30, sr=22050):
     return buf.getvalue()
 
 
-def synth(text, voice, speed):
-    """切分 -> 并行合成 -> 按标点插停顿 -> 拼成一整段。失败抛 RuntimeError。"""
+def synth(text, voice, speed, dn=0):
+    """切分 -> 并行合成 -> 按标点插停顿 -> 拼成一整段 ->（可选）男声降噪。
+
+    dn: 0 原声 / 1 谱减 / 2 判决导向。只对男声生效，女声原样返回。
+    失败抛 RuntimeError。
+    """
     text = clean_text(text)
     if not _sayable(text):
         return _silence_wav(0.18 + 0.16 * min(4, len(text)))
@@ -1288,7 +1310,13 @@ def synth(text, voice, speed):
     # 选了没装好的音色时，落到第一个可用音色，不打断听书
     if voice not in VOICES or not voice_ready(voice):
         voice = next((v for v in VOICES if voice_ready(v)), DEFAULT_VOICE)
-    key = (voice, text)
+    try:
+        dn = int(dn)
+    except (TypeError, ValueError):
+        dn = 0
+    if dn not in (1, 2) or _dn is None or not _dn.is_male(VOICES.get(voice)):
+        dn = 0                                # 女声、非法值、模块缺失：一律不处理
+    key = (voice, text, dn)
     with _cache_lock:
         if key in _cache:
             _cache.move_to_end(key)
@@ -1302,6 +1330,8 @@ def synth(text, voice, speed):
     if not parts:
         raise RuntimeError('全部片段都没有出声')
     data = _join(parts)
+    if dn:
+        data = _dn.process_wav(data, dn)      # 内部已有 try/except，出错就返回原音频
 
     with _cache_lock:
         _cache[key] = data
@@ -1379,7 +1409,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(400, json.dumps({'error': 'bad request: %s' % e}, ensure_ascii=False))
             return
         try:
-            wav = synth(req.get('text'), req.get('voice') or DEFAULT_VOICE, req.get('speed') or 1)
+            wav = synth(req.get('text'), req.get('voice') or DEFAULT_VOICE,
+                        req.get('speed') or 1, req.get('dn') or 0)
             self._send(200, wav, 'audio/wav')
         except NoEnVoice:
             # 415 而不是 500：这不是「引擎坏了」，是「这一段是外文，本机没装英文模型」。

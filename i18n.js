@@ -233,6 +233,47 @@
     '已切换到 ': 'Switched to ',
     '，点「试听音色」听听看': ' — tap “Preview voice” to listen',
 
+    /* ---------- 我的声线（朗读条置顶） ---------- */
+    '我的声线': 'My voices',
+    '主角那组固定、删不掉；下面是你自己挑的：女声 {a} 个 + 男声 {b} 个。挑中哪个就自动进这里并存进本机，下次打开还在。点 × 只从朗读条移除，声线本身没丢，随时能加回来。':
+      'The lead group is fixed and cannot be removed. Below it are your own picks: {a} female + {b} male. Picking a voice above adds it here and saves it on this device. Tap × to drop it from the bar only — the voice itself stays and can be added back anytime.',
+    '📌 置顶 · 女声（{n}/{max}）': '📌 Pinned · female ({n}/{max})',
+    '📌 置顶 · 男声（{n}/{max}）': '📌 Pinned · male ({n}/{max})',
+    '主角声线 · 固定 {n} 个（不可删）': 'Lead voices · {n} fixed (not removable)',
+    '我置顶的女声 {n} / {max}': 'Pinned female {n} / {max}',
+    '我置顶的男声 {n} / {max}': 'Pinned male {n} / {max}',
+    '还没挑': 'none yet',
+    '⭐ 主角声线 · 固定（{n} 个）': '⭐ Lead voices · fixed ({n})',
+    '▶ 正在使用': '▶ In use',
+    '⋯ 更多声线': '⋯ More voices',
+    '添加 / 删除置顶声线（去设置）': 'Add / remove pinned voices (in Settings)',
+    '还有 {n} 个声线，去设置里挑': '{n} more voices — pick them in Settings',
+    '男': 'male',
+    '女': 'female',
+    '{g}声置顶已满 {n} 个（朗读条男女各半）。先在设置里点 × 让出一个，再挑这个':
+      'Pinned {g} voices are full ({n} max — the bar is split evenly). Remove one with × in Settings first.',
+    '朗读条最多 {a} 个女声 + {b} 个男声，已自动让出 {n} 个位置（设置里随时能再挑）':
+      'The reading bar holds at most {a} female + {b} male voices; {n} slot(s) were released. You can pick again in Settings anytime.',
+    '已置顶：{v}（朗读条里，随时可删）': 'Pinned {v} — in the reading bar, removable anytime',
+    '已从置顶移除：{v}': 'Removed from the bar: {v}',
+    '已切换到 {v}': 'Switched to {v}',
+    '，并加进了朗读条': ', and added it to the reading bar',
+    '；朗读条里这个性别已满 {n} 个，没加进去（设置里点 × 让位后再挑）':
+      '; that gender is already full ({n}) in the bar, so it was not added — free a slot with × in Settings',
+    '点名字切到这个声线，点 × 从朗读条移除': 'Tap the name to switch, tap × to remove it from the bar',
+    '主角声线，固定不可删': 'Lead voice — fixed, cannot be removed',
+    '角色用全库声线：开': 'Roles use full library: on',
+    '角色用全库声线：关': 'Roles use full library: off',
+    '男声降噪': 'Male voice denoise',
+    '原声': 'Off',
+    '更干净': 'Cleaner',
+    '更清楚': 'Clearer',
+    '降噪已切到「{v}」，点朗读听听效果': 'Denoise set to “{v}” — tap play to hear it',
+    '只作用于男声，女声一个采样都不碰。男声模型自带一点「沙沙」，女声没有。「更干净」压得彻底，代价是个别字略糊、整体偏闷；「更清楚」为保住字头设计，字更实但压得稍轻；「原声」完全不处理。切换会从当前这句用新档位重念，方便直接对比。':
+      'Applies to male voices only — female voices are not touched at all. The male model carries a little hiss of its own; the female one does not. “Cleaner” removes the most of it, at the cost of slightly blurred consonants and a duller tone. “Clearer” is designed to keep word onsets intact: firmer syllables, gentler removal. “Off” does nothing. Switching re-reads the current sentence with the new mode so you can compare directly.',
+    '这本书已认出 {n} 个人物，用掉 {m} 个声线。默认从精选里配，「角色用全库声线」打开后才会动用全部 {all} 个——全库那套更慢，人多的书会明显等，所以默认关着。':
+      'This book has {n} characters using {m} voices. Casting draws from the curated set by default; turning on “Roles use full library” opens all {all} — the full library is slower, so crowded books wait noticeably, which is why it stays off.',
+
     /* ---------- 设置页说明段落 ---------- */
     '本机跑 sherpa-onnx + 三套开源中文模型（小雅 / 超文为 22.05 kHz 男女主角，fanchen-C 为 16 kHz、187 人的配角库）：接近真人的中文语调，不收费、不联网、不用账号、不用 Key。语音库已随成品装好，听书前双击「VoicePack/启动语音引擎.cmd」即可。':
       'Runs sherpa-onnx plus three open-source Chinese models (XiaoYa / ChaoWen at 22.05 kHz for the two leads, FanChen-C at 16 kHz with 187 supporting voices) on this machine: near-human intonation, no fees, no network, no account, no API key. The voice library ships with the app — double-click “VoicePack/启动语音引擎.cmd” before listening.',
@@ -409,6 +450,26 @@
     '没连上手机内的语音桥（127.0.0.1:{p}）。可先完全退出墨吟再打开；若装了安全软件，请允许它访问本机网络。': 'The on-device voice bridge (127.0.0.1:{p}) did not answer. Quit MoYin completely and reopen it; if a security app is installed, allow it to reach the local network.',
     '打开「设置 → 无障碍 / 更多设置 → 文字转语音」，选「小爱语音引擎」或「讯飞语音引擎」，下载中文语音包后回到墨吟再点朗读。': 'Open Settings → Accessibility → Text-to-speech, pick a Chinese engine (e.g. Xiaoai or iFlytek), download the Chinese voice data, then come back and tap Read aloud again.',
     '列表里一个引擎都没有时，可在应用商店搜「讯飞语记」或「Google 文字转语音」装上再试。': 'If the list is empty, install “iFlytek Voice” or “Google Text-to-speech” from your app store and try again.',
+    /* ---------- 语音诊断 ---------- */
+    '复制诊断信息': 'Copy diagnostics',
+    '诊断信息': 'Diagnostics',
+    '诊断信息已复制，粘贴发给作者就行': 'Diagnostics copied — just paste it to the author.',
+    '复制不了就截图这一段发作者。': 'If copying fails, screenshot this and send it to the author.',
+    '安卓版（APK）': 'Android (APK)',
+    '手机浏览器网页版': 'Phone browser (web)',
+    '桌面版（本地文件）': 'Desktop (local file)',
+    '桌面 / 网页版': 'Desktop / web',
+    '离线神经语音：': 'Offline neural voices: ',
+    '系统朗读：': 'System speech: ',
+    '可用 · {n} 个音色（精选 {c} 个）': 'Available · {n} voices ({c} curated)',
+    '正在检测…': 'Checking…',
+    '未就绪': 'Not ready',
+    '未连上（引擎可能还在启动，稍后再看）': 'Not connected (the engine may still be starting)',
+    '本包没有（手机浏览器只能用系统朗读）': 'Not included (phone browsers can only use system speech)',
+    '未连上（Lite 版不含语音库，完整版请先启动 VoicePack）': 'Not connected (Lite ships without the voice library; the full build needs VoicePack running)',
+    '{n} 个引擎，中文 {c} 个': '{n} engines, {c} Chinese',
+    '一个都没有': 'None',
+    '这次没连上离线语音引擎：Lite 版不含语音库，需换完整版；完整版请双击 VoicePack/启动语音引擎.cmd': 'The offline voice engine did not answer. Lite ships without the voice library — use the full build; for the full build, double-click VoicePack/启动语音引擎.cmd.',
     '手机浏览器不支持朗读': 'Phone browsers cannot read aloud',
     '你现在是在微信 / QQ 的内置浏览器里打开，它既不允许下载，也不提供系统朗读。': 'You are viewing this inside WeChat / QQ, which blocks both downloads and system speech.',
     '手机浏览器没有系统朗读接口，网页版没法直接念书。': 'Phone browsers expose no system speech API, so the web version cannot read books out loud.',
@@ -707,6 +768,34 @@
     '下载链接已复制': 'Download link copied',
     '复制这个链接到浏览器': 'Copy this link into your browser',
     '打不开下载页，请复制链接手动打开': 'Could not open the download page — please copy the link instead',
+
+    /* ---------- 1.14.25：PDF / 数字读法 / 角色统计 ---------- */
+    '这本书的角色': 'Cast of this book',
+    '识别一遍': 'Scan now',
+    '打开一本书后这里显示认出了几个人物': 'Open a book to see how many characters were found',
+    '还没识别（点「识别一遍」，或直接开始朗读）': 'Not scanned yet — tap “Scan now”, or just start reading aloud',
+    '{n} 个角色 · 用掉 {v} 个声线（女 {f} / 男 {m}）':
+      '{n} characters · {v} voices used ({f} female / {m} male)',
+    '先打开一本书': 'Open a book first',
+    '分角色要用本机神经语音：完整版首次启动会自动准备': 'Multi-voice needs the built-in neural speech engine',
+    '认出 {n} 个角色，各自配好了声线': 'Found {n} characters and assigned voices',
+    '这一章里没认出人物，往后读几章再试一次': 'No characters found in this chapter — try a few chapters later',
+    '正在读 PDF：{a}/{b} 页…': 'Reading PDF: page {a}/{b}…',
+    '这本是英文书': 'This book is in English',
+    '《{n}》整本都是英文。本机的离线语音只有中文模型，一个英文字母都念不出来，朗读时会按语速留白。':
+      '“{n}” is entirely in English. The offline voices here are Chinese-only, so read-aloud will stay silent — the reader skips it at reading speed.',
+    '桌面版（Windows EXE）可以另装英文语音模型，装了就能正常朗读；手机版为了控制体积暂时没带。阅读、划词、笔记都不受影响。':
+      'The Windows build can install an optional English voice model and read it normally; the phone build leaves it out to keep the size down. Reading, highlighting and notes are unaffected.',
+    '这几本还读不了，先导入 TXT、EPUB 或 PDF 吧': 'These cannot be read yet — try TXT, EPUB or PDF',
+    '这个包里没有 PDF 组件，请用完整版': 'This build has no PDF component — please use the full version',
+    '这本 PDF 没有文字层（整页是扫描出来的图片），要读得先做一遍 OCR':
+      'This PDF has no text layer (its pages are scanned images) — it would need OCR first',
+    '这本 PDF 的文字层里只有数字和符号，汉字全丢了（字体没带 Unicode 映射），读不了':
+      'This PDF only yields digits and symbols — its fonts carry no Unicode mapping, so the text cannot be read',
+    '这本 PDF 的字体没带 Unicode 映射，抽出来是乱码，读不了':
+      'The fonts in this PDF have no Unicode mapping; the extracted text is garbage',
+    'PDF 组件没加载起来，请用完整版打开': 'The PDF component failed to load — please use the full version',
+    '（这一册 PDF 里没有抽到文字）': '(no text extracted from this PDF)',
   };
 
   /* 中文侧也可能需要「统一改写」的文案：留空表示中文原样 */

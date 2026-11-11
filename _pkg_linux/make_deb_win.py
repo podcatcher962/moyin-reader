@@ -21,7 +21,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 DIST = os.path.join(ROOT, 'dist')
 DEB_ROOT = os.path.join(DIST, 'deb-root')
-VER = '1.14.21'
+VER = '1.14.26'
 OUT = os.path.join(DIST, 'moyin-reader_%s_amd64.deb' % VER)
 
 

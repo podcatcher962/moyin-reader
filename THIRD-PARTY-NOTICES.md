@@ -13,10 +13,17 @@
 | 小雅 `xiao_ya` / 超文 `chaowen` 中文 VITS | 各自发布页条款（Piper 中文模型，Apache-2.0 系） | 男女主角与旁白用的 22.05 kHz 声线，也是分角色 8 个快声线的基干 | 随 sherpa-onnx Release 分发 |
 | fanchen-C 中文多说话人 VITS | 按其 HuggingFace 发布页条款 | 187 个配角声线共用的 16 kHz 声学模型 | 随 sherpa-onnx Release 分发 |
 | （可选）`vits-ljs` 英文 VITS（icefall / LJSpeech） | Apache-2.0 | 中英混排里的英文单词，以及纯英文段落的本地合成。自带音素词典，**不依赖 espeak**。**不随包分发**，用户自行放入 `VoicePack/models/en-ljs/` | icefall / k2-fsa |
+| [PDF.js](https://mozilla.github.io/pdf.js/) (`pdfjs-dist` r3.11.174) | Apache-2.0 | 读取 PDF 的文字层（不渲染版面）；核心与 worker 以源码形式内联进单文件 HTML | Mozilla |
 | [pywebview](https://github.com/r0x0r/pywebview) | BSD-3-Clause | Windows 桌面外壳的窗口与 WebView 绑定 | r0x0r |
 | [pythonnet](https://github.com/pythonnet/pythonnet) | MIT | pywebview 与 .NET / WebView2 之间的桥接 | pythonnet |
 | [PyInstaller](https://pyinstaller.org) | GPL-2.0 **附 bootloader 例外** | 打包为单文件 exe | PyInstaller 项目 |
 | Microsoft Edge WebView2 Runtime | 微软随 Windows 分发的运行环境 | 渲染界面（不打包、不修改、不重新分发） | Microsoft |
+
+### 关于 PDF.js
+
+PDF 解析用 Mozilla 的 PDF.js（`pdfjs-dist` r3.11.174，Apache-2.0）。**只做文字层抽取，不做版面渲染**，
+也不用它的 viewer 界面；`pdf.min.js` 与 `pdf.worker.min.js` 的源码（含原始许可头）由 `build.py`
+内联进单文件 HTML，未做任何修改，因此仍按 Apache-2.0 分发。副本见 `_vendor/pdfjs/`。
 
 ### 关于 PyInstaller 的 GPL
 
@@ -53,7 +60,9 @@ PyInstaller 本身是 GPL-2.0，但其 **bootloader 例外条款**明确允许�
 
 MoYin Reader itself is released under the **MIT License**, © 2026 Lanlan Eternal.
 
-Third-party components keep their own licenses: sherpa-onnx (Apache-2.0), the Chinese VITS models
+Third-party components keep their own licenses: sherpa-onnx (Apache-2.0), PDF.js r3.11.174
+(vendored as source inside `pdfbook.js`'s companion script, Apache-2.0 — its licence header is kept
+verbatim), the Chinese VITS models
 `xiao_ya` / `chaowen` (Piper, Apache-2.0 family) and `fanchen-C` (per its HuggingFace release page),
 pywebview (BSD-3-Clause), pythonnet (MIT), PyInstaller (GPL-2.0 **with bootloader exception** — which
 explicitly permits distributing the bundled application under a license of the packager's choice),

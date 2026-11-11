@@ -19,7 +19,7 @@ ROOT = os.path.dirname(HERE)
 OUT = os.path.join(ROOT, 'dist')
 ROOTDIR = os.path.join(OUT, 'deb-root')
 
-VER = '1.14.21'
+VER = '1.14.26'
 PKG = 'moyin-reader'
 ARCH = 'amd64'
 BIN = os.path.join(OUT, 'MoYinReader-linux-x86_64')

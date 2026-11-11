@@ -312,15 +312,18 @@ public class TtsBridge {
         }
         String text, voice = "";
         float rate = 1.0f;
+        int dn = Denoise.OFF;
         try {
             JSONObject j = new JSONObject(new String(body, 0, len, "UTF-8"));
             text = j.optString("text", "").trim();
             voice = j.optString("voice", "");
             rate = (float) j.optDouble("speed", 1.0);
+            dn = j.optInt("dn", Denoise.OFF);      // 男声降噪档位，0/1/2
         } catch (Throwable t) {
             err(c, 400, "正文不是 JSON");
             return;
         }
+        if (dn < Denoise.OFF || dn > Denoise.DD) dn = Denoise.OFF;
         if (text.isEmpty()) { err(c, 400, "没有文字"); return; }
         if (text.length() > 400) text = text.substring(0, 400);
         if (rate < 0.5f) rate = 0.5f;
@@ -338,7 +341,7 @@ public class TtsBridge {
                 err(c, 415, "no_en_voice");
                 return;
             }
-            byte[] wav = neuro.synth(text, voice, rate);
+            byte[] wav = neuro.synth(text, voice, rate, dn);
             if (wav != null) { ok(c, "audio/wav", wav); return; }
             String why = neuro.lastError();
             err(c, 502, "神经语音没合成出这一段" + (why != null && why.length() > 0 ? "：" + why : "（引擎没给原因）"));

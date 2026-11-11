@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.14.21';
+  var VER = '1.14.26';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -84,13 +84,29 @@
     rate: 1, pitch: 1, volume: 1, voiceURI: '', voiceAuto: 1, pause: 120, whole: 1,
     autoNext: 1, follow: 1,
     localOn: 1, localPort: 8177, localVoice: 'x0',
-    voiceSet: 'curated', roleOn: 1, rolePool: 'mix', roleTouched: 0,
+    /* 男声降噪：0 原声 / 1 谱减 / 2 判决导向。只对男声生效，女声一个采样都不碰。
+       男声模型自带 3~4 dB 的浊音噪声，女声没有，所以默认给男声开着谱减；
+       觉得闷就切回原声，想要字更清楚就切判决导向——三档随时可换，不用换版本。 */
+    dnMode: 1,
+    /* 朗读条置顶：从「全部」里挑过的声线记在这里，可增可删。以前只记当前那一个，
+       选第二个就把第一个挤掉，所以看着像「加了又被删」。 */
+    pinVoices: [],
+    /* 1.14.23 起声线范围默认「全部」：让用户一进设置就能挑到全部音色，
+       不必先切一次范围。精选仍然保留，作为「不想挑就用这几个」的推荐位。 */
+    voiceSet: 'all', voiceSetRev: 0,
+    /* 分角色是否动用全库（187 人那套比精选慢）。与「声线范围」脱钩：
+       范围只管下拉里列什么，这里才决定合成走哪套库。 */
+    roleWide: 0,
+    roleOn: 1, rolePool: 'mix', roleTouched: 0,
     voiceRev: 0,           // 音色体系迁移标记：1.13 起默认换成 x0（小雅 22 kHz）
     /* 启动时自动查新版本：1.11.1 起才有。默认 0，守「默认零联网」这条 */
     updChk: 0,
     lang: 'zh', noteFilter: 'all'
   };
   var CFG = Object.assign({}, DEF), BOOKS = [], BK = null, URLCACHE = {}, ACTIVE_ZIP = null, ZIPSEQ = 0;
+  /* 男声降噪三档的显示名。引擎侧对应 denoise.py 的 MODE_OFF / MODE_HARD / MODE_DD。
+     名字按「听起来是什么」取，不用算法名：谱减 / 判决导向这种词只有开发者看得懂。 */
+  var DN_NAME = { 0: '原声', 1: '更干净', 2: '更清楚' };
   var SIDE = 'toc', SEARCHTOK = 0;
   var SYN = window.speechSynthesis || null, UTT = window.SpeechSynthesisUtterance || null;
   var DB = null;
@@ -164,6 +180,19 @@
     if (CFG.lay === 'p' || CFG.lay === 'l') CFG.lay = 'auto';
     // 分角色朗读 1.9.4 起默认开：从没手动关过的老配置也跟着开一次（有引擎才生效，没引擎自动回落）
     if (!CFG.roleTouched) CFG.roleOn = 1;
+    // 置顶声线必须是字符串数组（老配置里没有这个键，也可能是被手改过的脏值）。
+    // 性别配额要等引擎报上档位才能判，这里只做类型过滤 + 总上限，剩下交给 fixPinBalance()。
+    if (!Array.isArray(CFG.pinVoices)) CFG.pinVoices = [];
+    else CFG.pinVoices = CFG.pinVoices.filter(function (k) { return typeof k === 'string' && k; }).slice(0, 6);
+    // 男声降噪档位：设置里存回来是字符串，engine 那边要数字；0/1/2 之外一律按原声。
+    CFG.dnMode = [0, 1, 2].indexOf(Number(CFG.dnMode)) >= 0 ? Number(CFG.dnMode) : 0;
+    // 1.14.23 起声线范围默认放开到「全部」：老配置里存的 'curated' 也跟一次。
+    // 用户之后自己切回「精选」就记住，不再反复改。
+    if (!CFG.voiceSetRev) {
+      CFG.voiceSetRev = 1;
+      if (CFG.voiceSet === 'curated') CFG.voiceSet = 'all';
+      saveCfg();
+    }
     // 1.13 起默认音色换成小雅（x0，22.05 kHz）。老配置如果还停在旧的默认 s12，
     // 跟着换一次；自己挑过别的声线就不动，后面 voiceRev=1 也不再打扰。
     if (!CFG.voiceRev) {
@@ -1176,9 +1205,36 @@
     return '<style>' + css.join('\n') + '</style>' + inner;
   }
 
-  function parseBook(buf, name, ext) {
-    var b = ext === 'epub' ? buildEpub(buf, name) : buildTxt(buf, name);
-    return makeCover(b);
+  /* PDF：文字层由 pdfbook.js 抽出来（内置 PDF.js），抽完就是一本纯文本书。
+     抽一次要按页跑，几百页的册子要几十秒，所以抽出来的正文随书存在本机
+     （blobs.text），重开同一本书直接还原章节，不再解一遍。 */
+  var PDFPROG = { fn: null };
+  function pdfWrap(r, name) {
+    var titles = r.titles || [];
+    return {
+      kind: 'pdf', enc: '', count: titles.length, titles: titles, cover: null,
+      title: name, author: '', pdfText: r.text || '', pdfPages: r.pages || 0, pdfEn: !!r.en,
+      toc: titles.map(function (t, i) { return { label: t, ch: i, level: 0 }; }),
+      chapterHtml: function (i) {
+        return (r.body[i] || []).map(function (l) { return '<p class="rdp">' + esc(l) + '</p>'; }).join('\n');
+      },
+      chapterText: function (i) { return (r.body[i] || []).join('\n'); }
+    };
+  }
+  function buildPdf(buf, name, onProgress) {
+    if (!window.PdfBook) return Promise.reject(new Error(T('这个包里没有 PDF 组件，请用完整版')));
+    return PdfBook.build(buf, name, { T: T, isTitle: isChapterTitle, onProgress: onProgress })
+      .then(function (r) { return pdfWrap(r, name); });
+  }
+  function pdfFromText(text, name) {
+    if (!window.PdfBook) return buildTxt(new ArrayBuffer(0), name);
+    return pdfWrap(PdfBook.fromText(text, name, { T: T, isTitle: isChapterTitle }), name);
+  }
+  function parseBook(buf, name, ext, cached) {
+    var b;
+    if (ext === 'pdf') b = cached ? pdfFromText(cached, name) : buildPdf(buf, name, PDFPROG.fn);
+    else b = ext === 'epub' ? buildEpub(buf, name) : buildTxt(buf, name);
+    return Promise.resolve(b).then(makeCover);
   }
   function makeCover(b) {
     if (b.kind !== 'epub' || !b.coverPath) return Promise.resolve(b);
@@ -1471,6 +1527,7 @@
   function readExt(name) {
     var e = (name.split('.').pop() || '').toLowerCase();
     if (e === 'epub') return 'epub';
+    if (e === 'pdf') return 'pdf';
     if (e === 'txt' || e === 'text') return 'txt';
     return '';
   }
@@ -1486,7 +1543,7 @@
     /* 下面这些是「选得到但读不了」的格式。1.14.19 起文件列表不再按类型过滤，
        PDF / MOBI 也会出现在眼前；一律当 TXT 强行解码的话，会把二进制塞进书架、
        读出来全是乱码——所以认不出来的宁可跳过并说清原因。 */
-    if (n >= 4 && h[0] === 0x25 && h[1] === 0x50 && h[2] === 0x44 && h[3] === 0x46) return '';   // %PDF
+    if (n >= 4 && h[0] === 0x25 && h[1] === 0x50 && h[2] === 0x44 && h[3] === 0x46) return 'pdf';  // %PDF
     if (n >= 68) {                                                  // Kindle：偏移 60 处有 BOOKMOBI / TPZ
       var tag = '';
       for (i = 60; i < 68; i++) tag += String.fromCharCode(h[i]);
@@ -1574,13 +1631,20 @@
       ]);
     setTimeout(function () { var b = $('netPath'); if (b) { b.focus(); b.select(); } }, 60);
   }
+  /* 一本从头到尾都是外文的书：手机版没有英文语音模型，读出来是一片安静。
+     与其让用户以为是坏了，导入完就直说，并给出去哪台机器能读。 */
+  function looksEn(b) {
+    try {
+      var t = (b.chapterText(0) || '').slice(0, 3000);
+      var lat = (t.match(/[A-Za-z]/g) || []).length, han = (t.match(/[\u4e00-\u9fff]/g) || []).length;
+      return lat > 300 && lat > han * 3;
+    } catch (e) { return false; }
+  }
   async function importFiles(files) {
-    /* dropN：认不出是什么书的文件（PDF、MOBI、图片……）。
-       这类不报错、不进"跳过"清单——手机的文件列表为了让 epub 能显示，
-       本来就不按类型过滤，用户顺手点到 PDF 是常事；这时候弹一句
-       "不支持这种格式"，只会让人觉得这软件残缺。所以静默放过，
-       只有"一份都没导进来"时，才轻描淡写说一句 PDF 还在做。 */
-    var okN = 0, skipN = 0, dropN = 0, errs = [], total = files.length, skipped = [];
+    /* dropN：认不出的文件（MOBI、图片、压缩包……）。这类不报错、不进「跳过」清单——
+       手机的文件列表为了让 epub 能显示，本来就不按类型过滤，用户顺手点到别的文件
+       是常事。只有一份都没导进来时，才轻描淡写说一句。 */
+    var okN = 0, skipN = 0, dropN = 0, errs = [], total = files.length, skipped = [], enBooks = [];
     for (var i = 0; i < files.length; i++) {
       var f = files[i], ext = readExt(f.name);
       var bname = f.name.replace(/\.[^.]+$/, '');
@@ -1590,21 +1654,29 @@
       try {
         if (total > 3) toast(T('导入中… {a}/{b}', { a: i + 1, b: total }), 1500);
         var buf = await f.arrayBuffer();
-        if (!ext) ext = sniffExt(buf);        // 名字没后缀也认：EPUB 是 ZIP，认 PK 头
-        if (!ext) { dropN++; continue; }      // PDF 之类：静默略过
-        var b = await parseBook(buf, bname, ext);
+        if (!ext) ext = sniffExt(buf);        // 名字没后缀也认：EPUB 是 ZIP，PDF 是 %PDF
+        if (!ext) { dropN++; continue; }      // MOBI 之类：静默略过
+        /* PDF 要一页一页抽字，慢到能被当成卡死：给它一条页码进度 */
+        PDFPROG.fn = ext === 'pdf' ? function (pg, all) {
+          if (pg % 4 === 1 || pg === all) toast(T('正在读 PDF：{a}/{b} 页…', { a: pg, b: all }), 1400);
+        } : null;
+        try {
+          var b = await parseBook(buf, bname, ext);
+        } finally { PDFPROG.fn = null; }
         var id = 'b' + Date.now() + Math.random().toString(36).slice(2, 7);
-        await dbPut('blobs', { id: id, buf: buf });
+        await dbPut('blobs', { id: id, buf: buf, text: b.pdfText || '' });
         var meta = {
           id: id, name: bname, ext: ext, size: f.size,
           added: Date.now(), last: Date.now(), ch: 0, ratio: 0, progress: 0,
           cover: b.cover || '', title: b.title, author: b.author || '', marks: [], hl: [],
           chapters: b.titles.slice(0, 1000), tocCount: b.toc.length, enc: b.enc || '',
+          pages: b.pdfPages || 0,
           group: shelfView().indexOf('g:') === 0 ? shelfView().slice(2) : '',
           fav: 0, rt: 0, sessions: 0, first: 0
         };
         await dbPut('books', meta); BOOKS.push(meta); okN++;
         if (b.enc && b.enc !== 'UTF-8' && b.enc !== 'UTF-8 BOM') toast(T('《{n}》按 {e} 解码', { n: meta.name, e: b.enc }), 3200);
+        if (looksEn(b) && !enLocal()) enBooks.push(bname);
       } catch (e) { errs.push(f.name + '：' + e.message); }
     }
     renderShelf();
@@ -1616,7 +1688,14 @@
     }
     if (errs.length) msg += T('，{n} 本失败', { n: errs.length });
     if (okN || skipN || errs.length) toast(msg, 4200);
-    else if (dropN) toast(T('这几本还读不了，先导入 TXT 或 EPUB 吧'), 3600);
+    else if (dropN) toast(T('这几本还读不了，先导入 TXT、EPUB 或 PDF 吧'), 3600);
+    if (enBooks.length) {
+      showModal(T('这本是英文书'),
+        '<p>' + esc(T('《{n}》整本都是英文。本机的离线语音只有中文模型，一个英文字母都念不出来，朗读时会按语速留白。',
+          { n: enBooks.slice(0, 2).join('》《') })) + '</p>' +
+        '<p class="kv">' + esc(T('桌面版（Windows EXE）可以另装英文语音模型，装了就能正常朗读；手机版为了控制体积暂时没带。阅读、划词、笔记都不受影响。')) + '</p>',
+        [{ label: T('知道了') }]);
+    }
     if (errs.length) showModal(T('部分文件未能导入'), '<p>' + errs.map(esc).join('</p><p>') + '</p>', [{ label: T('知道了') }]);
   }
 
@@ -1639,8 +1718,19 @@
     resetCast();
     clearAssets();
     try {
-      BK = await parseBook(rec.buf, meta.name, meta.ext);
-    } catch (e) { toast(T('打开失败：') + e.message, 4000); return; }
+      /* 从备份还原的 PDF 没有缓存正文，这里补抽一次，抽完顺手存回去 */
+      if (meta.ext === 'pdf' && !rec.text) {
+        PDFPROG.fn = function (pg, all) {
+          if (pg % 4 === 1 || pg === all) toast(T('正在读 PDF：{a}/{b} 页…', { a: pg, b: all }), 1400);
+        };
+      }
+      BK = await parseBook(rec.buf, meta.name, meta.ext, rec.text);
+      PDFPROG.fn = null;
+      if (meta.ext === 'pdf' && !rec.text && BK.pdfText) {
+        rec.text = BK.pdfText;
+        dbPut('blobs', rec).catch(function () { });
+      }
+    } catch (e) { PDFPROG.fn = null; toast(T('打开失败：') + e.message, 4000); return; }
     BK.id = id; BK.meta = meta;
     loadCast(meta);                    // 上次听这本书时定下的人物声线，原样接回来
     if (!Array.isArray(meta.hl)) meta.hl = [];
@@ -2303,11 +2393,11 @@
     ['s58',  '中年男 1',         '男声 · 中年'],
     ['s156', '中年男 2',         '男声 · 中年'],
     ['s167', '中年男 3',         '男声 · 中年'],
-    ['s52',  '青年男 1',         '男声 · 偏高'],
-    ['s110', '青年男 2',         '男声 · 偏高'],
-    ['s102', '青年男 3',         '男声 · 偏高'],
-    ['s32',  '青年男 4',         '男声 · 偏高'],
-    ['s36',  '沉稳女 1',         '女声 · 低音'],
+    ['s110', '中年男 4',         '男声 · 中年'],
+    ['s52',  '男声 · 中音 1',    '男声 · 中年'],
+    ['s102', '男声 · 中音 2',    '男声 · 中年'],
+    ['s32',  '青年男 1',         '男声 · 偏高'],
+    ['s36',  '女声 · 低音 1',    '女声 · 低音'],
     ['s169', '沉稳女 2',         '女声 · 低音'],
     ['s13',  '成年女 1',         '女声 · 成年'],
     ['s149', '成年女 2',         '女声 · 成年'],
@@ -2405,7 +2495,7 @@
         if (j && typeof j.lib !== 'undefined') LOCAL.lib = !!j.lib;
         LOCAL.list = buildVoiceList(j);
         LOCAL.miss = LOCAL.ready ? 0 : LOCAL.miss + 1;
-        if (LOCAL.ready) fixLocalVoice();
+        if (LOCAL.ready) { fixLocalVoice(); fixPinBalance(); }
         /* 连上的是升级前残留的旧引擎？提示一句「重启就好」，
            免得用户以为这一版什么都没改。 */
         if (LOCAL.ready && !speakEnv().android && (j.version || 0) < LOCAL_MINVER && !LOCAL.oldTip) {
@@ -2418,8 +2508,9 @@
       .catch(function () {
         LOCAL.ready = false; LOCAL.info = null; LOCAL.list = null; LOCAL.checking = false; LOCAL.miss++;
         fillVoices();
-        // 桌面才讲「双击启动器」；手机上这句是废话，交给 speakBlocked() 说清楚
-        if (force && !speakEnv().android) toast(T('没找到本地语音引擎，请先双击「VoicePack/启动语音引擎.cmd」'), 5200);
+        // 桌面才讲「启动器」；手机上这句是废话，交给 speakBlocked() 说清楚。
+        // 顺带把 Lite 版说出来：它本来就不含语音库，让人去双击启动器是白指路。
+        if (force && !speakEnv().android) toast(T('这次没连上离线语音引擎：Lite 版不含语音库，需换完整版；完整版请双击 VoicePack/启动语音引擎.cmd'), 6200);
         return false;
       });
   }
@@ -2427,7 +2518,8 @@
     return fetch(localBase() + '/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: text, voice: voice || CFG.localVoice, speed: Number(CFG.rate) || 1 })
+      body: JSON.stringify({ text: text, voice: voice || CFG.localVoice, speed: Number(CFG.rate) || 1,
+        dn: Number(CFG.dnMode) || 0 })
     }).then(function (r) {
       if (!r.ok) return r.text().then(function (t) { throw new Error(localErrText(r.status, t)); });
       return r.blob();
@@ -2849,17 +2941,199 @@
     b.title = n ? T('神经网络语音：语调接近真人；需联网，朗读文字会发送给语音服务合成。点击看说明')
       : (on ? T('在线合成，需联网。点击看说明') : T('系统本地语音，离线可用但音质较机械。点击看说明'));
   }
-  /* 朗读条只放精选声线 + 当前选中的那个（真正在用的必须在条上可见），
-     其余声线进设置页挑，避免条上下拉长到 187 项 */
-  function localBarList() {
-    var all = localVoiceList();
-    if (CFG.voiceSet !== 'all') return all;
-    var cur = (LOCAL.info && LOCAL.info.curated) || [];
-    var out = all.filter(function (x) { return cur.indexOf(x[0]) >= 0; });
-    if (CFG.localVoice && !out.some(function (x) { return x[0] === CFG.localVoice; })) {
-      var me = all.filter(function (x) { return x[0] === CFG.localVoice; })[0];
-      if (me) out = [me].concat(out);
+  /* 朗读条放什么：
+     ① 主角那套（原版男女主 + 8 个音高变体）固定在上面，不能删——它是默认音色，删了没兜底；
+     ② 其余全自由：在设置里挑中的声线自动进「我置顶的」，点 × 就删，存在本机配置里。
+     ③ 自选位男女各半：6 个 = 3 女 + 3 男。听书时换声线，男女都够用，
+        也不会挑着挑着整条全是同一种性别。
+     187 个全库声线不铺在条上，否则下拉拉成一条长龙；要挑去设置里挑。 */
+  var PIN_MAX = 6;
+  var PIN_PER_GENDER = PIN_MAX / 2;      // 每种性别各 3 个
+  var CORE_ALIAS = { x0: 'f0', c0: 'm0' };
+  /* 主角声线：f0~f3 / m0~m3（老引擎只有 x0 / c0）。
+     x0 与 f0 指向同一份模型、显示名也一样，按名字去重，只留一个。 */
+  function coreVoiceKeys() {
+    var pool = LOCAL.list || LOCAL_VOICES, seen = {}, out = [];
+    pool.forEach(function (x) {
+      if (!/^([fm][0-3]|x0|c0)$/.test(x[0])) return;
+      var lb = String(x[1]);
+      if (seen[lb] !== undefined) {
+        if (x[0] === CFG.localVoice) out[out.indexOf(seen[lb])] = x[0];   // 正在用的那个优先留下
+        return;
+      }
+      seen[lb] = x[0]; out.push(x[0]);
+    });
+    return out;
+  }
+  function isCoreVoice(k) {
+    if (coreVoiceKeys().indexOf(k) >= 0) return true;
+    var a = CORE_ALIAS[k];
+    return !!(a && coreVoiceKeys().indexOf(a) >= 0);
+  }
+  /* 声线的性别：优先靠档位前缀判（引擎给的 band 一律以「男声 / 女声」开头）；
+     老引擎不报 band 时退回看显示名（「中年男 4」这类名字里都有「男」）。
+     童声归女声一侧——只有 2 个，单独开一档反而挤掉正常女声位。 */
+  function voiceGender(k) {
+    var x = (LOCAL.list || LOCAL_VOICES).filter(function (y) { return y[0] === k; })[0];
+    if (!x) return 'f';
+    return /男/.test(String(x[2] || '') + String(x[1] || '')) ? 'm' : 'f';
+  }
+  /* 这个声线还能不能进朗读条：core=主角本来就在 / in=已在 / ok=能加 / full=这个性别满了 */
+  function pinSlot(k) {
+    if (!k) return 'no';
+    if (isCoreVoice(k)) return 'core';
+    var a = Array.isArray(CFG.pinVoices) ? CFG.pinVoices : [];
+    if (a.indexOf(k) >= 0) return 'in';
+    var g = voiceGender(k), n = 0;
+    pinKeys().forEach(function (x) { if (voiceGender(x) === g) n++; });
+    return n >= PIN_PER_GENDER ? 'full' : 'ok';
+  }
+  /* 引擎刚连上 / 老配置置顶超过 3+3 时，把多出来的按「靠后的先让位」削平。
+     只在真的削了东西时提示一次，平时静默。 */
+  function fixPinBalance() {
+    var a = Array.isArray(CFG.pinVoices) ? CFG.pinVoices : [];
+    var keep = [], nf = 0, nm = 0, dropped = 0;
+    a.forEach(function (k) {
+      if (typeof k !== 'string' || !k || isCoreVoice(k)) return;
+      if (keep.indexOf(k) >= 0) return;
+      var g = voiceGender(k);
+      var over = (g === 'm') ? (nm >= PIN_PER_GENDER) : (nf >= PIN_PER_GENDER);
+      if (over) { dropped++; return; }
+      if (g === 'm') nm++; else nf++;
+      keep.push(k);
+    });
+    if (!dropped) return 0;
+    CFG.pinVoices = keep; saveCfg();
+    var box = $('pinBox'); if (box) box.innerHTML = pinChips();
+    fillVoices();
+    toast(T('朗读条最多 {a} 个女声 + {b} 个男声，已自动让出 {n} 个位置（设置里随时能再挑）',
+      { a: PIN_PER_GENDER, b: PIN_PER_GENDER, n: dropped }), 4200);
+    return dropped;
+  }
+  function pinKeys() {
+    var a = Array.isArray(CFG.pinVoices) ? CFG.pinVoices : (CFG.pinVoices = []);
+    var av = (LOCAL.info && LOCAL.info.voices) || null;
+    var pool = LOCAL.list || LOCAL_VOICES, core = coreVoiceKeys(), out = [];
+    a.forEach(function (k) {
+      if (typeof k !== 'string' || out.indexOf(k) >= 0) return;
+      if (core.indexOf(k) >= 0) return;              // 主角本来就在条上，不占置顶位
+      if (av && av[k] === false) return;             // 模型文件不在了：先不显示，但记忆留着
+      if (pool.some(function (y) { return y[0] === k; })) out.push(k);
+    });
+    return out;
+  }
+  /* 置顶一个声线。主角固定那套不用置顶；已经在置顶里就挪到最后（顺序即优先级）。 */
+  function pinVoice(k, quiet) {
+    var slot = pinSlot(k);
+    if (slot === 'core' || slot === 'no') return false;
+    if (slot === 'full') {
+      if (!quiet) {
+        toast(T('{g}声置顶已满 {n} 个（朗读条男女各半）。先在设置里点 × 让出一个，再挑这个',
+          { g: voiceGender(k) === 'm' ? T('男') : T('女'), n: PIN_PER_GENDER }), 3600);
+      }
+      return false;
     }
+    var a = Array.isArray(CFG.pinVoices) ? CFG.pinVoices.slice() : [];
+    var i = a.indexOf(k);
+    if (i >= 0) a.splice(i, 1);
+    a.push(k);
+    CFG.pinVoices = a; saveCfg();
+    if (!quiet) toast(T('已置顶：{v}（朗读条里，随时可删）', { v: localVoiceName(k) }), 2600);
+    return true;
+  }
+  function unpinVoice(k) {
+    var a = Array.isArray(CFG.pinVoices) ? CFG.pinVoices.slice() : [];
+    var i = a.indexOf(k);
+    if (i < 0) return false;
+    a.splice(i, 1); CFG.pinVoices = a; saveCfg();
+    var box = $('pinBox'); if (box) box.innerHTML = pinChips();
+    fillVoices();
+    toast(T('已从置顶移除：{v}', { v: localVoiceName(k) }), 2400);
+    return true;
+  }
+  /* 选一个本机声线：切过去，顺手把它加进朗读条置顶。
+     主角固定那套本来就在条上，不算「自选」，不必占一个置顶位。 */
+  function pickLocalVoice(k, quiet) {
+    if (!k) return false;
+    var slot = pinSlot(k), added = false;
+    CFG.localVoice = k; CFG.voiceAuto = 0;
+    if (slot === 'ok' || slot === 'in') added = pinVoice(k, true);
+    saveCfg();
+    resetCast();                            // 旁白换了，角色池要重新避开新声线
+    voiceBadge(curVoice());
+    fillVoices();
+    var sel = $('spVoice');
+    if (sel && localReady()) sel.value = 'local:' + k;
+    var box = $('pinBox'); if (box) box.innerHTML = pinChips();
+    if (SPK.playing) speakJump(0);
+    if (!quiet) {
+      var msg = T('已切换到 {v}', { v: localVoiceName(k) });
+      if (added) msg += T('，并加进了朗读条');
+      else if (slot === 'full') {
+        msg += T('；朗读条里这个性别已满 {n} 个，没加进去（设置里点 × 让位后再挑）', { n: PIN_PER_GENDER });
+      }
+      toast(msg, slot === 'full' ? 4200 : 3000);
+    }
+    return added;
+  }
+  function pinChips() {
+    var chip = function (k, del) {
+      return '<button data-pin="' + esc(k) + '"' + (CFG.localVoice === k ? ' class="on"' : '') +
+        ' title="' + esc(del ? T('点名字切到这个声线，点 × 从朗读条移除') : T('主角声线，固定不可删')) + '">' +
+        esc(T(localVoiceName(k))) +
+        (del ? '<b data-unpin="' + esc(k) + '" style="font-weight:400;opacity:.55;padding-left:5px">×</b>' : '') +
+        '</button>';
+    };
+    /* 小标题占满一行（.seg 本来就是 flex-wrap:wrap），把女声/男声分成两段，
+       一眼能看出「3 个女 + 3 个男」的配额还剩多少 */
+    var head = function (txt) {
+      return '<span style="flex:0 0 100%;font-size:12px;opacity:.62;line-height:1.6">' + esc(txt) + '</span>';
+    };
+    var none = '<span class="kv" style="align-self:center;opacity:.5">' + T('还没挑') + '</span>';
+    var core = coreVoiceKeys(), keys = pinKeys();
+    var fem = keys.filter(function (k) { return voiceGender(k) !== 'm'; });
+    var mal = keys.filter(function (k) { return voiceGender(k) === 'm'; });
+    var html = '';
+    if (core.length) {
+      html += head(T('主角声线 · 固定 {n} 个（不可删）', { n: core.length })) +
+        core.map(function (k) { return chip(k, false); }).join('');
+    }
+    html += head(T('我置顶的女声 {n} / {max}', { n: fem.length, max: PIN_PER_GENDER })) +
+      (fem.length ? fem.map(function (k) { return chip(k, true); }).join('') : none);
+    html += head(T('我置顶的男声 {n} / {max}', { n: mal.length, max: PIN_PER_GENDER })) +
+      (mal.length ? mal.map(function (k) { return chip(k, true); }).join('') : none);
+    return html;
+  }
+  function localBarList() {
+    var pool = LOCAL.list || LOCAL_VOICES, byKey = {}, out = [], used = {};
+    pool.forEach(function (x) { byKey[x[0]] = x; });
+    coreVoiceKeys().forEach(function (k) { used[k] = 1; if (byKey[k]) out.push(byKey[k]); });
+    pinKeys().forEach(function (k) { if (!used[k] && byKey[k]) { used[k] = 1; out.push(byKey[k]); } });
+    if (CFG.localVoice && !used[CFG.localVoice] && byKey[CFG.localVoice]) out.push(byKey[CFG.localVoice]);
+    return out;
+  }
+  /* 朗读条的分组：主角固定 → 置顶女声 → 置顶男声 →（必要时）正在使用。
+     置顶按性别分开列，挑音色时不用在一长串里找男女。 */
+  function localBarGroups() {
+    var pool = LOCAL.list || LOCAL_VOICES, byKey = {}, out = [], used = [];
+    pool.forEach(function (x) { byKey[x[0]] = x; });
+    var core = coreVoiceKeys().filter(function (k) { return byKey[k]; }).map(function (k) {
+      used.push(k); return byKey[k];
+    });
+    if (core.length) out.push([T('⭐ 主角声线 · 固定（{n} 个）', { n: core.length }), core]);
+    var pins = pinKeys().filter(function (k) { return byKey[k] && used.indexOf(k) < 0; });
+    var fem = pins.filter(function (k) { return voiceGender(k) !== 'm'; });
+    var mal = pins.filter(function (k) { return voiceGender(k) === 'm'; });
+    if (fem.length) {
+      out.push([T('📌 置顶 · 女声（{n}/{max}）', { n: fem.length, max: PIN_PER_GENDER }),
+        fem.map(function (k) { used.push(k); return byKey[k]; })]);
+    }
+    if (mal.length) {
+      out.push([T('📌 置顶 · 男声（{n}/{max}）', { n: mal.length, max: PIN_PER_GENDER }),
+        mal.map(function (k) { used.push(k); return byKey[k]; })]);
+    }
+    var ck = CFG.localVoice;
+    if (ck && byKey[ck] && used.indexOf(ck) < 0) out.push([T('▶ 正在使用'), [byKey[ck]]]);
     return out;
   }
   function fillVoices() {
@@ -2867,15 +3141,19 @@
     var loc = localReady(), html = '';
     // 本机声线直接进朗读条：听书时一键换，不用跳设置页
     if (loc) {
-      var lv = localBarList(), total = voiceStat().total;
-      html += '<optgroup label="' + esc(T('⭐ 本机神经语音 · 免费离线（{n} 个声线）', { n: lv.length })) + '">' + lv.map(function (x) {
-        return '<option value="local:' + x[0] + '"' + (x[0] === CFG.localVoice ? ' selected' : '') + '>' +
-          esc(T(x[1])) + '</option>';
-      }).join('');
-      if (total > lv.length) {
-        html += '<option value="__more">' + esc(T('⋯ 还有 {n} 个声线，去设置里挑', { n: total - lv.length })) + '</option>';
-      }
-      html += '</optgroup>';
+      var groups0 = localBarGroups(), total = voiceStat().total, shown = 0;
+      groups0.forEach(function (g) {
+        shown += g[1].length;
+        html += '<optgroup label="' + esc(g[0]) + '">' + g[1].map(function (x) {
+          return '<option value="local:' + x[0] + '"' + (x[0] === CFG.localVoice ? ' selected' : '') + '>' +
+            esc(T(x[1])) + '</option>';
+        }).join('') + '</optgroup>';
+      });
+      // 条上只能切声线，增删统一去设置页：入口放一个，别让人在两个下拉里各猜一半
+      html += '<optgroup label="' + esc(T('⋯ 更多声线')) + '">' +
+        '<option value="__pins">' + esc(T('添加 / 删除置顶声线（去设置）')) + '</option>' +
+        (total > shown ? '<option value="__more">' + esc(T('还有 {n} 个声线，去设置里挑', { n: total - shown })) + '</option>' : '') +
+        '</optgroup>';
     }
     if (!vs.length) {
       sel.innerHTML = html || '<option value="">' + esc(T('（系统暂无语音）')) + '</option>';
@@ -2960,6 +3238,178 @@
   function enLocal() {
     return !!(localReady() && LOCAL.info && LOCAL.info.en);
   }
+  /* ---------------- 数字读法 ----------------
+     中文神经语音的词典里一个阿拉伯数字都没有。小雅 / 超文这两份 22 kHz 模型靠
+     引擎自带的三条数字规则（date / number / phone.fst）挡住，但 187 人那套配角库
+     没有 fst——一遇到数字就整段吞掉，「1934年4月13日」听出来只剩「年月日」。
+     号段、时间、金额、百分比在小说里到处都是，与其指望每套模型都配规则，
+     不如在页面侧先换成汉字再送进引擎：读出来是什么，跟用哪套声线、
+     桌面还是手机、哪个版本都无关，一处改完两边都受益。 */
+  var CN_D = '零一二三四五六七八九';
+  var CN_U = ['', '十', '百', '千'];
+  function cnDigits(s) {                       // 逐位读：一九三四
+    var o = '', i;
+    for (i = 0; i < String(s).length; i++) o += CN_D.charAt(+String(s).charAt(i));
+    return o;
+  }
+  function cn4(s) {                            // 0–9999 按数值读：一千九百三十四
+    var n = String(s).replace(/^0+/, ''), out = '', zero = false, i, d, p;
+    if (!n) return '';
+    for (i = 0; i < n.length; i++) {
+      d = +n.charAt(i); p = n.length - 1 - i;
+      if (!d) { zero = true; continue; }
+      if (zero && out) out += '零';
+      zero = false;
+      // 「十二」不念「一十二」，但「一百一十二」里的十要留一
+      out += (d === 1 && p === 1 && !out ? '' : CN_D.charAt(d)) + CN_U[p];
+    }
+    return out;
+  }
+  function cnNum(s) {                          // 任意长：带 万 / 亿
+    s = String(s).replace(/[,\s]/g, '').replace(/^0+(?=\d)/, '');
+    if (!s) return '零';
+    if (s.length <= 4) return cn4(s) || '零';
+    if (s.length <= 8) {
+      var hi = s.slice(0, s.length - 4), lo = s.slice(-4), h = cn4(hi), l = cn4(lo);
+      if (!l) return h + '万';
+      return h + '万' + (lo.charAt(0) === '0' ? '零' : '') + l;
+    }
+    var yi = s.slice(0, s.length - 8), rest = s.slice(-8);
+    var r1 = rest.slice(0, 4), r2 = rest.slice(4), tail = '';
+    if (r1 !== '0000') tail += cn4(r1) + '万';
+    if (r2 !== '0000') tail += (tail && r2.charAt(0) === '0' ? '零' : '') + cn4(r2);
+    return cnNum(yi) + '亿' + tail;
+  }
+  /* 后面跟这些字的数字按「数值」读（五万元 / 三千人），不按逐位读 */
+  var CN_UNIT_AFTER = '元块角毛万亿人岁次倍张条只件个天吨米斤克升分钟秒股手户笔';
+  /* 四位里长得像年份的（19xx / 20xx）：后接标点、结尾，或任何不是量词的字，
+     都按逐位念。「2026上半年」念「二零二六上半年」；念「两千零二十六上半年」
+     是财务报表的读法，不是人话。后接量词的仍按数值：「2026人」是两千零二十六人。 */
+  function isYearRead(dg, next) {
+    if (dg.length !== 4 || !/^(19|20)\d{2}$/.test(dg)) return false;
+    return !next || CN_UNIT_AFTER.indexOf(next) < 0;
+  }
+  /* ---------------- 符号读法 ----------------
+     数字对了，句子还是会跑偏：「-2.08」念成「二点零八」，「>0.05」念成「零点零五」，
+     意思正好反了。原因很直接——中文模型的词典里没有这些符号，引擎遇到就跳过。
+
+     一条底线：**常用符号宁可多读，绝不省略**。听书时听见「大于」「负」「美元」
+     很正常，而这些符号本身带语义；漏一个可能把意思读反。只有**标点**可以省，
+     那是停顿不是语义。排版线（「====」「----」）也不算符号，不念。
+
+     唯一要小心的是「贴不贴数字」：同样的 `-`，在「-2.08」里是负号，
+     在「1月5日-29日」里是区间，在「- 列表项」里是项目符号。 */
+  function cmpNear(op, off, str) {
+    var p = off > 0 ? str.charAt(off - 1) : '',
+        n = str.charAt(off + op.length);
+    return /[0-9A-Za-z\u4e00-\u9fff]/.test(p) || /[0-9A-Za-z\u4e00-\u9fff]/.test(n);
+  }
+  function symRead(s) {
+    // 全角运算符先归一：＞＜＝＋－ 都是 FFxx - FEE0
+    s = s.replace(/[\uff1e\uff1c\uff1d\uff0b\uff0d]/g, function (c) {
+      return String.fromCharCode(c.charCodeAt(0) - 0xfee0);
+    });
+    // 日期先认：2026-01-05 / 2026/1/5 / 2026.1.5 → 二零二六年一月五日
+    s = s.replace(/(\d{4})\s*[-\/.]\s*(\d{1,2})\s*[-\/.]\s*(\d{1,2})(?!\d)/g, function (all, y, m, d) {
+      if (+m < 1 || +m > 12 || +d < 1 || +d > 31) return all;
+      return cnDigits(y) + '年' + cnNum(m) + '月' + cnNum(d) + '日';
+    });
+    // 只有年月：2026-06
+    s = s.replace(/(\d{4})\s*[-\/.]\s*(\d{1,2})(?![\d.\/-])/g, function (all, y, m) {
+      if (+m < 1 || +m > 12) return all;
+      return cnDigits(y) + '年' + cnNum(m) + '月';
+    });
+    // 区间：3~5 / 60-52 / 1月5日-29日 / 500-800元
+    s = s.replace(/([\d年月日号])\s*[-\u2013\u2014\u2212~\uff5e]\s*(?=\d)/g, '$1到');
+    s = s.replace(/([日号])\s*[-\u2013\u2014\u2212~\uff5e]\s*/, '$1到');
+    /* 箭头一律念出来，不用停顿糊过去：→ 是「到」，← 是「从」，↑↓ 是升降。
+       只有在两侧都是数字时才是区间（3→5 念「三到五」）——那也是「到」，同一条。 */
+    s = s.replace(/\s*(?:->|=>|\u2192|\u21d2)\s*/g, '到');
+    s = s.replace(/\s*\u2190\s*/g, '从');
+    s = s.replace(/\s*\u2191\s*/g, '上升');
+    s = s.replace(/\s*\u2193\s*/g, '下降');
+    // 负号 / 正号：数值紧前就是符号；「- 列表项」后面是空格，不动
+    s = s.replace(/(^|[^\dA-Za-z])[-\u2212](?=\d)/g, '$1负');
+    s = s.replace(/(^|[^\dA-Za-z])\+(?=\d)/g, '$1正');
+    s = s.replace(/([A-Za-z])\s*[-\u2212]\s*(?=\d)/g, '$1减');    // x-5 是减法，不是负号
+    // 乘除：数字之间才是运算符，「**粗体**」这种标记留着给后面删
+    s = s.replace(/(\d)\s*[*\u00d7\u2715]\s*(\d)/g, '$1乘$2');
+    s = s.replace(/(\d)\s*[\u00f7]\s*(\d)/g, '$1除以$2');
+    // 比较符：旁边有字有数就念；「====」这种排版线不念
+    s = s.replace(/([0-9A-Za-z\u4e00-\u9fff])\s*=\s*(?=[0-9A-Za-z\u4e00-\u9fff])/g, '$1等于');
+    s = s.replace(/>=|<=|\u2265|\u2264|\u2260|\u2248|>|<|=/g, function (all, off, str) {
+      if (!cmpNear(all, off, str)) return all;
+      var m = {
+        '>=': '大于等于', '<=': '小于等于', '\u2265': '大于等于', '\u2264': '小于等于',
+        '\u2260': '不等于', '\u2248': '约等于', '>': '大于', '<': '小于', '=': '等于'
+      };
+      return m[all] || all;
+    });
+    // 千分号、单位、货币：念不出来的都得换成人话
+    s = s.replace(/(\d+(?:\.\d+)?)\s*\u2030/g, '千分之$1');
+    s = s.replace(/(\d+(?:\.\d+)?)\s*\u2103/g, '$1摄氏度');
+    s = s.replace(/(\d+(?:\.\d+)?)\s*\u00b0\s*[Cc]?/g, '$1度');
+    s = s.replace(/\u00b1\s*(?=[\d])/g, '正负');
+    /* 金额千分位要一起认，否则「$1,200」只吃掉 1，剩下的「,200」变成「一美元,二百」 */
+    s = s.replace(/[\u00a5\uffe5]\s*(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*元?/g, '$1元');
+    s = s.replace(/\$\s*(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:美元)?/g, '$1美元');
+    s = s.replace(/\u20ac\s*(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)/g, '$1欧元');
+    s = s.replace(/\u00a3\s*(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)/g, '$1英镑');
+    s = s.replace(/(\d)\s*#/g, '$1号');
+    s = s.replace(/&/g, '和');
+    // 行首序号：「2. 高频微利」念「二、高频微利」；不是小数（后面没有数字）
+    s = s.replace(/(^|\n)\s*(\d{1,2})\s*[.\u3001)）]\s+(?=\S)/g, function (all, lead, n) {
+      return lead + cnNum(n) + '\u3001';
+    });
+    // 竖线在表格里就是分栏的分隔，读成停顿
+    s = s.replace(/\s*[\uff5c|]\s*/g, '\uff0c');
+    // 剩下的纯排版符号删掉（念不出来，也不带语义）
+    return s.replace(/[~\uff5e*#^\u00b0\u2033\u2032]/g, '');
+  }
+  function numRead(s) {
+    s = String(s || '');
+    // 全角数字先归一到半角，免得两套模型都不认
+    s = s.replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xfee0); });
+    // 符号也要先换：整句没有数字时（「甲 -> 乙」）照样得把箭头念成停顿，
+    // 否则早退那一句会把箭头原样送进引擎，等于白撤了一个字
+    s = symRead(s);
+    if (!/[0-9]/.test(s)) return s;
+    // 百分比：「63%」→「百分之六十三」
+    s = s.replace(/(\d+(?:\.\d+)?)\s*[%％]/g, function (all, n) {
+      return '百分之' + (n.indexOf('.') >= 0
+        ? cnNum(n.split('.')[0]) + '点' + cnDigits(n.split('.')[1])
+        : cnNum(n));
+    });
+    // 时刻：「12:30」→「十二点三十分」；不是合法时刻的（比分、章节）原样留给下面的通规则
+    s = s.replace(/(\d{1,2}):(\d{2})(?![\d:])/g, function (all, h, m) {
+      if (+h > 24 || +m > 59) return all;
+      return cnNum(h) + '点' + (+m ? cnNum(m) + '分' : '');
+    });
+    return s.replace(/(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?/g, function (all, ip, dp, off, str) {
+      var prev = off > 0 ? str.charAt(off - 1) : '';
+      var next = str.charAt(off + all.length);
+      // 夹在外文里（MP3 / A4 / COVID19）和版本号（1.14.24 的第二段）不动：那是外文的一部分
+      if (/[A-Za-z0-9]/.test(prev) || /[A-Za-z]/.test(next)) return all;
+      if (prev === '.' && /\d/.test(str.charAt(off - 2) || '')) return all;
+      var dg = ip.replace(/,/g, '');
+      if (dp) {
+        return (/^\d{1,3}$/.test(dg) ? cnNum(dg) : cnDigits(dg)) + '点' + cnDigits(dp);
+      }
+      // 年份逐位读：一九三四年 / 二零二六上半年 / 一九九零年代；「90年代」「3年」按数值读
+      if (next === '年' && dg.length >= 3) return cnDigits(dg);
+      if (isYearRead(dg, next)) return cnDigits(dg);
+      // 后接量词的按数值读：五万元、三千人
+      if (next && dg.length >= 5 && CN_UNIT_AFTER.indexOf(next) >= 0) return cnNum(dg);
+      // 整千整万整亿（10000 / 100000000）按数值读，别读成一串零
+      if (/^[1-9]0{4,}$/.test(dg)) return cnNum(dg);
+      // 号段、身份证、ISBN 这类长数字逐位读，按数值读没人听得懂
+      if (dg.length >= 7) return cnDigits(dg);
+      if (/^0\d/.test(dg)) return cnDigits(dg);         // 007 这种前导零逐位
+      // 量词前的 2 念「两」：两个孩子 / 两次 / 两天，念「二个」是书面的怪味
+      if (dg === '2' && next && '个只条张次天岁倍件位名'.indexOf(next) >= 0) return '两';
+      return cnNum(dg);
+    });
+  }
   /* 文本规范化：去掉零宽符、汉字间排版空格、重复标点；保留引号破折号供语音自行处理停顿 */
   function normSpeak(text) {
     var s = String(text || '');
@@ -2968,7 +3418,9 @@
     s = s.replace(/([\u4e00-\u9fff\u3400-\u4dbf])\s+(?=[\u4e00-\u9fff\u3400-\u4dbf])/g, '$1');
     s = s.replace(/\s+/g, ' ');
     s = s.replace(/([。！？!?；;，,、：:…])\1+/g, '$1');
-    s = s.replace(/[*#_~`^|]/g, '');
+    // 只删纯排版标记：* # ~ | ^ 这些可能带语义（乘号、号、区间、分栏），交给 numRead 换人话
+    s = s.replace(/[_`]/g, '');
+    s = numRead(s);
     return s.trim();
   }
   /* 按完整句子切分后再合并成不超过 maxLen 的朗读块，避免从句中间硬切破坏语调 */
@@ -3329,14 +3781,16 @@
     var cm = seg.match(/[，,、][^，,。！？]{0,6}?([他她])(?![们])/);
     if (cm) SPK.sex[who] = cm[1] === '他' ? 'm' : 'f';
   }
-  /* 候选声线：精选那 8 个快声线（x0/c0 + f0~f3/m0~m3）；按「男女混合 / 全女声 / 全男声」过滤。
-     只有用户主动选了「全部声线」才允许动用 187 人那套慢库——那套一句二十字要十几秒，
-     自动扩进去会让角色一多就开始干等，跟 1.14.8 的速度目标正好相悖。 */
+  /* 候选声线：精选那 21 个快声线；按「男女混合 / 全女声 / 全男声」过滤。
+     只有用户主动打开「角色用全库声线」才允许动用 187 人那套慢库——那套一句二十字要十几秒，
+     自动扩进去会让角色一多就开始干等，跟 1.14.8 的速度目标正好相悖。
+     注意：这里看的是 roleWide，不是「声线范围」。后者只管下拉里列什么，1.14.23 起默认「全部」，
+     如果拿它当开关，所有人一分角色就会掉进慢库。 */
   function rolePool(gender) {
     var all = LOCAL.list || LOCAL_VOICES, band = {};
     all.forEach(function (x) { band[x[0]] = x[2] || ''; });
     var cur = (LOCAL.info && LOCAL.info.curated) || [];
-    var wide = CFG.voiceSet === 'all';
+    var wide = Number(CFG.roleWide) === 1;
     var keys = cur.length ? cur.slice() : all.map(function (x) { return x[0]; });
     if (wide) {
       EXTRA_MALE.forEach(function (k) { if (band[k] !== undefined && keys.indexOf(k) < 0) keys.push(k); });
@@ -3693,6 +4147,23 @@
              female: lib.length - male, male: male,
              curated: cur.length || LOCAL_VOICES.length };
   }
+  /* 朗读设置页上的「这本书的角色」：不点朗读也能看到认出几个人、用掉几个声线。
+     以前这行数字混在一大段说明里，还要先开朗读才有值，等于白写。 */
+  function castStatTx() {
+    if (!BK) return T('打开一本书后这里显示认出了几个人物');
+    var cast = (SPK.cast && Object.keys(SPK.cast).length) ? SPK.cast : ((BK.meta && BK.meta.cast) || {});
+    var names = Object.keys(cast);
+    if (!names.length) return T('还没识别（点「识别一遍」，或直接开始朗读）');
+    var vs = {}, f = 0, m = 0;
+    names.forEach(function (nm) {
+      var k = cast[nm];
+      if (!k) return;
+      vs[k] = 1;
+      if (voiceGender(k) === 'm') m++; else f++;
+    });
+    return T('{n} 个角色 · 用掉 {v} 个声线（女 {f} / 男 {m}）', {
+      n: names.length, v: Object.keys(vs).length, f: f, m: m });
+  }
   function syncRoleBtn() {
     var b = $('spRole'); if (!b) return;
     var ready = localReady();
@@ -3760,6 +4231,89 @@
       sys: !!(SYN && UTT)
     };
   }
+  /* ---------------- 语音故障诊断 ----------------
+     起因：小米用户反馈「按提示设置过了还是不行」，而截图通常截不到最关键的那一行，
+     来回问三四轮才能定位。这段纯文本把三件事一次说清：
+       ① 系统里到底有没有中文语音包（读 speechSynthesis.getVoices，这是最有说服力的证据）
+       ② 装的是哪个包（安卓 APK / 桌面 / 网页），本地神经语音有没有就绪
+       ③ 引擎自检原文 + 机型屏幕内存，便于判断是不是被省电策略掐掉
+     不含任何阅读内容与账号信息，只有设备与引擎状态。 */
+  function diagPack() {
+    var e = speakEnv();
+    if (e.android && e.apk) return T('安卓版（APK）');
+    if (e.android) return T('手机浏览器网页版');
+    if (/^file:/.test(location.protocol)) return T('桌面版（本地文件）');
+    return T('桌面 / 网页版');
+  }
+  function sysVoices() {
+    var vs = (SYN && SYN.getVoices) ? SYN.getVoices() : [];
+    var zh = vs.filter(function (v) {
+      return /^(zh|cmn)|chinese|中文|普通话|mandarin/i.test((v.lang || '') + ' ' + (v.name || ''));
+    });
+    return { all: vs, zh: zh };
+  }
+  function diagText() {
+    var e = speakEnv(), info = LOCAL.info || {}, sv = sysVoices(), L = [];
+    L.push('墨吟阅读器 诊断信息');
+    L.push('版本：' + VER);
+    L.push('包：' + diagPack());
+    L.push('UA：' + navigator.userAgent);
+    L.push('屏幕：' + screen.width + '×' + screen.height + ' @' +
+      (window.devicePixelRatio || 1).toFixed(2) + '，窗口 ' + window.innerWidth + '×' + window.innerHeight);
+    if (navigator.deviceMemory) L.push('内存：' + navigator.deviceMemory + ' GB');
+    if (navigator.hardwareConcurrency) L.push('CPU：' + navigator.hardwareConcurrency + ' 核');
+    L.push('语音桥：' + (info.ok === true ? '已连上'
+      : (LOCAL.info ? '连上但未就绪' : '未连上')) + '（127.0.0.1:' + CFG.localPort + '）');
+    L.push('本地引擎：ok=' + (info.ok === undefined ? '未知' : String(info.ok)) +
+      (info.loading ? '｜loading' : '') +
+      (info.detail ? '｜报告=' + String(info.detail).slice(0, 300) : '') +
+      (info.engine ? '｜' + info.engine : ''));
+    if (info.voices) L.push('引擎音色数：' + Object.keys(info.voices).length +
+      (info.curated ? '（精选 ' + info.curated.length + '）' : ''));
+    L.push('当前音色：' + (CFG.localVoice || '-') + '（' + localVoiceName(CFG.localVoice) + '）');
+    L.push('系统朗读：' + (sv.all.length
+      ? sv.all.length + ' 个引擎，其中中文 ' + sv.zh.length + ' 个'
+        + (sv.zh.length ? '｜' + sv.zh.slice(0, 4).map(function (v) { return v.name + '(' + v.lang + ')'; }).join('、') : '')
+      : '一个引擎都没有'));
+    L.push('阅读设置：' + CFG.mode + '｜' + CFG.lay + '｜分角色 ' + (CFG.roleOn ? '开' : '关'));
+    return L.join('\n');
+  }
+  function copyDiag() {
+    var t = diagText();
+    copyText(t).then(function (ok) {
+      if (ok) { closeModal(); toast(T('诊断信息已复制，粘贴发给作者就行'), 3800); }
+      else diagShow(t);
+    }, function () { diagShow(t); });
+  }
+  function diagShow(t) {
+    showModal(T('诊断信息'), '<p>' + T('复制不了就截图这一段发作者。') + '</p>' +
+      '<pre class="kv" style="white-space:pre-wrap;word-break:break-all;max-height:260px;overflow:auto">' +
+      esc(t) + '</pre>', [{ label: T('关闭') }]);
+  }
+  /* 当前包能力，摆在「关于」最上面。
+     小米那位反馈者就是照着完整版的引导去设系统 TTS，白折腾半天——他装的可能是不含语音库的包。
+     与其让人猜，不如把「你这个包有没有离线语音」直接写出来。 */
+  function packCard() {
+    var e = speakEnv(), info = LOCAL.info || {}, sv = sysVoices(), cap;
+    if (info.ok === true) {
+      cap = T('可用 · {n} 个音色（精选 {c} 个）', {
+        n: Object.keys(info.voices || {}).length || (LOCAL.list || []).length,
+        c: (info.curated || []).length || 21
+      });
+    } else if (LOCAL.checking) cap = T('正在检测…');
+    else if (LOCAL.info) cap = T('未就绪') + (info.detail ? '（' + String(info.detail).slice(0, 80) + '）' : '');
+    else if (e.android && e.apk) cap = T('未连上（引擎可能还在启动，稍后再看）');
+    else if (e.android) cap = T('本包没有（手机浏览器只能用系统朗读）');
+    else cap = T('未连上（Lite 版不含语音库，完整版请先启动 VoicePack）');
+    var sys = sv.all.length
+      ? T('{n} 个引擎，中文 {c} 个', { n: sv.all.length, c: sv.zh.length })
+      : T('一个都没有');
+    return '<p class="kv" style="margin-bottom:14px">' +
+      '<b>' + esc(diagPack()) + '</b> · v' + esc(VER) + '<br>' +
+      T('离线神经语音：') + esc(cap) + '<br>' +
+      T('系统朗读：') + esc(sys) +
+      '</p>';
+  }
   function speakBlocked() {
     var e = speakEnv(), title, body, btns, eng = (LOCAL.info && LOCAL.info.engine) || '';
     var info = LOCAL.info || {};
@@ -3789,6 +4343,7 @@
         '<p>' + T('打开「设置 → 无障碍 / 更多设置 → 文字转语音」，选「小爱语音引擎」或「讯飞语音引擎」，下载中文语音包后回到墨吟再点朗读。') + '</p>';
       btns = [
         { label: T('再试一次'), cls: 'pri', fn: function () { closeModal(); LOCAL.ready = false; localProbe(true); } },
+        { label: T('复制诊断信息'), fn: function () { copyDiag(); } },
         { label: T('关闭') }
       ];
     } else if (e.android && e.apk) {
@@ -3802,6 +4357,7 @@
         '<p class="kv">' + T('列表里一个引擎都没有时，可在应用商店搜「讯飞语记」或「Google 文字转语音」装上再试。') + '</p>';
       btns = [
         { label: T('再试一次'), cls: 'pri', fn: function () { closeModal(); LOCAL.ready = false; localProbe(true); } },
+        { label: T('复制诊断信息'), fn: function () { copyDiag(); } },
         { label: T('关闭') }
       ];
     } else if (e.android) {
@@ -4091,7 +4647,7 @@
       '<h3>清了浏览器缓存，书没了？</h3><p>数据存在浏览器 IndexedDB，清理站点数据会一并删除。重要书籍请先「导出备份」，同时保留原始文件。</p>' +
       '<h3>换电脑 / 手机怎么带过去？</h3><p>导出备份 JSON（勾「含书籍文件」），把 JSON 和这个 HTML 一起拷过去，在新设备点「导入备份」即可。也可只拷 HTML + 原书重新导入。离线语音库是 Windows 版，把 VoicePack 文件夹一起拷过去即可用。</p>' +
       '<h3>书架上的「续听」是什么？</h3><p>听到哪会被单独记住，和「读到哪」互不干扰。听完回到书架，书本卡片下方就有「▶ 续听 · 第 N 章」，点一下从上次听的那一段接着念。想按看书的位置念，点开书再点「朗读」即可。没听过这本书时不会出现这个按钮。</p>' +
-      '<h3>念到一半想换个声音？</h3><p>直接点朗读条最左边的下拉，里面是本机精选 21 个声线；设置里「声线范围」可放开到全部 187 个。想把对话也换成不同声音，点旁边的「多角色」。换完会用新声线把当前这一段重念一遍，不用停也不用回书架。想先试听再决定，去「阅读设置 → 免费神经语音 → 试听音色」。</p>' +
+      '<h3>念到一半想换个声音？</h3><p>朗读条最左边的下拉里固定放着主角那套（原版男女声 + 8 个音高变体，删不掉），下面是<b>你自己置顶的声线</b>。想去掉某个，到「阅读设置 → 我的声线」点它右边的 × 就删了——那只影响朗读条这个下拉，设置里 197 个声线一个都不会少，随时能再加回来。想把对话也换成不同声音，点旁边的「多角色」。换完会用新声线把当前这一段重念一遍，不用停也不用回书架。想先试听再决定，去「阅读设置 → 免费神经语音 → 试听音色」。</p>' +
       '<h3>手机上按钮挤？</h3><p>按钮会按屏幕宽度自动换成多行网格，不用手动切。手机上的正文一律单栏，横屏也不会硬分两栏。</p>' +
       '<h3>怎么弄成两栏？</h3><p>点阅读器顶栏「⋯」里的「排版」→「阅读方式」：切到「翻页」，分栏选「自动分栏」在宽屏上就是左右两栏，选「双栏」可以强制（窗口够宽时）；窗口太窄或手机上会自动退回单栏，不会把字挤成一条。<br>顺带一提，翻页模式翻的是整屏而不是滚动：点屏幕<b>左边三分之一</b>回上一页、<b>右边三分之一</b>翻下一页，滚轮、空格或 ← → 也都行，手机上还能左右滑。点屏幕<b>中间</b>是收 / 放上下工具栏——收起来之后正文占满整屏，再点中间或点最上面那条窄边就能唤回。</p>' +
       '<h3>自动阅读怎么用？</h3><p>点顶栏「⋯」里的「自动」，滚动模式下会匀速往下滚，翻页模式下按你设的秒数自动翻页；再点一次暂停，暂停时会留一个胶囊提示，可以继续或退出。到本章末尾会自动接下一章。朗读和自动阅读不会同时抢滚动。</p>' +
@@ -4127,6 +4683,35 @@
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + 三份中文 VITS 模型）：不联网、不收费、无需账号，主角是 22.05 kHz 的「墨吟 · 女声」与「墨吟 · 男声」，另带 187 个配角说话人（148 女 + 39 男），精选 21 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.14.26 改了什么</h3><ul>' +
+      '<li><b>年份按年份念</b>：「2026上半年」以前念成「两千零二十六上半年」，现在念「二零二六上半年」。19xx / 20xx 四位数后接量词（2026人、2026元）仍按数值念，其余一律逐位——年份就该那么读。</li>' +
+      '<li><b>日期整体认</b>：「2026-01-05」以前被拆成两个数、中间的连字符念不出来，现在整段念「二零二六年一月五日」；「2026-01-05 ~ 2026-06-30」念成「…到…」。</li>' +
+      '<li><b>符号一律读出来</b>：这一版的底线是<b>常用符号宁可多读，绝不省略</b>——听书时听到「大于」「负」「美元」很正常，符号本身就带意思，漏一个可能把话读反。补上的有：正负号（-2.08 念「负二点零八」、+42,933 念「正四万二千九百三十三」）、大于小于、大于等于小于等于（≥ ≤）、不等于约等于（≠ ≈）、正负（±）、乘除（× ÷）、区间（3~5、60-52、1月5日-29日 念「到」）、箭头（→ 念「到」，← 念「从」，↑↓ 念「上升」「下降」）、千分号（‰）、摄氏与角度（℃ °）、货币（¥ $ € £）、井号（3#楼 念「三号楼」）、and（& 念「和」）、竖线（念停顿）、行首序号（2. 念「二、」）。</li>' +
+      '<li>只有<b>标点</b>可以省，那是停顿不是语义；排版线（「====」「----」）也不算符号，不念。符号确实是运算符时才换字：<b>- </b>列表符号不动，A>=B 这种外文照样念「A大于等于B」，x-5 念「x减五」。</li>' +
+      '</ul>' +
+      '<h3>1.14.25 改了什么</h3><ul>' +
+      '<li><b>PDF 能读了</b>：导入时选 PDF，会一页页把文字层抽出来，按章节排好——阅读、朗读、划词、笔记、繁简转换全都照常。抽出的正文跟书一起存在本机，第二次打开不再重解。扫描件（整页是图片）、字体没带 Unicode 映射的 PDF（抽出来只有乱码）会当场说清原因并跳过，不会塞一屏乱码进书架。</li>' +
+      '<li><b>数字不再被吞</b>：以前「1934年4月13日」只念得出「年月日」，数字整段消失——配角库那 187 个说话人共用的模型没有数字规则。现在朗读前先把数字换成汉字：年月日、时刻（12:30）、百分比、金额、号段（手机号逐位念）、小数都对，跟用哪个声线、哪个平台无关。</li>' +
+      '<li><b>朗读设置页多了「这本书的角色」</b>：一眼看到这本书认出了几个人物、用掉几个声线（还分女声男声）；旁边「识别一遍」可以当场重排，不用先点朗读。</li>' +
+      '<li><b>英文书导入时说清楚</b>：手机版的离线语音没有英文模型，整本英文的书只能按语速留白。以前是静悄悄地不出声，现在导入完就明说，并告诉你桌面版装了英文模型能正常念。</li>' +
+      '<li><b>体积</b>：PDF 用内置的 PDF.js（Apache-2.0）来解析，单文件 HTML 从 0.5 MB 变成 2.0 MB；APK / EXE 只多几百 KB（资源本身是压缩进包的）。</li>' +
+      '</ul>' +
+      '<h3>1.14.24 改了什么</h3><ul>' +
+      '<li><b>男声可以降噪了，而且三档随你切</b>：有人反馈男声有「沙沙」的底噪。这确实是模型自带的——同一句话，男声字里的噪声只比语音低 7 dB，女声低 13.6 dB，所以同一层噪声在男声里会露出来。<b>设置 → 免费神经语音 → 男声降噪</b>，三档：<b>原声</b>（不处理）、<b>更干净</b>（压得彻底，代价是个别字略糊、整体偏闷）、<b>更清楚</b>（保住字头，压得稍轻）。默认「更干净」。</li>' +
+      '<li><b>只作用于男声</b>：女声一个采样都不碰，处理前后字节完全相同。切档会从当前这句用新档位重念，方便直接对比。</li>' +
+      '<li><b>说清一个取舍</b>：「闷」和「干净」在这个男声模型上没法两全。它 3~6 kHz 的语音能量只有 0.51%，女声是 2.13%，这是模型天生的，补高频补不出来——试过补 4.5 / 6.5 / 8.5 dB 三档，听感全变成齿音「擦擦擦」，所以一条都不留。只能在两个里选一个舒服的，现在交给你自己选。</li>' +
+      '</ul>' +
+      '<h3>1.14.23 改了什么</h3><ul>' +
+      '<li><b>朗读条的声线可以自己攒了</b>：以前在设置里挑一个声线，朗读条最前面会出现它；再挑第二个，第一个就被挤掉了。现在改成<b>「我的声线」列表</b>——挑中哪个就加进去，<b>6 个位置，女声 3 个 + 男声 3 个</b>，男女各半，听书时两头都够用。存进本机配置，下次打开还在。不想要了，在设置里点它右边的 <b>×</b> 就从朗读条删掉。<b>删的只是朗读条那个下拉</b>，设置里 197 个声线一个不少，随时能再加回来。</li>' +
+      '<li><b>主角那套是固定的</b>：原版男女声 + 8 个音高变体（女声 1~4、男声 1~4）永远在朗读条最上面，不能删——它们是默认音色，删了没兜底。</li>' +
+      '<li><b>声线范围默认就是「全部 197 个」</b>：不用先切换一次才能看到别的音色。想省事就用「精选」，人工挑过的 21 个，名字和音高都对得上。</li>' +
+      '<li><b>分角色不再跟着声线范围走</b>：以前把范围放到「全部」，分角色会顺手动用那 187 人的慢库，人多的书就开始等。现在多了一个「角色用全库声线」开关，默认关着，要更丰富的声音可以自己打开。</li>' +
+      '</ul>' +
+      '<h3>1.14.22 改了什么</h3><ul>' +
+      '<li><b>几个声线的名字改对了</b>：有人反馈「精选里的男声听着不像青年」。我把 21 个精选声线逐个测了音高，确实标错了——「青年男 2」实测比「中年男 1」还低，「青年男 1」「青年男 3」也都在中年男区间，真正够青年的只有一个。现在按实测音高重新命名：中年男 4、男声 · 中音 1 / 2、青年男 1、女声 · 低音 1。<b>只改名字，声音一个字节都没动</b>，你之前选中的音色还是同一个。</li>' +
+      '<li><b>朗读起不来时，能一键把诊断发给我</b>：报错弹窗里加了「复制诊断信息」，点一下就把版本、包类型、机型、引擎自检结果，以及<b>手机里到底装了几个中文语音</b>复制成一段文字。贴在评论里就行——以前这种情况要来回问三四轮，现在一次能定位。</li>' +
+      '<li><b>「关于」页会交代这个包有什么</b>：最上面一行写清当前是哪个包、离线神经语音可不可用、手机系统朗读有几个引擎。如果装的是不含语音库的版本，就不用再照着完整版的说明去设置里白折腾了。</li>' +
+      '</ul>' +
       '<h3>1.14.21 改了什么</h3><ul>' +
       '<li><b>手机选书时，列表里只剩 TXT 和 EPUB</b>：PDF、图片、压缩包不再排在眼前让人误点。之前为了让 epub 能显示，把类型过滤整个放开了，代价是列表里什么都有；现在换成「按类型白名单」——把 epub 在国产系统上可能被认成的那几种形态一并列上（<code>epub+zip</code>、<code>octet-stream</code>、<code>zip</code>），PDF 不在名单里，自然就不出现。</li>' +
       '<li><b>万一还是选到读不了的文件，不再弹「不支持这种格式」</b>：安静放过就好。只有一次都没导进来时才轻说一句，不把「格式不支持」摆到脸上。</li>' +
@@ -4340,6 +4925,8 @@
   function showDoc(k) {
     var d = DOCS[k] || DOCS.help;
     var body = (CFG.lang === 'en' && window.MYDOCS_EN && window.MYDOCS_EN[k]) || d[1];
+    // 关于页最上面挂一张「当前包能力」卡片：装的是哪个包、离线语音有没有、系统朗读有几个引擎
+    if (k === 'about') body = packCard() + body;
     var nav = '<div class="docnav">' + Object.keys(DOCS).map(function (x) {
       return '<button data-doc="' + x + '"' + (x === k ? ' class="on"' : '') + '>' + esc(T(DOCS[x][0])) + '</button>';
     }).join('') + '</div>';
@@ -4414,17 +5001,28 @@
       '<button data-doc="local">' + T('安装与使用说明') + '</button></div></div>' +
       '<div class="row"><label>' + T('音色') + '</label><select data-set="localVoice">' + localVoiceOptions() +
       '</select><button data-act="tryvoice">' + T('试听音色') + '</button></div>' +
+      '<div class="row"><label>' + T('我的声线') + '</label><div class="seg" id="pinBox">' + pinChips() + '</div></div>' +
+      '<p class="kv">' + T('主角那组固定、删不掉；下面是你自己挑的：女声 {a} 个 + 男声 {b} 个。挑中哪个就自动进这里并存进本机，下次打开还在。点 × 只从朗读条移除，声线本身没丢，随时能加回来。', { a: PIN_PER_GENDER, b: PIN_PER_GENDER }) + '</p>' +
+      '<div class="row"><label>' + T('男声降噪') + '</label>' + seg('dnMode', [
+        [0, T('原声')], [1, T('更干净')], [2, T('更清楚')]
+      ]) + '</div>' +
+      '<p class="kv">' + T('只作用于男声，女声一个采样都不碰。男声模型自带一点「沙沙」，女声没有。「更干净」压得彻底，代价是个别字略糊、整体偏闷；「更清楚」为保住字头设计，字更实但压得稍轻；「原声」完全不处理。切换会从当前这句用新档位重念，方便直接对比。') + '</p>' +
       '<div class="row"><label>' + T('声线范围') + '</label>' + seg('voiceSet', [['curated', T('精选 {n} 个', { n: voiceStat().curated })], ['all', T('全部 {n} 个', { n: voiceStat().total })]]) + '</div>' +
-      '<p class="kv">' + T('模型里另有 {n} 个中文说话人（{f} 女 + {m} 男），共用同一份压缩模型，放开多少个都不增加体积；主角的「墨吟 · 女声」与「墨吟 · 男声」是另两份 22.05 kHz 的高采样率模型。「精选」是人工挑过、命名过的 {c} 个；「全部」按音高分 7 档列出，男低 → 女高任你挑。朗读条最左边的下拉里直接就能换，正在朗读时会从当前这段用新音色重念；也可以在这里选好再点「试听音色」对比。缺模型文件的音色会自动隐藏。',
+      '<p class="kv">' + T('模型里另有 {n} 个中文说话人（{f} 女 + {m} 男），共用同一份压缩模型，放开多少个都不增加体积；主角的「墨吟 · 女声」与「墨吟 · 男声」是另两份 22.05 kHz 的高采样率模型。「全部」按音高分 7 档列出，男低 → 女高任你挑；「精选」是人工挑过、命名过的 {c} 个，不想挑就用它。上面选中的声线会进「我的声线」，也就能在朗读条最左边下拉里直接换，正在朗读时会从当前这段用新音色重念。缺模型文件的音色会自动隐藏。',
         { n: voiceStat().lib, f: voiceStat().female, m: voiceStat().male, c: voiceStat().curated }) + '</p>' +
       '<div class="row"><label>' + T('分角色朗读') + '</label><div class="seg">' +
       '<button data-set="bool" data-v="roleOn"' + (CFG.roleOn ? ' class="on"' : '') + '>' + (CFG.roleOn ? T('分角色：开') : T('分角色：关')) + '</button>' +
       [['mix', T('男女混合')], ['female', T('全女声')], ['male', T('全男声')]].map(function (x) {
         return '<button data-set="rolePool" data-v="' + x[0] + '"' + (CFG.rolePool === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
-      }).join('') + '<button data-act="tryrole">' + T('试听效果') + '</button></div></div>' +
+      }).join('') + '<button data-set="bool" data-v="roleWide"' + (CFG.roleWide ? ' class="on"' : '') + '>' +
+        (CFG.roleWide ? T('角色用全库声线：开') : T('角色用全库声线：关')) + '</button>' +
+        '<button data-act="tryrole">' + T('试听效果') + '</button></div></div>' +
+      '<div class="row"><label>' + T('这本书的角色') + '</label><div class="seg">' +
+        '<span class="kv" id="castStat" style="align-self:center">' + esc(castStatTx()) + '</span>' +
+        '<button data-act="scanCast">' + T('识别一遍') + '</button></div></div>' +
       '<p class="kv">' + (localReady()
         ? T('已连接神经语音，分角色默认开启：旁白用你选的声线，引号里的对白按人物自动换声——「我说」「他说」「张三说」都是不同的声音，同一个人物整本书都是同一个声音。') +
-          T('这本书已认出 {n} 个人物，用掉 {m} 个声线；人物超过声线数时会自动扩到全部 {all} 个。',
+          T('这本书已认出 {n} 个人物，用掉 {m} 个声线。默认从精选里配，「角色用全库声线」打开后才会动用全部 {all} 个——全库那套更慢，人多的书会明显等，所以默认关着。',
             { n: Object.keys(SPK.cast || {}).length, m: Object.keys(SPK.used || {}).length, all: voiceStat().total })
         : T('⚠ 还没连上神经语音引擎：分角色现在不生效（系统语音只能发出一个声音）。完整版首次启动会自动准备；Lite 版双击「VoicePack/启动语音引擎.cmd」，再回这里点「重新检测」。')) + '</p>' +
       '<div class="row"><label>' + T('端口') + '</label><input type="number" data-set="localPort" min="1024" max="65535" step="1" value="' + (Number(CFG.localPort) || 8177) + '" style="width:96px"><span class="kv">' + T('默认 8177，需与启动器一致') + '</span></div>' +
@@ -4453,9 +5051,8 @@
       var k = e.target.getAttribute('data-set');
       if (k === 'txtEnc') { CFG.txtEnc = e.target.value; saveCfg(); toast(T('TXT 编码已设为 ') + e.target.value + T('，重新打开书生效')); }
       else if (k === 'localVoice') {
-        CFG.localVoice = e.target.value; saveCfg(); resetCast(); voiceBadge(curVoice());
-        if (SPK.playing) speakJump(0);
-        toast(T('已切换到 ') + localVoiceName(CFG.localVoice) + T('，点「试听音色」听听看'), 3000);
+        // 选中即切过去，并自动进朗读条置顶（主角固定那套不占位）
+        pickLocalVoice(e.target.value);
       }
     };
     $('modalBody').onclick = function (e) {
@@ -4472,7 +5069,15 @@
         if (ink0) { CFG.customTx = ink0; toast(T('底色较深，字色已自动调成浅色')); }
         saveCfg(); applyCfg(); showSettings(); return;
       }
-      var b = e.target.closest('button[data-set],button[data-act]'); if (!b) return;
+      var b = e.target.closest('button[data-set],button[data-act],button[data-pin]'); if (!b) return;
+      /* 「我的声线」里的芯片：× 是移除置顶，点名字是切过去 */
+      if (b.hasAttribute('data-pin')) {
+        var unp = e.target.closest('[data-unpin]');
+        if (unp) { unpinVoice(unp.getAttribute('data-unpin')); return; }
+        var pk = b.getAttribute('data-pin');
+        pickLocalVoice(pk);           // 主角那几个没有 ×，点了只切过去，不会动置顶
+        return;
+      }
       var act = b.getAttribute('data-act');
       if (act === 'type') { showType(); return; }
       if (act === 'fsDown' || act === 'fsUp') {
@@ -4491,10 +5096,23 @@
       }
       if (act === 'tryvoice') { tryVoice(); return; }
       if (act === 'tryrole') { tryRole(); return; }
+      if (act === 'scanCast') {
+        if (!BK) { toast(T('先打开一本书')); return; }
+        if (!localReady()) { toast(T('分角色要用本机神经语音：完整版首次启动会自动准备'), 4600); return; }
+        if (!CFG.roleOn) { CFG.roleOn = 1; saveCfg(); }
+        SPK.castAt = '';
+        var cn0 = buildCast(BK.ch | 0);
+        showSettings();
+        toast(cn0 ? T('认出 {n} 个角色，各自配好了声线', { n: cn0 })
+                   : T('这一章里没认出人物，往后读几章再试一次'), 3200);
+        return;
+      }
       if (act === 'probe') { LOCAL.miss = 0; localProbe(true).then(function () { showSettings(); }); return; }
       if (act === 'chkUpd') { checkUpdate(true); return; }
       var k = b.getAttribute('data-set'), v = b.getAttribute('data-v');
-      if (k === 'bool') CFG[v] = CFG[v] ? 0 : 1; else CFG[k] = v;
+      if (k === 'bool') CFG[v] = CFG[v] ? 0 : 1;
+      else if (k === 'dnMode') CFG[k] = Number(v) || 0;   // 降噪档位存数字，别留成字符串
+      else CFG[k] = v;
       /* 多栏与翻页联动，两个入口（设置 / 排版面板）行为保持一致 */
       if (k === 'lay' && (LAYN[v] || 0) > 1) CFG.mode = 'page';
       if (k === 'mode' && v === 'scroll' && (LAYN[CFG.lay] || 0) > 1) CFG.lay = 'auto';
@@ -4505,6 +5123,8 @@
       if (v === 'voiceSet') fillVoices();
       if (v === 'roleOn') CFG.roleTouched = 1;
       if (v === 'voiceSet' || v === 'roleOn' || k === 'rolePool') { if (SPK.playing) speakJump(0); }
+      // 换降噪档位后立刻用新档位重念当前这段，否则要等下一句才听得到差别
+      if (k === 'dnMode') { if (SPK.playing) speakJump(0); else toast(T('降噪已切到「{v}」，点朗读听听效果', { v: T(DN_NAME[CFG.dnMode]) }), 3000); }
       if (k === 'hans') renderKeep();          // 繁简是显示层的事，重绘当前章即可
       showSettings();
     };
@@ -5032,7 +5652,7 @@
     $('spClose').onclick = function () { stopSpeak(true); };
     $('spVoice').onchange = function () {
       var v = this.value;
-      if (v === '__more') {                     // 「还有 N 个声线」：直接打开设置页挑
+      if (v === '__more' || v === '__pins') {    // 挑更多 / 增删置顶：都去设置页
         this.value = 'local:' + CFG.localVoice; showSettings(); return;
       }
       if (v.indexOf('local:') === 0) {          // 本机声线：换完立刻用新音色重念当前段
@@ -5154,10 +5774,11 @@
       parseBook: parseBook, openBook: openBook, renderChapter: renderChapter, importFiles: importFiles,
       importFolder: importFolder, openSide: openSide, closeSide: closeSide,
       importBuffer: async function (buf, name, ext) {
-        var b = await parseBook(buf, name, ext || readExt(name));
+        var e0 = ext || readExt(name) || sniffExt(buf);
+        var b = await parseBook(buf, name, e0);
         var id = 'b' + Date.now() + Math.random().toString(36).slice(2, 7);
-        await dbPut('blobs', { id: id, buf: buf });
-        var m = { id: id, name: name.replace(/\.[^.]+$/, ''), ext: ext || readExt(name), size: buf.byteLength,
+        await dbPut('blobs', { id: id, buf: buf, text: b.pdfText || '' });
+        var m = { id: id, name: name.replace(/\.[^.]+$/, ''), ext: e0, size: buf.byteLength, pages: b.pdfPages || 0,
           added: Date.now(), last: Date.now(), ch: 0, ratio: 0, progress: 0, cover: b.cover || '',
           title: b.title, author: b.author || '', marks: [], hl: [], chapters: b.titles.slice(0, 1000),
           tocCount: b.toc.length, enc: b.enc || '', group: '', fav: 0, rt: 0, sessions: 0, first: 0 };
@@ -5166,6 +5787,7 @@
       exportBak: exportBak, importBak: importBak, dbGet: dbGet, dbAll: dbAll,
       startSpeak: startSpeak, stopSpeak: stopSpeak, toggleSpeak: toggleSpeak,
       doFind: doFind, addMark: addMark, showDoc: showDoc, closeBook: closeBook,
+      diagText: diagText, copyDiag: copyDiag, packCard: packCard,
       fillVoices: fillVoices, splitSpeak: splitSpeak, normSpeak: normSpeak,
       voiceLabel: voiceLabel, voiceTier: voiceTier, isNatural: isNatural,
       tryVoice: tryVoice, showSettings: showSettings,
@@ -5176,6 +5798,11 @@
       resumeListen: resumeListen, renderShelf: renderShelf,
       roleSegments: roleSegments, castVoice: castVoice, rolePool: rolePool, resetCast: resetCast,
       tryRole: tryRole, toggleRole: toggleRole, localBarList: localBarList, voiceStat: voiceStat,
+      /* 1.14.23：朗读条置顶（测试脚本要能直接调） */
+      pinVoice: pinVoice, unpinVoice: unpinVoice, pinKeys: pinKeys, pinChips: pinChips,
+      coreVoiceKeys: coreVoiceKeys, isCoreVoice: isCoreVoice, localBarGroups: localBarGroups,
+      pickLocalVoice: pickLocalVoice, PIN_MAX: PIN_MAX, PIN_PER_GENDER: PIN_PER_GENDER,
+      voiceGender: voiceGender, pinSlot: pinSlot, fixPinBalance: fixPinBalance,
       autoRetime: autoRetime, autoPageSec: autoPageSec,
       buildVoiceList: buildVoiceList, setPara: setPara, speakerOf: speakerOf,
       VER: VER, setLang: setLang, STATS: STATS, loadStats: loadStats, fmtDur: fmtDur, statStreak: statStreak,

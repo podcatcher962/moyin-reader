@@ -104,6 +104,9 @@ def build_reader():
             '--exclude-module', 'PIL',
             '--add-data', HTML + ';.',
             '--add-data', TS + ';.',     # 语音服务也内嵌，exe 自己就能起服务
+            # 男声降噪模块：tts_server 里是 try-import，PyInstaller 分析不到它
+            # （tts_server 本身是按数据文件塞进去的），漏了这条就永远是「原声」档。
+            '--add-data', os.path.join(ROOT, 'VoicePack', 'denoise.py') + ';.',
             APP]
     r = sh(args)
     out = os.path.join(DIST, 'MoYinReader.exe')
@@ -255,13 +258,50 @@ def selftest(exe):
 
 
 def real_run(exe):
-    """起真 exe：验进程活着、主窗口标题对、页面服务真能访问。"""
+    """起真 exe：验进程活着、主窗口标题对、页面服务真能访问。
+
+    只认「这次启动之后新出现的窗口」。直接枚举全部窗口会被已经开着的旧实例骗过
+    （1.14.24 实测：旧窗口挂着，新包就算根本没起来也会打印通过）。
+    收尾也只杀新增的进程，不再 taskkill /IM 全杀 —— 那会把用户正在用的窗口一起关掉。
+    """
     import ctypes
     from ctypes import wintypes
+    user32 = ctypes.windll.user32
+
+    def wins():
+        out = {}
+        cb_t = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+        def cb(hwnd, _):
+            n = user32.GetWindowTextLengthW(hwnd)
+            if n > 0:
+                buf = ctypes.create_unicode_buffer(n + 1)
+                user32.GetWindowTextW(hwnd, buf, n + 1)
+                if '墨吟' in buf.value:
+                    out[int(hwnd)] = buf.value
+            return True
+
+        user32.EnumWindows(cb_t(cb), 0)
+        return out
+
+    def pids():
+        # tasklist 按系统代码页输出，text=True 会用 locale 解码；这里固定成
+        # utf-8 + replace，免得中文 Windows 上读到 0xd0 就抛 UnicodeDecodeError
+        # （1.14.24 打包时真在后台线程里抛过一次，虽然不影响产物但日志会很吓人）。
+        r = subprocess.run(['tasklist', '/FI', 'IMAGENAME eq MoYinReader.exe', '/FO', 'CSV', '/NH'],
+                           capture_output=True, text=True, encoding='utf-8', errors='replace')
+        s = set()
+        for line in (r.stdout or '').splitlines():
+            parts = [x.strip().strip('"') for x in line.split(',')]
+            if len(parts) > 1 and parts[1].isdigit():
+                s.add(int(parts[1]))
+        return s
+
+    before_w, before_p = wins(), pids()
     p = subprocess.Popen([exe])
     try:
         time.sleep(6)
-        # Nuitka onefile 的引导进程有时在这几秒里已经把活交给子进程就退了，
+        # onefile 的引导进程有时在这几秒里已经把活交给子进程就退了，
         # 直接判「秒退」会误报（1.14.21 实测过一次）。所以先看服务与窗口，
         # 两个都不在才认定真崩了，并把返回码打出来。
         gone = p.poll()
@@ -276,26 +316,15 @@ def real_run(exe):
             except Exception:
                 time.sleep(1)
         assert ok, '窗口起来后本地服务不可访问（进程返回码 %s）' % gone
-        titles = []
-        EnumWindows = ctypes.windll.user32.EnumWindows
-        cb_t = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
 
-        def cb(hwnd, _):
-            n = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
-            if n > 0:
-                buf = ctypes.create_unicode_buffer(n + 1)
-                ctypes.windll.user32.GetWindowTextW(hwnd, buf, n + 1)
-                if '墨吟' in buf.value:
-                    titles.append(buf.value)
-            return True
-
-        EnumWindows(cb_t(cb), 0)
-        print('窗口标题', titles, flush=True)
-        assert any('墨吟阅读器' in t for t in titles), '没找到主窗口'
+        new = {k: v for k, v in wins().items() if k not in before_w}
+        assert any('墨吟阅读器' in t for t in new.values()), \
+            '没找到新启动的主窗口（新窗口：%r；旧窗口未动）' % (list(new.values()),)
+        print('窗口标题', list(new.values()), flush=True)
         print('真机启动 OK：进程存活 + 服务可访问 + 主窗口可见', flush=True)
     finally:
-        subprocess.run(['taskkill', '/F', '/IM', 'MoYinReader.exe', '/T'],
-                       capture_output=True)
+        for pid in sorted(pids() - before_p):
+            subprocess.run(['taskkill', '/F', '/PID', str(pid), '/T'], capture_output=True)
         time.sleep(1)
         try:
             p.kill()

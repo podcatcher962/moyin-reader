@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """把外壳 + ZIP 内核 + 主程序织成单文件 MoYinReader.html。"""
-import io, os, re, sys, datetime
+import io, json, os, re, sys, datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, 'MoYinReader.html')
@@ -83,13 +83,29 @@ def narrow_css():
     # 手机/平板窄屏：只按屏宽自动生效，不再有「强制手机版」那一套
     return '/* 窄屏（按屏幕宽度自动） */\n@media (max-width:860px){\n' + NARROW + '\n}\n'
 
+PDFJS_DIR = os.path.join(HERE, '_vendor', 'pdfjs')
+
+
+def pdf_parts():
+    """PDF.js（Apache-2.0）：核心与 worker 都内联，成品仍是一个文件、零外链。
+
+    worker 源码塞进 PDF_WORKER_SRC 字符串，运行时转成 Blob URL 交给 PDF.js
+    （见 pdfbook.js）。不开 worker 的话，几百页的册子抽字时界面会僵住。
+    """
+    core = io.open(os.path.join(PDFJS_DIR, 'pdf.min.js'), encoding='utf-8').read()
+    worker = io.open(os.path.join(PDFJS_DIR, 'pdf.worker.min.js'), encoding='utf-8').read()
+    head = '/* PDF.js r3.11.174 · Apache-2.0 · https://mozilla.github.io/pdf.js/ */\n'
+    return head + 'var PDF_WORKER_SRC = ' + json.dumps(worker) + ';\n' + core
+
+
 def main():
     shell = io.open(os.path.join(HERE, 'shell.html'), encoding='utf-8').read()
     core = io.open(os.path.join(HERE, 'zipcore.js'), encoding='utf-8').read()
     i18n = io.open(os.path.join(HERE, 'i18n.js'), encoding='utf-8').read()
     docsen = io.open(os.path.join(HERE, 'docs-en.js'), encoding='utf-8').read()
+    pdfbook = io.open(os.path.join(HERE, 'pdfbook.js'), encoding='utf-8').read()
     app = io.open(os.path.join(HERE, 'app.js'), encoding='utf-8').read()
-    js = core + '\n' + i18n + '\n' + docsen + '\n' + app
+    js = pdf_parts() + '\n' + pdfbook + '\n' + core + '\n' + i18n + '\n' + docsen + '\n' + app
     # 脚本内不能直接出现结束标签，统一转义
     js = js.replace('</script', '<\\/script').replace('</SCRIPT', '<\\/SCRIPT')
     if '<!--' in js:
@@ -101,6 +117,7 @@ def main():
     # 静态校验
     checks = [
         ('单一 script 标签', html.count('<script>') == 1 and html.count('</script>') == 1),
+        ('PDF.js 已内联', 'pdfjsLib' in js and 'PDF_WORKER_SRC' in js),
         ('无外部脚本/样式引用', not re.search(r'<(script|link)[^>]+(src|href)\s*=\s*["\']https?://', html, re.I)),
         ('无未替换锚点', '__APP_JS__' not in html and '__NARROW_CSS__' not in html),
         ('JS 无裸结束标签', '</script' not in js.lower().replace('<\\/script', '')),
