@@ -37,7 +37,7 @@ def curl(args, timeout=900):
 
 def main():
     apply = '--apply' in sys.argv
-    tag = 'v1.14.26'
+    tag = 'v1.14.27'
     apk = 'MoYinReader.apk'
     if not os.path.isfile(apk):
         print('找不到', apk)
@@ -62,7 +62,7 @@ def main():
         notes = os.path.join(os.path.dirname(os.path.abspath(__file__)), body_file)
         body_txt = (open(notes, encoding='utf-8').read() if os.path.isfile(notes)
                     else '语音系统升级：男女主角各一份 22.05 kHz 模型，配角库 16 kHz / 187 人。\n')
-        payload = {'tag_name': tag, 'name': '墨吟阅读器 1.14.26',
+        payload = {'tag_name': tag, 'name': '墨吟阅读器 1.14.27',
                    'body': body_txt,
                    'draft': False, 'prerelease': False}
         tmp = os.path.join(os.environ['TEMP'], '_rel.json')

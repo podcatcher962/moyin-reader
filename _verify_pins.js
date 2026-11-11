@@ -74,7 +74,11 @@ function get(port, p, method) {
     var extra=[['s110','中年男 4','男声 · 中年'],['s111','测试男乙','男声 · 中年'],
       ['s112','测试男丙','男声 · 低沉'],['s113','测试男丁','男声 · 偏高'],
       ['s150','测试女甲','女声 · 成年'],['s151','测试女乙','女声 · 青年'],
-      ['s152','测试女丙','女声 · 高音'],['s153','测试女丁','女声 · 低音']];
+      ['s152','测试女丙','女声 · 高音'],['s153','测试女丁','女声 · 低音'],
+      ['s114','测试男戊','男声 · 中年'],['s115','测试男己','男声 · 低沉'],
+      ['s116','测试男庚','男声 · 偏高'],['s117','测试男辛','男声 · 中年'],
+      ['s154','测试女戊','女声 · 成年'],['s155','测试女己','女声 · 青年'],
+      ['s156','测试女庚','女声 · 低音'],['s157','测试女辛','女声 · 高音']];
     MY.LOCAL.list = core.concat(extra);
     MY.LOCAL.info = { ok:true, curated:(core.map(function(x){return x[0];})).concat(['s110','s150']),
       voices:{}, labels:{}, groups:{}, f0:{} };
@@ -94,7 +98,9 @@ function get(port, p, method) {
   ok(await ev("MY.isCoreVoice('f3')") === true, 'f3 属于主角固定组');
   ok(await ev("MY.isCoreVoice('x0')") === true, 'x0（原版女声）属于主角固定组');
   ok(await ev("MY.isCoreVoice('s150')") === false, '配角不属于固定组');
-  ok(await ev("MY.pinVoice('m1', true)") === false, '主角声线不会被置顶（本来就在条上）');
+  ok(await ev("MY.pinVoice('m1', true)") === true, '音高变体（男声 2）现在能自由置顶');
+  ok(await ev("MY.unpinVoice('m1')") === true, '变体也能删回去');
+  ok(await ev("MY.pinVoice('m0', true)") === false, '原版男声仍不可置顶（它固定在条上）');
 
   // 主角没有 × 按钮，配角才有
   const chips = await ev('MY.pinChips()');
@@ -147,33 +153,31 @@ function get(port, p, method) {
   const pins4 = await ev('MY.pinKeys()');
   ok(Array.isArray(pins4) && pins4.indexOf('s110') >= 0, '重开页面后置顶还在', pins4);
 
-  // ── ⑤ 男女各半的配额：3 女 + 3 男，第 4 个被挡 ──────────────
+  // ── ⑤ 配额：女 10 + 男 10，第 11 个才被挡 ──────────────────
   await ev(STUB_RESET_PINS);
-  ok(await ev('MY.PIN_MAX') === 6, '置顶总数 6 个（男女各半）');
-  ok(await ev('MY.PIN_PER_GENDER') === 3, '每种性别各 3 个');
-  await ev("MY.pickLocalVoice('s150', true)");
-  await ev("MY.pickLocalVoice('s151', true)");
-  await ev("MY.pickLocalVoice('s152', true)");
-  const fem3 = await ev('MY.pinKeys()');
-  ok(fem3.length === 3, '连挑 3 个女声都进去了', fem3);
-  ok(await ev("MY.pinVoice('s153', true)") === false, '第 4 个女声被挡（女声位已满 3）');
-  await ev("MY.pickLocalVoice('s110', true)");
-  await ev("MY.pickLocalVoice('s111', true)");
-  await ev("MY.pickLocalVoice('s112', true)");
-  const both6 = await ev('MY.pinKeys()');
-  ok(both6.length === 6, '女 3 + 男 3 正好 6 个', both6);
-  ok(await ev("MY.pinVoice('s113', true)") === false, '第 4 个男声被挡（男声位已满 3）');
+  ok(await ev('MY.PIN_MAX') === 20, '置顶总数 20 个（男女各 10）');
+  ok(await ev('MY.PIN_PER_GENDER') === 10, '每种性别各 10 个');
+  const FEM10 = ['f1', 'f2', 'f3', 's150', 's151', 's152', 's153', 's154', 's155', 's156'];
+  for (const k of FEM10) await ev(`MY.pickLocalVoice('${k}', true)`);
+  const fem10 = await ev('MY.pinKeys()');
+  ok(fem10.length === 10, '连挑 10 个女声都进去了', fem10.length);
+  ok(await ev("MY.pinVoice('s157', true)") === false, '第 11 个女声被挡（女声位已满 10）');
+  const MAL10 = ['m1', 'm2', 'm3', 's110', 's111', 's112', 's113', 's114', 's115', 's116'];
+  for (const k of MAL10) await ev(`MY.pickLocalVoice('${k}', true)`);
+  const both20 = await ev('MY.pinKeys()');
+  ok(both20.length === 20, '女 10 + 男 10 正好 20 个', both20.length);
+  ok(await ev("MY.pinVoice('s117', true)") === false, '第 11 个男声被挡（男声位已满 10）');
   const lg = await ev('(function(){var g=MY.localBarGroups();var f=0,m=0;g.forEach(function(x){if(x[0].indexOf("女声")>=0)f=x[1].length;if(x[0].indexOf("男声")>=0)m=x[1].length;});return [f,m]})()');
-  ok(Array.isArray(lg) && lg[0] === 3 && lg[1] === 3, '朗读条里置顶正好 3 女 + 3 男', lg);
+  ok(Array.isArray(lg) && lg[0] === 10 && lg[1] === 10, '朗读条里置顶正好 10 女 + 10 男', lg);
 
   // ── ⑥ 老配置超额时自动削平（不静默丢）───────────────────────
-  await ev("(function(){MY.CFG.pinVoices=['s150','s151','s152','s153','s110','s111','s112'];MY.saveCfg();return 1})()");
+  await ev("(function(){MY.CFG.pinVoices=['s150','s151','s152','s153','s154','s155','s156','s157','f1','f2','f3','s110','s111','s112','s113','s114','s115','s116','s117','m1','m2'];MY.saveCfg();return 1})()");
   const dropped = await ev('MY.fixPinBalance()');
   const afterFix = await ev('MY.pinKeys()');
   ok(dropped === 1, '超出配额的 1 个被让出', dropped);
-  ok(afterFix.length === 6, '削平后仍是 6 个', afterFix);
-  ok(await ev("(function(){var f=0;MY.pinKeys().forEach(function(k){if(MY.voiceGender(k)!=='m')f++;});return f})()") === 3,
-    '削平后女声正好 3 个');
+  ok(afterFix.length === 20, '削平后仍是 20 个', afterFix.length);
+  ok(await ev("(function(){var f=0;MY.pinKeys().forEach(function(k){if(MY.voiceGender(k)!=='m')f++;});return f})()") === 10,
+    '削平后女声正好 10 个');
 
   // ── ⑦ 声线范围默认就是全部 ─────────────────────────────────
   ok(await ev("MY.CFG.voiceSet") === 'all', '声线范围默认「全部」（否则用户看不到 197 个）');
@@ -183,7 +187,7 @@ function get(port, p, method) {
   ok(optN >= 14, '设置里「音色」下拉列出全部可选项', optN);
   const pinBox = await ev("(function(){var b=document.getElementById('pinBox');return b?b.textContent:'none'})()");
   ok(typeof pinBox === 'string' && pinBox.indexOf('女声 1 · 原声') >= 0, '「我的声线」一栏把主角也列出来了', pinBox);
-  ok(typeof pinBox === 'string' && pinBox.indexOf('3 / 3') >= 0, '两段配额都显示成 3 / 3', pinBox.slice(0, 300));
+  ok(typeof pinBox === 'string' && pinBox.indexOf('/ 10') >= 0, '两段配额都显示成 N / 10', pinBox.slice(0, 300));
 
   if (errs.length) P('\n运行时异常：\n  ' + errs.join('\n  '));
   ok(errs.length === 0, '无 JS 异常', errs.length);

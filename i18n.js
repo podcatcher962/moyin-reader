@@ -235,14 +235,20 @@
 
     /* ---------- 我的声线（朗读条置顶） ---------- */
     '我的声线': 'My voices',
+    '只有「原版」男女主是固定的——删了就没默认声音兜底。其余全部自由：六个音高变体、187 个配角声线、你自己挑的，都能删能加，最多 {max} 个（女声、男声各 {half}）。点 × 只从朗读条移除，声线本身没丢，随时在下面加回来。':
+      'Only the two original lead voices are fixed — without them there is no fallback voice. Everything else is free: the six pitch variants, the 187 supporting voices and anything you pick, all removable and re-addable, up to {max} ({half} female + {half} male). The × only removes it from the reading bar; the voice itself is still there.',
+    '这套中性音色不合耳朵很正常——187 个人声，总有一个让你心动的声音。合耳的留下，不合耳的删掉，把选择权留给你自己。':
+      'Not every neutral voice will suit your ear — with 187 of them, one is bound to. Keep the ones you like, drop the rest; the choice is yours.',
     '主角那组固定、删不掉；下面是你自己挑的：女声 {a} 个 + 男声 {b} 个。挑中哪个就自动进这里并存进本机，下次打开还在。点 × 只从朗读条移除，声线本身没丢，随时能加回来。':
       'The lead group is fixed and cannot be removed. Below it are your own picks: {a} female + {b} male. Picking a voice above adds it here and saves it on this device. Tap × to drop it from the bar only — the voice itself stays and can be added back anytime.',
     '📌 置顶 · 女声（{n}/{max}）': '📌 Pinned · female ({n}/{max})',
     '📌 置顶 · 男声（{n}/{max}）': '📌 Pinned · male ({n}/{max})',
+    '原版声线 · 固定 {n} 个（不可删）': 'Original voices · {n} fixed (not removable)',
     '主角声线 · 固定 {n} 个（不可删）': 'Lead voices · {n} fixed (not removable)',
     '我置顶的女声 {n} / {max}': 'Pinned female {n} / {max}',
     '我置顶的男声 {n} / {max}': 'Pinned male {n} / {max}',
     '还没挑': 'none yet',
+    '⭐ 原版声线 · 固定（{n} 个）': '⭐ Original voices · fixed ({n})',
     '⭐ 主角声线 · 固定（{n} 个）': '⭐ Lead voices · fixed ({n})',
     '▶ 正在使用': '▶ In use',
     '⋯ 更多声线': '⋯ More voices',
@@ -261,6 +267,7 @@
     '；朗读条里这个性别已满 {n} 个，没加进去（设置里点 × 让位后再挑）':
       '; that gender is already full ({n}) in the bar, so it was not added — free a slot with × in Settings',
     '点名字切到这个声线，点 × 从朗读条移除': 'Tap the name to switch, tap × to remove it from the bar',
+    '原版声线，固定不可删': 'Original voice — fixed, cannot be removed',
     '主角声线，固定不可删': 'Lead voice — fixed, cannot be removed',
     '角色用全库声线：开': 'Roles use full library: on',
     '角色用全库声线：关': 'Roles use full library: off',
@@ -269,6 +276,8 @@
     '更干净': 'Cleaner',
     '更清楚': 'Clearer',
     '降噪已切到「{v}」，点朗读听听效果': 'Denoise set to “{v}” — tap play to hear it',
+    '只作用于男声，女声一个采样都不碰。手机喇叭外放多半用不着调——实测手机外放听男声是清楚的，那点「沙沙」要接功放或高解析耳机才明显，而压过之后字会变闷，损失比收益大。所以默认「原声」：觉得干净就别动它；接音箱、耳机听着沙沙的，再往上调一档。「更干净」压得最彻底，代价是个别字略糊、整体偏闷；「更清楚」保字头，字更实但压得稍轻。切换会从当前这句用新档位重念，方便直接对比。':
+      'Only affects male voices — not a single sample of a female voice is touched. On a phone speaker you usually do not need it: male voices come through clearly there, and the faint hiss only becomes audible on an amp or a high-resolution headphone — where noise reduction makes the words duller, a net loss. So the default is Raw: leave it alone if it sounds clean, step up one notch only if it hisses through speakers or headphones. Clean squeezes hardest (a few words blur, overall muffled); Clearer keeps the consonants, more solid but squeezed less. Switching re-reads the current sentence in the new mode for an A/B.',
     '只作用于男声，女声一个采样都不碰。男声模型自带一点「沙沙」，女声没有。「更干净」压得彻底，代价是个别字略糊、整体偏闷；「更清楚」为保住字头设计，字更实但压得稍轻；「原声」完全不处理。切换会从当前这句用新档位重念，方便直接对比。':
       'Applies to male voices only — female voices are not touched at all. The male model carries a little hiss of its own; the female one does not. “Cleaner” removes the most of it, at the cost of slightly blurred consonants and a duller tone. “Clearer” is designed to keep word onsets intact: firmer syllables, gentler removal. “Off” does nothing. Switching re-reads the current sentence with the new mode so you can compare directly.',
     '这本书已认出 {n} 个人物，用掉 {m} 个声线。默认从精选里配，「角色用全库声线」打开后才会动用全部 {all} 个——全库那套更慢，人多的书会明显等，所以默认关着。':

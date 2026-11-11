@@ -1,5 +1,6 @@
 /* 男声降噪开关验证（1.14.24）：
-   ① 三档「原声 / 更干净 / 更清楚」在设置里出现，默认「更干净」；
+   ① 三档「原声 / 更干净 / 更清楚」在设置里出现，默认「原声」（1.14.27 起：手机外放
+      本来就清楚，压过之后字会闷，所以默认不处理，要用的人自己往上调）；
    ② 选中后 CFG.dnMode 是数字（不是字符串），存盘也是数字；
    ③ 合成请求真的带上了 dn，切档后立即跟着变；
    ④ 脏值（'abc' / 99）一律归到 0，不会把引擎搞崩；
@@ -66,7 +67,7 @@ function get(port, p, method) {
 
   // ── ① 默认档位 ────────────────────────────────────────────────
   const def = await ev('MY.CFG.dnMode');
-  ok(def === 1, '默认「更干净」（dnMode=1）', def);
+  ok(def === 0, '默认「原声」（dnMode=0，不动音频）', def);
   ok(typeof def === 'number', '档位是数字类型而不是字符串', typeof def);
 
   // ── ② 设置里三档都在 ─────────────────────────────────────────
@@ -81,8 +82,8 @@ function get(port, p, method) {
     '设置里三档齐全（原声 / 更干净 / 更清楚）', row);
   ok(row.indexOf('判决导向') < 0 && row.indexOf('谱减') < 0, '界面不再出现算法术语', row);
   const on = await ev(`(function(){
-    var b=document.querySelector('button[data-set=dnMode][data-v="1"]');return b?b.className:'none'})()`);
-  ok(String(on).indexOf('on') >= 0, '「更干净」默认高亮', on);
+    var b=document.querySelector('button[data-set=dnMode][data-v="0"]');return b?b.className:'none'})()`);
+  ok(String(on).indexOf('on') >= 0, '「原声」默认高亮', on);
 
   // ── ③ 点「更清楚」后档位变 2，且是数字 ───────────────────────
   await ev(`(function(){

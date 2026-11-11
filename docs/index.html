@@ -1414,14 +1414,20 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
 
     /* ---------- 我的声线（朗读条置顶） ---------- */
     '我的声线': 'My voices',
+    '只有「原版」男女主是固定的——删了就没默认声音兜底。其余全部自由：六个音高变体、187 个配角声线、你自己挑的，都能删能加，最多 {max} 个（女声、男声各 {half}）。点 × 只从朗读条移除，声线本身没丢，随时在下面加回来。':
+      'Only the two original lead voices are fixed — without them there is no fallback voice. Everything else is free: the six pitch variants, the 187 supporting voices and anything you pick, all removable and re-addable, up to {max} ({half} female + {half} male). The × only removes it from the reading bar; the voice itself is still there.',
+    '这套中性音色不合耳朵很正常——187 个人声，总有一个让你心动的声音。合耳的留下，不合耳的删掉，把选择权留给你自己。':
+      'Not every neutral voice will suit your ear — with 187 of them, one is bound to. Keep the ones you like, drop the rest; the choice is yours.',
     '主角那组固定、删不掉；下面是你自己挑的：女声 {a} 个 + 男声 {b} 个。挑中哪个就自动进这里并存进本机，下次打开还在。点 × 只从朗读条移除，声线本身没丢，随时能加回来。':
       'The lead group is fixed and cannot be removed. Below it are your own picks: {a} female + {b} male. Picking a voice above adds it here and saves it on this device. Tap × to drop it from the bar only — the voice itself stays and can be added back anytime.',
     '📌 置顶 · 女声（{n}/{max}）': '📌 Pinned · female ({n}/{max})',
     '📌 置顶 · 男声（{n}/{max}）': '📌 Pinned · male ({n}/{max})',
+    '原版声线 · 固定 {n} 个（不可删）': 'Original voices · {n} fixed (not removable)',
     '主角声线 · 固定 {n} 个（不可删）': 'Lead voices · {n} fixed (not removable)',
     '我置顶的女声 {n} / {max}': 'Pinned female {n} / {max}',
     '我置顶的男声 {n} / {max}': 'Pinned male {n} / {max}',
     '还没挑': 'none yet',
+    '⭐ 原版声线 · 固定（{n} 个）': '⭐ Original voices · fixed ({n})',
     '⭐ 主角声线 · 固定（{n} 个）': '⭐ Lead voices · fixed ({n})',
     '▶ 正在使用': '▶ In use',
     '⋯ 更多声线': '⋯ More voices',
@@ -1440,6 +1446,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     '；朗读条里这个性别已满 {n} 个，没加进去（设置里点 × 让位后再挑）':
       '; that gender is already full ({n}) in the bar, so it was not added — free a slot with × in Settings',
     '点名字切到这个声线，点 × 从朗读条移除': 'Tap the name to switch, tap × to remove it from the bar',
+    '原版声线，固定不可删': 'Original voice — fixed, cannot be removed',
     '主角声线，固定不可删': 'Lead voice — fixed, cannot be removed',
     '角色用全库声线：开': 'Roles use full library: on',
     '角色用全库声线：关': 'Roles use full library: off',
@@ -1448,6 +1455,8 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     '更干净': 'Cleaner',
     '更清楚': 'Clearer',
     '降噪已切到「{v}」，点朗读听听效果': 'Denoise set to “{v}” — tap play to hear it',
+    '只作用于男声，女声一个采样都不碰。手机喇叭外放多半用不着调——实测手机外放听男声是清楚的，那点「沙沙」要接功放或高解析耳机才明显，而压过之后字会变闷，损失比收益大。所以默认「原声」：觉得干净就别动它；接音箱、耳机听着沙沙的，再往上调一档。「更干净」压得最彻底，代价是个别字略糊、整体偏闷；「更清楚」保字头，字更实但压得稍轻。切换会从当前这句用新档位重念，方便直接对比。':
+      'Only affects male voices — not a single sample of a female voice is touched. On a phone speaker you usually do not need it: male voices come through clearly there, and the faint hiss only becomes audible on an amp or a high-resolution headphone — where noise reduction makes the words duller, a net loss. So the default is Raw: leave it alone if it sounds clean, step up one notch only if it hisses through speakers or headphones. Clean squeezes hardest (a few words blur, overall muffled); Clearer keeps the consonants, more solid but squeezed less. Switching re-reads the current sentence in the new mode for an A/B.',
     '只作用于男声，女声一个采样都不碰。男声模型自带一点「沙沙」，女声没有。「更干净」压得彻底，代价是个别字略糊、整体偏闷；「更清楚」为保住字头设计，字更实但压得稍轻；「原声」完全不处理。切换会从当前这句用新档位重念，方便直接对比。':
       'Applies to male voices only — female voices are not touched at all. The male model carries a little hiss of its own; the female one does not. “Cleaner” removes the most of it, at the cost of slightly blurred consonants and a duller tone. “Clearer” is designed to keep word onsets intact: firmer syllables, gentler removal. “Off” does nothing. Switching re-reads the current sentence with the new mode so you can compare directly.',
     '这本书已认出 {n} 个人物，用掉 {m} 个声线。默认从精选里配，「角色用全库声线」打开后才会动用全部 {all} 个——全库那套更慢，人多的书会明显等，所以默认关着。':
@@ -2215,7 +2224,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.14.26';
+  var VER = '1.14.27';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -2293,10 +2302,11 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     rate: 1, pitch: 1, volume: 1, voiceURI: '', voiceAuto: 1, pause: 120, whole: 1,
     autoNext: 1, follow: 1,
     localOn: 1, localPort: 8177, localVoice: 'x0',
-    /* 男声降噪：0 原声 / 1 谱减 / 2 判决导向。只对男声生效，女声一个采样都不碰。
-       男声模型自带 3~4 dB 的浊音噪声，女声没有，所以默认给男声开着谱减；
-       觉得闷就切回原声，想要字更清楚就切判决导向——三档随时可换，不用换版本。 */
-    dnMode: 1,
+    /* 男声降噪：0 原声 / 1 更干净 / 2 更清楚。只对男声生效，女声一个采样都不碰。
+       默认「原声」。实测结论：手机喇叭外放时男声本来就很清楚，那点「沙沙」要接
+       功放或高解析耳机才明显；一上来就压，反倒是把字压闷了，用户听到的是损失。
+       所以默认不处理，觉得吵的自己往上调——选择权给用户，不替他决定。 */
+    dnMode: 0,
     /* 朗读条置顶：从「全部」里挑过的声线记在这里，可增可删。以前只记当前那一个，
        选第二个就把第一个挤掉，所以看着像「加了又被删」。 */
     pinVoices: [],
@@ -2392,7 +2402,17 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     // 置顶声线必须是字符串数组（老配置里没有这个键，也可能是被手改过的脏值）。
     // 性别配额要等引擎报上档位才能判，这里只做类型过滤 + 总上限，剩下交给 fixPinBalance()。
     if (!Array.isArray(CFG.pinVoices)) CFG.pinVoices = [];
-    else CFG.pinVoices = CFG.pinVoices.filter(function (k) { return typeof k === 'string' && k; }).slice(0, 6);
+    else CFG.pinVoices = CFG.pinVoices.filter(function (k) { return typeof k === 'string' && k; }).slice(0, 20);
+    /* 1.14.27：六个音高变体从「主角固定」改成「可删的置顶」。升级时补进去一次，
+       条上不会突然少掉六个；用户之后自己删掉就不再自动加回来（pinSeedRev 记着）。
+       这里用常量键名而不是读 /health：loadCfg 跑的时候引擎还没探测，拿不到声线表。 */
+    if (!CFG.pinSeedRev) {
+      CFG.pinSeedRev = 1;
+      var seed = Array.isArray(CFG.pinVoices) ? CFG.pinVoices.slice() : [];
+      VARIANT_KEYS.forEach(function (k) { if (seed.indexOf(k) < 0) seed.push(k); });
+      CFG.pinVoices = seed;
+      saveCfg();
+    }
     // 男声降噪档位：设置里存回来是字符串，engine 那边要数字；0/1/2 之外一律按原声。
     CFG.dnMode = [0, 1, 2].indexOf(Number(CFG.dnMode)) >= 0 ? Number(CFG.dnMode) : 0;
     // 1.14.23 起声线范围默认放开到「全部」：老配置里存的 'curated' 也跟一次。
@@ -5153,12 +5173,31 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   /* 朗读条放什么：
      ① 主角那套（原版男女主 + 8 个音高变体）固定在上面，不能删——它是默认音色，删了没兜底；
      ② 其余全自由：在设置里挑中的声线自动进「我置顶的」，点 × 就删，存在本机配置里。
-     ③ 自选位男女各半：6 个 = 3 女 + 3 男。听书时换声线，男女都够用，
+     ③ 自选位男女各半：20 个 = 10 女 + 10 男。听书时换声线，男女都够用，
         也不会挑着挑着整条全是同一种性别。
      187 个全库声线不铺在条上，否则下拉拉成一条长龙；要挑去设置里挑。 */
-  var PIN_MAX = 6;
-  var PIN_PER_GENDER = PIN_MAX / 2;      // 每种性别各 3 个
+  var PIN_MAX = 20;
+  var PIN_PER_GENDER = 10;               // 女声 10 + 男声 10
   var CORE_ALIAS = { x0: 'f0', c0: 'm0' };
+  /* 1.14.27 起：朗读条上只有「原版」男女主不可删——它们是默认兜底，删了朗读就没声。
+     f1~f3 / m1~m3 这六个音高变体、187 个配角库、自己挑的音色，一律自由增删。
+     之前六个变体跟着主角一起钉死，想只留听得顺的那一两个也不行，位置被占着。 */
+  var VARIANT_KEYS = ['f1', 'f2', 'f3', 'm1', 'm2', 'm3'];
+  function keyNorm(k) { return CORE_ALIAS[k] || k; }
+  /* 原版男女主：基干索引 0 的那两个（新引擎 f0 / m0，老引擎 x0 / c0）。 */
+  function fixedVoiceKeys() {
+    var pool = LOCAL.list || LOCAL_VOICES, has = {}, out = [];
+    pool.forEach(function (x) { has[x[0]] = 1; });
+    if (has.f0) out.push('f0'); else if (has.x0) out.push('x0');
+    if (has.m0) out.push('m0'); else if (has.c0) out.push('c0');
+    return out;
+  }
+  function isFixedVoice(k) {
+    if (!k) return false;
+    var n = keyNorm(k), f = fixedVoiceKeys();
+    for (var i = 0; i < f.length; i++) if (keyNorm(f[i]) === n) return true;
+    return false;
+  }
   /* 主角声线：f0~f3 / m0~m3（老引擎只有 x0 / c0）。
      x0 与 f0 指向同一份模型、显示名也一样，按名字去重，只留一个。 */
   function coreVoiceKeys() {
@@ -5190,7 +5229,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   /* 这个声线还能不能进朗读条：core=主角本来就在 / in=已在 / ok=能加 / full=这个性别满了 */
   function pinSlot(k) {
     if (!k) return 'no';
-    if (isCoreVoice(k)) return 'core';
+    if (isFixedVoice(k)) return 'core';
     var a = Array.isArray(CFG.pinVoices) ? CFG.pinVoices : [];
     if (a.indexOf(k) >= 0) return 'in';
     var g = voiceGender(k), n = 0;
@@ -5203,7 +5242,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     var a = Array.isArray(CFG.pinVoices) ? CFG.pinVoices : [];
     var keep = [], nf = 0, nm = 0, dropped = 0;
     a.forEach(function (k) {
-      if (typeof k !== 'string' || !k || isCoreVoice(k)) return;
+      if (typeof k !== 'string' || !k || isFixedVoice(k)) return;   // 只放过两个原版
       if (keep.indexOf(k) >= 0) return;
       var g = voiceGender(k);
       var over = (g === 'm') ? (nm >= PIN_PER_GENDER) : (nf >= PIN_PER_GENDER);
@@ -5222,10 +5261,10 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   function pinKeys() {
     var a = Array.isArray(CFG.pinVoices) ? CFG.pinVoices : (CFG.pinVoices = []);
     var av = (LOCAL.info && LOCAL.info.voices) || null;
-    var pool = LOCAL.list || LOCAL_VOICES, core = coreVoiceKeys(), out = [];
+    var pool = LOCAL.list || LOCAL_VOICES, out = [];
     a.forEach(function (k) {
       if (typeof k !== 'string' || out.indexOf(k) >= 0) return;
-      if (core.indexOf(k) >= 0) return;              // 主角本来就在条上，不占置顶位
+      if (isFixedVoice(k)) return;                   // 原版本来就在条上，不占置顶位
       if (av && av[k] === false) return;             // 模型文件不在了：先不显示，但记忆留着
       if (pool.some(function (y) { return y[0] === k; })) out.push(k);
     });
@@ -5288,7 +5327,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   function pinChips() {
     var chip = function (k, del) {
       return '<button data-pin="' + esc(k) + '"' + (CFG.localVoice === k ? ' class="on"' : '') +
-        ' title="' + esc(del ? T('点名字切到这个声线，点 × 从朗读条移除') : T('主角声线，固定不可删')) + '">' +
+        ' title="' + esc(del ? T('点名字切到这个声线，点 × 从朗读条移除') : T('原版声线，固定不可删')) + '">' +
         esc(T(localVoiceName(k))) +
         (del ? '<b data-unpin="' + esc(k) + '" style="font-weight:400;opacity:.55;padding-left:5px">×</b>' : '') +
         '</button>';
@@ -5299,12 +5338,12 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       return '<span style="flex:0 0 100%;font-size:12px;opacity:.62;line-height:1.6">' + esc(txt) + '</span>';
     };
     var none = '<span class="kv" style="align-self:center;opacity:.5">' + T('还没挑') + '</span>';
-    var core = coreVoiceKeys(), keys = pinKeys();
+    var core = fixedVoiceKeys(), keys = pinKeys();
     var fem = keys.filter(function (k) { return voiceGender(k) !== 'm'; });
     var mal = keys.filter(function (k) { return voiceGender(k) === 'm'; });
     var html = '';
     if (core.length) {
-      html += head(T('主角声线 · 固定 {n} 个（不可删）', { n: core.length })) +
+      html += head(T('原版声线 · 固定 {n} 个（不可删）', { n: core.length })) +
         core.map(function (k) { return chip(k, false); }).join('');
     }
     html += head(T('我置顶的女声 {n} / {max}', { n: fem.length, max: PIN_PER_GENDER })) +
@@ -5316,7 +5355,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   function localBarList() {
     var pool = LOCAL.list || LOCAL_VOICES, byKey = {}, out = [], used = {};
     pool.forEach(function (x) { byKey[x[0]] = x; });
-    coreVoiceKeys().forEach(function (k) { used[k] = 1; if (byKey[k]) out.push(byKey[k]); });
+    fixedVoiceKeys().forEach(function (k) { used[k] = 1; if (byKey[k]) out.push(byKey[k]); });
     pinKeys().forEach(function (k) { if (!used[k] && byKey[k]) { used[k] = 1; out.push(byKey[k]); } });
     if (CFG.localVoice && !used[CFG.localVoice] && byKey[CFG.localVoice]) out.push(byKey[CFG.localVoice]);
     return out;
@@ -5326,10 +5365,10 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   function localBarGroups() {
     var pool = LOCAL.list || LOCAL_VOICES, byKey = {}, out = [], used = [];
     pool.forEach(function (x) { byKey[x[0]] = x; });
-    var core = coreVoiceKeys().filter(function (k) { return byKey[k]; }).map(function (k) {
+    var core = fixedVoiceKeys().filter(function (k) { return byKey[k]; }).map(function (k) {
       used.push(k); return byKey[k];
     });
-    if (core.length) out.push([T('⭐ 主角声线 · 固定（{n} 个）', { n: core.length }), core]);
+    if (core.length) out.push([T('⭐ 原版声线 · 固定（{n} 个）', { n: core.length }), core]);
     var pins = pinKeys().filter(function (k) { return byKey[k] && used.indexOf(k) < 0; });
     var fem = pins.filter(function (k) { return voiceGender(k) !== 'm'; });
     var mal = pins.filter(function (k) { return voiceGender(k) === 'm'; });
@@ -6887,11 +6926,18 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p><b>关于声音</b>：187 个配角声线来自公开多说话人数据集训练的开源模型，主角两份来自公开 Piper 中文模型。它们只是合成音色，不用于声纹识别，也不代表任何真实人物；软件不提供声音克隆，不采集、不上传你本人的录音。界面里的声线名字是产品内的档位名，不是对任何人的称呼或代言。</p>' +
       '<p>若你是权利人，认为本工具或其随附内容侵犯了你的权益，请通过发行包内 README 所示方式联系作者，核实后会及时处理。</p>'],
     about: ['关于', '<p style="font-size:1.2em"><b>墨吟 · MoYin Reader</b></p>' +
-      '<p>一个单文件、默认离线的 TXT / EPUB 阅读器，带朗读。双击 HTML 就能用，Windows / Linux / 安卓 / iOS 浏览器均可。</p>' +
+      '<p>一个单文件、默认离线的 TXT / EPUB / PDF 阅读器，带朗读。双击 HTML 就能用，Windows / Linux / 安卓 / iOS 浏览器均可。</p>' +
       '<p>「墨吟」取「以墨为文、吟而出声」：把纸上的字念出来。中文名与英文名均为本项目自用，与任何同名公司、配音平台、有声主播<b>没有关联</b>，也不代表任何商业背书。</p>' +
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
+      '<p>它的声音理念很简单：<b>用普通人的声音，讲普通人的故事</b>。这里没有修得毫无瑕疵的录音棚嗓音——那种声音属于播音腔，听久了反倒离故事远。187 个人声，男女老少、清亮低沉都有，<b>总有一个让你心动的声音</b>；合耳的留下，不合耳的删掉，选择权在你手上。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + 三份中文 VITS 模型）：不联网、不收费、无需账号，主角是 22.05 kHz 的「墨吟 · 女声」与「墨吟 · 男声」，另带 187 个配角说话人（148 女 + 39 男），精选 21 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.14.27 改了什么</h3><ul>' +
+      '<li><b>声线全部放开，只有原版男女主不可删</b>：以前六个音高变体跟着主角一起钉死，想只留听得顺的那一两个也不行。现在朗读条上固定的只剩「女声 1 · 原声」和「男声 1 · 原声」——它们是默认兜底，删了就没声音；其余包括六个变体、187 个配角、你自己挑的，都能删能加。</li>' +
+      '<li><b>置顶位从 6 个放宽到 20 个</b>（女声、男声各 10）。删完想加回来不用先腾位置，也不会因为「满了」被拦住。</li>' +
+      '<li><b>男声降噪默认改成「原声」</b>：实测手机喇叭外放时男声本来就清楚，那点「沙沙」要接功放或高解析耳机才明显，压过之后字会变闷，损失比收益大。接音箱时觉得吵，在<b>设置 → 免费神经语音 → 男声降噪</b>往上调一档即可，三档随时换。</li>' +
+      '<li><b>说清一件事</b>：这套中性音色不合耳朵很正常。我们不做录音棚那种一尘不染的嗓子——<b>用普通人的声音，讲普通人的故事</b>，声音越普通，故事越有真实感。187 个人声，总有一个让你心动的声音。</li>' +
+      '</ul>' +
       '<h3>1.14.26 改了什么</h3><ul>' +
       '<li><b>年份按年份念</b>：「2026上半年」以前念成「两千零二十六上半年」，现在念「二零二六上半年」。19xx / 20xx 四位数后接量词（2026人、2026元）仍按数值念，其余一律逐位——年份就该那么读。</li>' +
       '<li><b>日期整体认</b>：「2026-01-05」以前被拆成两个数、中间的连字符念不出来，现在整段念「二零二六年一月五日」；「2026-01-05 ~ 2026-06-30」念成「…到…」。</li>' +
@@ -7211,11 +7257,12 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<div class="row"><label>' + T('音色') + '</label><select data-set="localVoice">' + localVoiceOptions() +
       '</select><button data-act="tryvoice">' + T('试听音色') + '</button></div>' +
       '<div class="row"><label>' + T('我的声线') + '</label><div class="seg" id="pinBox">' + pinChips() + '</div></div>' +
-      '<p class="kv">' + T('主角那组固定、删不掉；下面是你自己挑的：女声 {a} 个 + 男声 {b} 个。挑中哪个就自动进这里并存进本机，下次打开还在。点 × 只从朗读条移除，声线本身没丢，随时能加回来。', { a: PIN_PER_GENDER, b: PIN_PER_GENDER }) + '</p>' +
+      '<p class="kv">' + T('只有「原版」男女主是固定的——删了就没默认声音兜底。其余全部自由：六个音高变体、187 个配角声线、你自己挑的，都能删能加，最多 {max} 个（女声、男声各 {half}）。点 × 只从朗读条移除，声线本身没丢，随时在下面加回来。', { max: PIN_MAX, half: PIN_PER_GENDER }) + '</p>' +
+      '<p class="kv">' + T('这套中性音色不合耳朵很正常——187 个人声，总有一个让你心动的声音。合耳的留下，不合耳的删掉，把选择权留给你自己。') + '</p>' +
       '<div class="row"><label>' + T('男声降噪') + '</label>' + seg('dnMode', [
         [0, T('原声')], [1, T('更干净')], [2, T('更清楚')]
       ]) + '</div>' +
-      '<p class="kv">' + T('只作用于男声，女声一个采样都不碰。男声模型自带一点「沙沙」，女声没有。「更干净」压得彻底，代价是个别字略糊、整体偏闷；「更清楚」为保住字头设计，字更实但压得稍轻；「原声」完全不处理。切换会从当前这句用新档位重念，方便直接对比。') + '</p>' +
+      '<p class="kv">' + T('只作用于男声，女声一个采样都不碰。手机喇叭外放多半用不着调——实测手机外放听男声是清楚的，那点「沙沙」要接功放或高解析耳机才明显，而压过之后字会变闷，损失比收益大。所以默认「原声」：觉得干净就别动它；接音箱、耳机听着沙沙的，再往上调一档。「更干净」压得最彻底，代价是个别字略糊、整体偏闷；「更清楚」保字头，字更实但压得稍轻。切换会从当前这句用新档位重念，方便直接对比。') + '</p>' +
       '<div class="row"><label>' + T('声线范围') + '</label>' + seg('voiceSet', [['curated', T('精选 {n} 个', { n: voiceStat().curated })], ['all', T('全部 {n} 个', { n: voiceStat().total })]]) + '</div>' +
       '<p class="kv">' + T('模型里另有 {n} 个中文说话人（{f} 女 + {m} 男），共用同一份压缩模型，放开多少个都不增加体积；主角的「墨吟 · 女声」与「墨吟 · 男声」是另两份 22.05 kHz 的高采样率模型。「全部」按音高分 7 档列出，男低 → 女高任你挑；「精选」是人工挑过、命名过的 {c} 个，不想挑就用它。上面选中的声线会进「我的声线」，也就能在朗读条最左边下拉里直接换，正在朗读时会从当前这段用新音色重念。缺模型文件的音色会自动隐藏。',
         { n: voiceStat().lib, f: voiceStat().female, m: voiceStat().male, c: voiceStat().curated }) + '</p>' +
