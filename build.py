@@ -104,8 +104,9 @@ def main():
     i18n = io.open(os.path.join(HERE, 'i18n.js'), encoding='utf-8').read()
     docsen = io.open(os.path.join(HERE, 'docs-en.js'), encoding='utf-8').read()
     pdfbook = io.open(os.path.join(HERE, 'pdfbook.js'), encoding='utf-8').read()
+    docfmt = io.open(os.path.join(HERE, 'docfmt.js'), encoding='utf-8').read()
     app = io.open(os.path.join(HERE, 'app.js'), encoding='utf-8').read()
-    js = pdf_parts() + '\n' + pdfbook + '\n' + core + '\n' + i18n + '\n' + docsen + '\n' + app
+    js = pdf_parts() + '\n' + pdfbook + '\n' + docfmt + '\n' + core + '\n' + i18n + '\n' + docsen + '\n' + app
     # 脚本内不能直接出现结束标签，统一转义
     js = js.replace('</script', '<\\/script').replace('</SCRIPT', '<\\/SCRIPT')
     if '<!--' in js:
@@ -118,6 +119,7 @@ def main():
     checks = [
         ('单一 script 标签', html.count('<script>') == 1 and html.count('</script>') == 1),
         ('PDF.js 已内联', 'pdfjsLib' in js and 'PDF_WORKER_SRC' in js),
+        ('DOCX/MOBI 解析器已内联', 'root.DocFmt' in js and 'palmdoc' in js),
         ('无外部脚本/样式引用', not re.search(r'<(script|link)[^>]+(src|href)\s*=\s*["\']https?://', html, re.I)),
         ('无未替换锚点', '__APP_JS__' not in html and '__NARROW_CSS__' not in html),
         ('JS 无裸结束标签', '</script' not in js.lower().replace('<\\/script', '')),

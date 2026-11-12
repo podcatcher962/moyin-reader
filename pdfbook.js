@@ -230,6 +230,38 @@
     return { cjk: c, lat: lat, dig: dig, sym: sym, len: text.length };
   }
 
+  /* 一页上「最大的那张图」占多少面积（0~1）。整页扫描件是 1.00。
+     图片是按单位正方形经当前变换矩阵贴上去的，所以面积 = |det(CTM)|，
+     除以页面面积就是覆盖率。用它来识破「扫描图 + 一层水印文字」的假文字书：
+     那种书每页只有一句「关注公众号」之类的水印，却因为总量过了门槛被当成
+     正文书打开，用户看到的是一页页水印，书本身一个字都没有。 */
+  function imgCoverage(pg, L, vw, vh) {
+    if (!L || !L.OPS || !pg.getOperatorList) return Promise.resolve(0);
+    var OPS = L.OPS;
+    return pg.getOperatorList().then(function (ol) {
+      var m = [1, 0, 0, 1, 0, 0], stack = [], best = 0;
+      var n = ol.fnArray.length;
+      for (var i = 0; i < n; i++) {
+        var fn = ol.fnArray[i], a = ol.argsArray[i];
+        if (fn === OPS.save) { stack.push(m.slice()); continue; }
+        if (fn === OPS.restore) { m = stack.pop() || [1, 0, 0, 1, 0, 0]; continue; }
+        if (fn === OPS.transform && a) {
+          m = [m[0] * a[0] + m[2] * a[1], m[1] * a[0] + m[3] * a[1],
+               m[0] * a[2] + m[2] * a[3], m[1] * a[2] + m[3] * a[3],
+               m[0] * a[4] + m[2] * a[5] + m[4], m[1] * a[4] + m[3] * a[5] + m[5]];
+          continue;
+        }
+        if (fn === OPS.paintImageXObject || fn === OPS.paintJpegXObject ||
+            fn === OPS.paintImageMaskXObject || fn === OPS.paintInlineImageXObject) {
+          if (!(vw > 0 && vh > 0)) continue;
+          var c = Math.abs(m[0] * m[3] - m[1] * m[2]) / (vw * vh);
+          if (c > best) best = c;
+        }
+      }
+      return best > 1 ? 1 : best;
+    }, function () { return 0; });          // 算不出来就当没图，宁可走原来那条路
+  }
+
   function build(buf, name, opt) {
     opt = opt || {};
     var T = opt.T || function (s) { return s; };
@@ -240,7 +272,7 @@
     var data = buf instanceof Uint8Array
       ? new Uint8Array(buf)
       : new Uint8Array(buf.slice(0));
-    var doc = null, pages = [], total = 0;
+    var doc = null, pages = [], total = 0, covers = [];
     return L.getDocument({
       data: data, isEvalSupported: false, useSystemFonts: false,
       disableFontFace: true, verbosity: 0
@@ -259,17 +291,94 @@
           });
         });
       }
-      return step().then(function () { return doc.destroy(); });
-    }).then(function () {
+      /* 先探前 12 页。扫描件一页字都没有，没必要把 3000 页全抽一遍再宣布「没文字」——
+         589 页的册子那样要白等一分多钟。抽到字才继续抽全书。
+         顺手量一下每页图像覆盖率：扫描件整页是一张图（≈1.00），真文字书里的插图
+         通常只占一小块。这一项用来识破「整页扫描 + 一层水印文字」的假文字书。 */
+      var probeEnd = Math.min(12, limit);
+      /* 再从全书不同位置抽 4 页对账。只看开头有个坑：不少书前十几页是封面、
+         版权页、彩插、盗版广告，整页都是图；正文在后面。光看开头会把人家的
+         文字书判成扫描件。抽样页只用来判类型，不进 pages（免得打乱章节顺序）。 */
+      var samplePages = [], sampleChars = [];
+      if (total > 40) {
+        [0.25, 0.5, 0.75, 0.92].forEach(function (f) {
+          var q = Math.max(probeEnd + 1, Math.min(total, Math.round(total * f)));
+          if (samplePages.indexOf(q) < 0) samplePages.push(q);
+        });
+      }
+      function sample() {
+        if (!samplePages.length) return Promise.resolve();
+        var q = samplePages.shift();
+        return doc.getPage(q).then(function (pg) {
+          var vp = pg.getViewport({ scale: 1 });
+          return Promise.all([
+            pg.getTextContent(),
+            imgCoverage(pg, L, vp.width, vp.height)
+          ]).then(function (r) {
+            var c = 0;
+            (r[0].items || []).forEach(function (it) { c += (it.str || '').length; });
+            sampleChars.push(c);
+            covers.push(r[1] || 0);
+            try { pg.cleanup(); } catch (e) { }
+            return sample();
+          });
+        });
+      }
+      function probe() {
+        if (p > probeEnd) return Promise.resolve();
+        return doc.getPage(p).then(function (pg) {
+          var vp = pg.getViewport({ scale: 1 });
+          return Promise.all([
+            pg.getTextContent(),
+            imgCoverage(pg, L, vp.width, vp.height)
+          ]).then(function (r) {
+            pages.push(linesOf(r[0].items));
+            covers.push(r[1] || 0);
+            try { pg.cleanup(); } catch (e) { }
+            if (opt.onProgress) { try { opt.onProgress(p, total); } catch (e) { } }
+            p++;
+            return probe();
+          });
+        });
+      }
+      return probe().then(function () { return sample(); }).then(function () {
+        var got = 0;
+        pages.forEach(function (lns) { lns.forEach(function (l) { got += (l.t || '').length; }); });
+        if (got < 12) {
+          try { doc.destroy(); } catch (e) { }
+          return { picture: true, pages: total, why: 'scan' };
+        }
+        /* 整页都是图的页占多数，而且每页文字少得可怜（只有水印、页眉）——
+           这本来就是一本扫描书，只是被人塞了层水印文字。按扫描件打开。
+           真做了 OCR 的扫描书每页几百字，不会被这条拦住，仍走文字模式。 */
+        var full = 0;
+        for (var i = 0; i < covers.length; i++) if (covers[i] >= 0.7) full++;
+        var ratio = covers.length ? full / covers.length : 0;
+        var perPage = pages.length ? got / pages.length : got;
+        /* 抽样页里只要有一页是「像样的正文」，就不许判扫描件——
+           有些书前十几页全是封面、版权、广告图，正文在后面。 */
+        var realText = false;
+        for (var k = 0; k < sampleChars.length; k++) if (sampleChars[k] >= 150) realText = true;
+        if (ratio >= 0.6 && perPage < 120 && !realText) {
+          try { doc.destroy(); } catch (e) { }
+          return { picture: true, pages: total, why: 'scanwm', watermark: true };
+        }
+        return step().then(function () { return doc.destroy(); });
+      });
+    }).then(function (early) {
+      if (early && early.picture) return early;     // 扫描件：前面已经判完，直接交差
       var paras = paragraphsOf(pages);
       var text = paras.map(function (p) { return p.t; }).join('\n');
       var q = inspect(text);
+      /* 抽不到字：扫描件、或者字体没带 Unicode 表（抽出来只有数字符号）。
+         这两种都不再拒收——按页渲染成图片照样能「看」，只是念不出来。
+         主流阅读器也只能做到这一步，用户要的正是这个。 */
       if (q.cjk + q.lat + q.dig < 120) {
-        var e = new Error(q.dig > 20
-          ? T('这本 PDF 的文字层里只有数字和符号，汉字全丢了（字体没带 Unicode 映射），读不了')
-          : T('这本 PDF 没有文字层（整页是扫描出来的图片），要读得先做一遍 OCR'));
-        e.code = q.dig > 20 ? 'pdf-garbled' : 'pdf-notext';
-        throw e;
+        return {
+          picture: true, pages: total, quality: q, text: '',
+          why: q.dig > 20 ? 'garbled' : 'scan',
+          titles: [], body: []
+        };
       }
       /* 有文字块、却一个汉字都抽不出来：字体没带 Unicode 表（国产开票 / 排版软件常见），
          抽出来只有符号和数字，念不出句子。纯英文书不算这一类。 */
@@ -288,6 +397,72 @@
     });
   }
 
+  /* ---------------- 按页渲染（图片层 PDF） ----------------
+     扫描件没有文字层，唯一能做的就是把它画出来。PDF.js 自带渲染器，
+     这里只负责「把第 n 页画进一块 canvas」，其余交给浏览器。
+     文档对象缓存一份：翻页时反复 getDocument 会重新解析整本，几百页要几十秒。 */
+
+  var DOC = { key: null, p: null };
+
+  function docOf(buf, opt) {
+    var L = getLib(opt);
+    if (!L) return Promise.reject(new Error('PDF 组件没加载起来，请用完整版打开'));
+    if (DOC.key === buf && DOC.p) return DOC.p;
+    /* 同一份内存只交出去一次：PDF.js 会把它 transfer 给 worker，之后原件是空的。
+       DOC 里留着已经建好的文档，所以「再打开一次」用的是缓存，不需要原件。 */
+    var data = buf instanceof Uint8Array ? new Uint8Array(buf) : new Uint8Array(buf.slice(0));
+    var p = L.getDocument({
+      data: data, isEvalSupported: false, useSystemFonts: false,
+      disableFontFace: true, verbosity: 0
+    }).promise;
+    DOC = { key: buf, p: p };
+    return p;
+  }
+
+  /** 第 num 页（从 1 起）画进 canvas。width 是 CSS 像素宽，dpr 用来出高分屏的像素。 */
+  function renderPage(buf, num, canvas, opt) {
+    opt = opt || {};
+    return docOf(buf, opt).then(function (doc) {
+      var n = num | 0;
+      if (n < 1 || n > doc.numPages) throw new Error('页码不存在');
+      return doc.getPage(n).then(function (pg) {
+        var base = pg.getViewport({ scale: 1 });
+        var cssW = Math.max(240, Math.round(opt.width || 760));
+        var dpr = Math.min(Math.max(1, opt.dpr || 1), 3);
+        /* 超宽页（横向 A3、地图）按高度也压一下，免得一张图长到几十屏 */
+        var scale = cssW / base.width;
+        if (opt.maxH) {
+          var maxS = opt.maxH / base.height;
+          if (maxS < scale) scale = maxS;
+        }
+        var vp = pg.getViewport({ scale: scale * dpr });
+        canvas.width = Math.max(1, Math.ceil(vp.width));
+        canvas.height = Math.max(1, Math.ceil(vp.height));
+        var g = canvas.getContext('2d');
+        g.save();
+        g.fillStyle = '#fff';
+        g.fillRect(0, 0, canvas.width, canvas.height);
+        g.restore();
+        return pg.render({ canvasContext: g, viewport: vp }).promise.then(function () {
+          try { pg.cleanup(); } catch (e) { }
+          return { w: canvas.width, h: canvas.height, pages: doc.numPages, canvas: canvas };
+        });
+      });
+    });
+  }
+
+  /** 换书时把上一本的文档放掉：几百页的册子解析完占着几十 MB。 */
+  function closeDoc() {
+    var old = DOC.p;
+    DOC = { key: null, p: null };
+    if (old) { try { old.then(function (d) { try { d.destroy(); } catch (e) { } }); } catch (e) { } }
+  }
+
+  /** 只问页数（老版本存的条目没记页数时用）。 */
+  function pageCount(buf, opt) {
+    return docOf(buf, opt).then(function (doc) { return doc.numPages; });
+  }
+
   /* 重开同一本书时不再解一遍 PDF：抽出来的纯文本随书存着，这里按段落还原章节。 */
   function fromText(text, name, opt) {
     opt = opt || {};
@@ -300,7 +475,8 @@
     };
   }
 
-  var api = { build: build, fromText: fromText, linesOf: linesOf, paragraphsOf: paragraphsOf, inspect: inspect };
+  var api = { build: build, fromText: fromText, renderPage: renderPage, pageCount: pageCount, closeDoc: closeDoc,
+    linesOf: linesOf, paragraphsOf: paragraphsOf, inspect: inspect };
   root.PdfBook = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

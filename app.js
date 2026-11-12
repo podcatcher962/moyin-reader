@@ -6,7 +6,7 @@
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.14.28';
+  var VER = '1.14.35';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -84,6 +84,10 @@
     rate: 1, pitch: 1, volume: 1, voiceURI: '', voiceAuto: 1, pause: 120, whole: 1,
     autoNext: 1, follow: 1,
     localOn: 1, localPort: 8177, localVoice: 'x0',
+    /* 英文语音（安卓那套 LJSpeech 模型）：默认开——中文书里夹英文词太常见。
+       留这个开关是因为它在个别设备上会卡在 native 里（见 TtsEngine.ensureEn），
+       关掉就是彻底不加载、不合成英文，中文一点不受影响。 */
+    enVoice: 1,
     /* 男声降噪：0 原声 / 1 更干净 / 2 更清楚。只对男声生效，女声一个采样都不碰。
        默认「原声」。实测结论：手机喇叭外放时男声本来就很清楚，那点「沙沙」要接
        功放或高解析耳机才明显；一上来就压，反倒是把字压闷了，用户听到的是损失。
@@ -373,7 +377,8 @@
     /* 双栏必须靠翻页成立：一屏高度固定，超出的内容才会向右排成新列。
        滚动模式没有固定屏高，column-count 摆出来是两列同步滚动，读起来会串行，所以强制走翻页。 */
     if ((LAYN[CFG.lay] || 0) > 1 && CFG.mode !== 'page') CFG.mode = 'page';
-    var nowPage = CFG.mode === 'page', wasPage = h.getAttribute('data-mode') === 'page';
+    /* 图片层 PDF 一律滚动：整页一张图，切栏会把人像劈成两半。CFG.mode 不改，离开这本书还是原设置。 */
+    var nowPage = CFG.mode === 'page' && !(BK && BK.picture), wasPage = h.getAttribute('data-mode') === 'page';
     /* 切换阅读方式时先抓住眼前那段，切完再定位回去，别让人丢位置 */
     var keep = BK ? (wasPage ? pgTopPara() : scrollTopPara()) : null;
     h.setAttribute('data-theme', CFG.theme);
@@ -538,7 +543,8 @@
      继续往右排成新列，#pageWrap 负责裁掉，翻页只是横向平移。 */
   var PG = { i: 0, count: 1, cols: 1, cw: 0, gap: 0, padL: 0, step: 0, ready: 0 };
 
-  function pgEnabled() { return CFG.mode === 'page'; }
+  /* 图片页整页就是一张图，再切两栏只会把人像劈成两半：这类书一律滚动看 */
+  function pgEnabled() { return CFG.mode === 'page' && !(BK && BK.picture); }
   /* 主指针是手指（手机 / 平板）：这类设备没有键盘和滚轮，
      滚动模式下也要允许「点两侧翻一屏」，否则只能一直滑。 */
   function touchy() {
@@ -769,6 +775,12 @@
   /* 下一页 / 下一屏（到末尾自动接下一章） */
   function readNext() {
     if (!BK) return;
+    /* 图片层 PDF：一页就是一屏，滚动没有意义，直接翻页 */
+    if (BK.picture) {
+      if (BK.ch < chapterCount() - 1) renderChapter(BK.ch + 1);
+      else toast(T('已经是最后一页'), 1500);
+      return;
+    }
     if (pgEnabled()) {
       if (PG.i < PG.count - 1) { pgTo(PG.i + 1); return; }
       /* 走到「以为的」最后一页时先复核一次页数：插图、字体晚到，或某些机型取整不同，
@@ -788,6 +800,7 @@
   }
   function readPrev() {
     if (!BK) return;
+    if (BK.picture) { if (BK.ch > 0) renderChapter(BK.ch - 1); return; }
     if (pgEnabled()) {
       if (PG.i > 0) { pgTo(PG.i - 1); return; }
       if (BK.ch > 0) renderChapter(BK.ch - 1, { pg: 'last' });
@@ -1046,7 +1059,14 @@
   }
   function buildTxt(buf, name) {
     var d = Z.decodeTxt(buf, CFG.txtEnc);
-    var text = d.text.replace(/\r\n?/g, '\n').replace(/\uFEFF/g, '').replace(/\u3000/g, ' ');
+    var b = buildTxtText(d.text, name);
+    b.enc = d.enc;
+    return b;
+  }
+  /* 已经是纯文本的书（TXT 解码后、DOCX / MOBI / AZW3 抽出来之后）都走这里：
+     认章节标题 → 分卷 → 组装成阅读器要的书对象。 */
+  function buildTxtText(rawText, name) {
+    var text = String(rawText || '').replace(/\r\n?/g, '\n').replace(/\uFEFF/g, '').replace(/\u3000/g, ' ');
     var lines = text.split('\n'), chapters = [], cur = { title: T('开篇'), lines: [] }, found = 0;
     lines.forEach(function (raw) {
       var t = raw.trim();
@@ -1076,7 +1096,7 @@
     if (!out.length) out = [{ title: name, lines: [T('（空文件）')] }];
     var titles = out.map(function (c) { return c.title; });
     return {
-      kind: 'txt', enc: d.enc, count: out.length, titles: titles, cover: null,
+      kind: 'txt', enc: '', count: out.length, titles: titles, cover: null,
       title: name, author: '', toc: titles.map(function (t, i) { return { label: t, ch: i, level: 0 }; }),
       chapterHtml: function (i) {
         return out[i].lines.map(function (l) { return '<p class="rdp">' + esc(l) + '</p>'; }).join('\n');
@@ -1365,23 +1385,101 @@
       chapterText: function (i) { return (r.body[i] || []).join('\n'); }
     };
   }
+
+  /* 图片层 PDF：没有文字层，一页就是一屏图。一本 = 页数章，每章画一张 canvas。
+     翻页 / 进度 / 目录 / 书签都用现成那一套，只是不能朗读和划词。 */
+  function pdfPictureBook(name, pages, why) {
+    var n = Math.max(1, pages | 0);
+    var titles = [];
+    for (var k = 0; k < n; k++) titles.push(T('第 {n} 页', { n: k + 1 }));
+    return {
+      kind: 'pdf', picture: true, pdfWhy: why || 'scan', enc: '', count: n, titles: titles, cover: null,
+      title: name, author: '', pdfText: '', pdfPages: n, pdfEn: false,
+      toc: titles.map(function (t, i) { return { label: t, ch: i, level: 0 }; }),
+      chapterHtml: function (i) {
+        return '<div class="pdfpg" data-pg="' + (i + 1) + '"><div class="pdfld">' +
+          esc(T('正在渲染第 {n} 页…', { n: i + 1 })) + '</div></div>';
+      },
+      chapterText: function () { return ''; }
+    };
+  }
+
   function buildPdf(buf, name, onProgress) {
     if (!window.PdfBook) return Promise.reject(new Error(T('这个包里没有 PDF 组件，请用完整版')));
     return PdfBook.build(buf, name, { T: T, isTitle: isChapterTitle, onProgress: onProgress })
-      .then(function (r) { return pdfWrap(r, name); });
+      .then(function (r) { return r.picture ? pdfPictureBook(name, r.pages, r.why) : pdfWrap(r, name); });
   }
   function pdfFromText(text, name) {
     if (!window.PdfBook) return buildTxt(new ArrayBuffer(0), name);
     return pdfWrap(PdfBook.fromText(text, name, { T: T, isTitle: isChapterTitle }), name);
   }
-  function parseBook(buf, name, ext, cached) {
+  /* meta：从书架重开时带过来。picture=1 说明这本上次就判定成扫描件了，
+     不必再花几十秒把文字层重抽一遍（抽完还是空的）。 */
+  /* DOCX / MOBI / AZW3：先抠成纯文本，再交给 TXT 那套切章。
+     解析是同步的（DOMParser / LZ77 解压），开一个宏任务让「正在导入」先画出来。 */
+  function buildFromFmt(buf, name, ext) {
+    return new Promise(function (res, rej) {
+      setTimeout(function () {
+        try {
+          if (!window.DocFmt) throw new Error(T('这个包里没有文档解析组件，请用完整版打开'));
+          var r = (ext === 'docx') ? DocFmt.docx(buf, { Z: Z }) : DocFmt.mobi(buf, { Z: Z });
+          var b = buildTxtText(r.text, name);
+          b.kind = r.kind;
+          b.fmtText = r.text;        // 存进本机，下次打开不用再解一遍
+          if (r.title) b.title = String(r.title).slice(0, 120);
+          res(b);
+        } catch (e) { rej(e); }
+      }, 30);
+    });
+  }
+
+  function parseBook(buf, name, ext, cached, meta) {
     var b;
-    if (ext === 'pdf') b = cached ? pdfFromText(cached, name) : buildPdf(buf, name, PDFPROG.fn);
-    else b = ext === 'epub' ? buildEpub(buf, name) : buildTxt(buf, name);
-    return Promise.resolve(b).then(makeCover);
+    if (ext === 'pdf') {
+      if (meta && meta.picture) b = pdfPictureBook(name, meta.pages || 1, meta.pdfWhy);
+      else b = cached ? pdfFromText(cached, name) : buildPdf(buf, name, PDFPROG.fn);
+    }
+    else if (ext === 'docx' || ext === 'mobi' || ext === 'azw3') {
+      b = cached ? buildTxtText(cached, name) : buildFromFmt(buf, name, ext);
+    }
+    else if (ext === 'doc') {
+      throw new Error(T('老版 .doc（Word 97-2003）是二进制格式，读不了。用 Word / WPS 另存为 .docx 就行，排版也更稳'));
+    }
+    else if (ext === 'epub') {
+      /* EPUB 和 DOCX 都是一层 ZIP：后缀写错、或者手机上传来的名字被改过，
+         这里兜一下——解不开 EPUB 就看看里面有没有 word/document.xml。 */
+      try { b = buildEpub(buf, name); }
+      catch (e) {
+        if (!window.DocFmt) throw e;
+        b = buildFromFmt(buf, name, 'docx');
+      }
+    }
+    else b = buildTxt(buf, name);
+    return Promise.resolve(b)
+      .then(function (bk) { bk.buf = buf; return bk; })   // 图片页要拿原 PDF 重新渲染
+      .then(makeCover);
   }
   function makeCover(b) {
-    if (b.kind !== 'epub' || !b.coverPath) return Promise.resolve(b);
+    /* 图片层 PDF 没有封面图，就把第一页缩小当封面——书架上一排白框比什么都难看 */
+    if (b.picture) return new Promise(function (res) {
+      var done = false;
+      function fin() { if (!done) { done = true; res(b); } }
+      setTimeout(fin, 6000);
+      try {
+        PdfBook.renderPage(b.buf, 1, document.createElement('canvas'), { width: 300, dpr: 1 })
+          .then(function (r) {
+            var src = r && r.canvas;
+            if (!src) return;
+            var c = document.createElement('canvas'), W = 120, H = 160;
+            c.width = W; c.height = H;
+            var g = c.getContext('2d'), k = Math.min(W / src.width, H / src.height);
+            g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+            g.drawImage(src, (W - src.width * k) / 2, (H - src.height * k) / 2,
+              src.width * k, src.height * k);
+            b.cover = c.toDataURL('image/jpeg', 0.72);
+          }).catch(function () { }).then(fin);
+      } catch (e) { fin(); }
+    });
     return new Promise(function (res) {
       var url = assetURL(b.coverPath, b.zip);
       if (!url) return res(b);
@@ -1673,6 +1771,12 @@
     if (e === 'epub') return 'epub';
     if (e === 'pdf') return 'pdf';
     if (e === 'txt' || e === 'text') return 'txt';
+    if (e === 'docx') return 'docx';
+    if (e === 'doc') return 'doc';                 // 老二进制 Word：只认得出来，读不了
+    if (e === 'mobi' || e === 'prc') return 'mobi';
+    if (e === 'azw3' || e === 'azw') return 'azw3';
+    if (e === 'zip') return 'zip';                 // 压缩包：解开后逐本导入
+    if (e === 'rar' || e === '7z') return 'pack';  // 认得出来，但解码器还没带
     return '';
   }
   /* 文件名里没有后缀时靠文件头认书。
@@ -1683,7 +1787,17 @@
   function sniffExt(buf) {
     if (!buf || !buf.byteLength) return '';
     var n = Math.min(buf.byteLength, 4096), h = new Uint8Array(buf, 0, n), i;
-    if (n >= 4 && h[0] === 0x50 && h[1] === 0x4b) return 'epub';   // PK\x03\x04 / PK\x05\x06 / PK\x07\x08
+    if (n >= 4 && h[0] === 0x50 && h[1] === 0x4b) {                 // PK\x03\x04 / PK\x05\x06 / PK\x07\x08
+      /* EPUB、DOCX、普通 ZIP 三者都是 PK 开头。以前一律当 EPUB，于是「一包 TXT」
+         被丢进 EPUB 解析器，报「不是有效的 EPUB」；现在看目录表分：
+         有 word/document.xml 是 DOCX，有 META-INF/container.xml 是 EPUB，其余是 ZIP。 */
+      try {
+        var zz = Z.makeZip(new Uint8Array(buf)), nm = zz.names || [];
+        if (nm.some(function (x) { return /^word\/document\.xml$/i.test(x); })) return 'docx';
+        if (nm.some(function (x) { return /^META-INF\/container\.xml$/i.test(x); })) return 'epub';
+        return 'zip';
+      } catch (e) { return 'epub'; }
+    }
     /* 下面这些是「选得到但读不了」的格式。1.14.19 起文件列表不再按类型过滤，
        PDF / MOBI 也会出现在眼前；一律当 TXT 强行解码的话，会把二进制塞进书架、
        读出来全是乱码——所以认不出来的宁可跳过并说清原因。 */
@@ -1691,7 +1805,8 @@
     if (n >= 68) {                                                  // Kindle：偏移 60 处有 BOOKMOBI / TPZ
       var tag = '';
       for (i = 60; i < 68; i++) tag += String.fromCharCode(h[i]);
-      if (tag === 'BOOKMOBI' || tag.indexOf('TPZ') === 0) return '';
+      if (tag === 'BOOKMOBI') return 'mobi';            // MOBI / AZW3 共用一个容器头
+      if (tag.indexOf('TPZ') === 0) return '';          // TOPAZ：私有格式，读不了
     }
     if (n >= 2 && ((h[0] === 0xff && h[1] === 0xfe) || (h[0] === 0xfe && h[1] === 0xff))) return 'txt';  // UTF-16 BOM
     /* 剩下的按「像不像文本」判：前 4 KB 里出现 NUL、或成片控制字符，就不是文本。
@@ -1784,11 +1899,49 @@
       return lat > 300 && lat > han * 3;
     } catch (e) { return false; }
   }
-  async function importFiles(files) {
+  /* ---------------- 压缩包：把 ZIP 当书箱 ----------------
+     网上下来的 txt 合集、资料包多半是 zip，一本本拖出来太笨。这里只解不写：
+     读出目录表，挑出能读的书籍文件，逐个走正常导入流程（章节、朗读、笔记全一样）。
+     不做的事：解压到磁盘（不碰用户目录）、解带密码的包（明说读不了）。
+     RAR / 7Z 是另外两套解码器，没装就直说「先解压再导入」，不假装支持。 */
+  var ZIP_IN = /\.(txt|text|epub|pdf|docx|mobi|prc|azw3|azw)$/i;
+  var ZIP_MAX_ONE = 300 * 1048576;     // 单个文件上限 300 MB
+  var ZIP_MAX_N = 300;                 // 一次最多解出这么多本，防止一个几百本的合集把界面顶死
+  function zipBooks(buf, base) {
+    if (!Z || !Z.makeZip) throw new Error('ZIP 组件没加载');
+    var zip = Z.makeZip(new Uint8Array(buf));
+    var names = zip.names || [], out = [], skipped = 0, i;
+    out.skipped = 0;
+    for (i = 0; i < names.length && out.length < ZIP_MAX_N; i++) {
+      var n = names[i];
+      if (/\/$/.test(n)) continue;                                  // 目录项
+      /* 压缩包里常见的垃圾：Mac 的资源叉、系统缩略图、隐藏文件 */
+      if (/(^|\/)(__MACOSX|\.git|\.Trashes?|\.Spotlight-V100)(\/|$)/i.test(n)) continue;
+      var bn = n.split('/').pop();
+      if (!bn || bn.charAt(0) === '.' || bn.charAt(0) === '~') continue;
+      if (/^(Thumbs\.db|desktop\.ini)$/i.test(bn)) continue;
+      if (!ZIP_IN.test(bn)) { skipped++; continue; }
+      var f = zip.files[n];
+      if (f && f.usize > ZIP_MAX_ONE) { skipped++; continue; }
+      var b = null;
+      try { b = zip.read(n); } catch (e) { skipped++; continue; }
+      if (!b || !b.length) { skipped++; continue; }
+      /* 必须拷成独立的 ArrayBuffer：EPUB/PDF 解析会把 buffer transfer 给 worker，
+         留在原 zip 上的视图被 detach 之后就取不到字节了 */
+      var ab = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+      (function (name, arr) {
+        out.push({ name: name, size: arr.byteLength, arrayBuffer: function () { return Promise.resolve(arr); } });
+      })(bn, ab);
+    }
+    out.skipped = skipped;
+    out.base = base;
+    return out;
+  }
+  async function importFiles(files, quiet) {
     /* dropN：认不出的文件（MOBI、图片、压缩包……）。这类不报错、不进「跳过」清单——
        手机的文件列表为了让 epub 能显示，本来就不按类型过滤，用户顺手点到别的文件
        是常事。只有一份都没导进来时，才轻描淡写说一句。 */
-    var okN = 0, skipN = 0, dropN = 0, errs = [], total = files.length, skipped = [], enBooks = [];
+    var okN = 0, skipN = 0, dropN = 0, errs = [], total = files.length, skipped = [], enBooks = [], pics = [], zips = [];
     for (var i = 0; i < files.length; i++) {
       var f = files[i], ext = readExt(f.name);
       var bname = f.name.replace(/\.[^.]+$/, '');
@@ -1804,6 +1957,27 @@
         var bkey = bookKey(buf, bname, f.size);
         if (!ext) ext = sniffExt(buf);        // 名字没后缀也认：EPUB 是 ZIP，PDF 是 %PDF
         if (!ext) { dropN++; continue; }      // MOBI 之类：静默略过
+        /* 压缩包：解开后逐本递归导入，统计汇总到这一层 */
+        if (ext === 'zip') {
+          var inner;
+          try { inner = zipBooks(buf, bname); }
+          catch (e) { errs.push(f.name + '：' + e.message); continue; }
+          if (!inner.length) {
+            errs.push(f.name + '：' + T('这个压缩包里没有能读的书（TXT / EPUB / PDF / DOCX / MOBI / AZW3）'));
+            continue;
+          }
+          if (total > 3) toast(T('正在解压《{n}》：{a} 本', { n: bname, a: inner.length }), 1600);
+          var sub = await importFiles(inner, true);
+          okN += sub.okN; skipN += sub.skipN;
+          errs = errs.concat(sub.errs);
+          enBooks = enBooks.concat(sub.enBooks); pics = pics.concat(sub.pics);
+          zips.push({ n: bname, c: sub.okN, s: inner.skipped });
+          continue;
+        }
+        if (ext === 'pack') {
+          errs.push(f.name + '：' + T('RAR / 7Z 现在还不支持，请先解压，再导入里面的书'));
+          continue;
+        }
         /* PDF 要一页一页抽字，慢到能被当成卡死：给它一条页码进度 */
         PDFPROG.fn = ext === 'pdf' ? function (pg, all) {
           if (pg % 4 === 1 || pg === all) toast(T('正在读 PDF：{a}/{b} 页…', { a: pg, b: all }), 1400);
@@ -1812,13 +1986,13 @@
           var b = await parseBook(buf, bname, ext);
         } finally { PDFPROG.fn = null; }
         var id = 'b' + Date.now() + Math.random().toString(36).slice(2, 7);
-        await dbPut('blobs', { id: id, buf: buf, text: b.pdfText || '' });
+        await dbPut('blobs', { id: id, buf: buf, text: b.pdfText || b.fmtText || '' });
         var meta = {
           id: id, key: bkey, name: bname, ext: ext, size: f.size,
           added: Date.now(), last: Date.now(), ch: 0, ratio: 0, progress: 0,
           cover: b.cover || '', title: b.title, author: b.author || '', marks: [], hl: [],
           chapters: b.titles.slice(0, 1000), tocCount: b.toc.length, enc: b.enc || '',
-          pages: b.pdfPages || 0,
+          pages: b.pdfPages || 0, picture: b.picture ? 1 : 0, pdfWhy: b.pdfWhy || '',
           group: shelfView().indexOf('g:') === 0 ? shelfView().slice(2) : '',
           fav: 0, rt: 0, sessions: 0, first: 0
         };
@@ -1827,10 +2001,15 @@
         if (adopted) toast(T('《{n}》接上了上次的进度', { n: bname }), 2600);
         if (b.enc && b.enc !== 'UTF-8' && b.enc !== 'UTF-8 BOM') toast(T('《{n}》按 {e} 解码', { n: meta.name, e: b.enc }), 3200);
         if (looksEn(b) && !enLocal()) enBooks.push(bname);
+        if (b.picture) pics.push({ n: bname, p: b.pdfPages || 0, w: b.pdfWhy });
       } catch (e) { errs.push(f.name + '：' + e.message); }
     }
     renderShelf();
+    var stats = { okN: okN, skipN: skipN, errs: errs, enBooks: enBooks, pics: pics, zips: zips };
+    /* 递归导入（压缩包里的书）不要每解一层就弹一次窗，统计交回上一层统一说 */
+    if (quiet) return stats;
     var msg = T('已导入 {n} 本', { n: okN });
+    if (zips.length) msg += ' · ' + T('从 {k} 个压缩包里解出', { k: zips.length });
     if (skipN) {
       msg += ' · ' + T('跳过 {n} 本：{list}', {
         n: skipN, list: skipped.slice(0, 3).join('、') + (skipped.length > 3 ? '…' : '')
@@ -1838,15 +2017,35 @@
     }
     if (errs.length) msg += T('，{n} 本失败', { n: errs.length });
     if (okN || skipN || errs.length) toast(msg, 4200);
-    else if (dropN) toast(T('这几本还读不了，先导入 TXT、EPUB 或 PDF 吧'), 3600);
+    else if (dropN) toast(T('这几本还读不了，先导入 TXT / EPUB / PDF / DOCX / MOBI / AZW3 吧'), 3600);
     if (enBooks.length) {
       showModal(T('这本是英文书'),
-        '<p>' + esc(T('《{n}》整本都是英文。本机的离线语音只有中文模型，一个英文字母都念不出来，朗读时会按语速留白。',
+        '<p>' + esc(T('《{n}》整本都是英文，朗读时会自动换用英文语音。',
           { n: enBooks.slice(0, 2).join('》《') })) + '</p>' +
-        '<p class="kv">' + esc(T('桌面版（Windows EXE）可以另装英文语音模型，装了就能正常朗读；手机版为了控制体积暂时没带。阅读、划词、笔记都不受影响。')) + '</p>',
+        '<p class="kv">' + esc(T('第一次念到英文时引擎要先把英文模型装进内存，会慢几秒；之后就是正常的。如果英文一直不出声，可以在设置里把「英文语音」关掉——关掉后英文按语速留白，中文照常念。')) + '</p>',
         [{ label: T('知道了') }]);
     }
-    if (errs.length) showModal(T('部分文件未能导入'), '<p>' + errs.map(esc).join('</p><p>') + '</p>', [{ label: T('知道了') }]);
+    if (errs.length) {
+      /* 一个压缩包里几十个坏文件时别把弹窗撑成一面墙 */
+      var shown = errs.slice(0, 8);
+      var more = errs.length > shown.length ? '<p class="kv">' + esc(T('还有 {n} 个同类问题，没有一一列出', { n: errs.length - shown.length })) + '</p>' : '';
+      showModal(T('部分文件未能导入'), '<p>' + shown.map(esc).join('</p><p>') + '</p>' + more, [{ label: T('知道了') }]);
+    }
+    if (pics.length) {
+      /* scanwm：每页有字，但全是同一句水印（盗版团伙留的「加微信」之类），
+         不是正文。这种以前会被当成文字书打开，用户看到的是一页页水印。 */
+      var wm = pics[0].w === 'scanwm';
+      showModal(T('这本 PDF 是扫描件'),
+        '<p>' + esc(T(wm
+          ? '《{n}》有 {p} 页，每页都是一整张扫描图。文件里确实有一层文字，但只有一句水印（不是正文），所以按原图显示，翻页、目录、进度都正常。'
+          : '《{n}》有 {p} 页，整页都是扫描出来的图片，没有文字层。现在按页渲染成图片给你看，翻页、目录、进度都正常。',
+          { n: pics[0].n, p: pics[0].p })) + '</p>' +
+        '<p class="kv">' + esc(T(wm
+          ? '看不了的那部分：不能朗读、不能划词、不能做笔记——要听这本书，得先拿 OCR 工具把整本识别成文字再导入。'
+          : '看不了的那部分：不能朗读，也不能划词、做笔记——机器不认识图片里的字。这一点主流阅读器也一样。')) + '</p>',
+        [{ label: T('知道了') }]);
+    }
+    return stats;
   }
 
   /* ---------------- 阅读 ---------------- */
@@ -1871,14 +2070,17 @@
     autoStop(true);
     resetCast();
     clearAssets();
+    /* 上一本 PDF 的解析结果放掉再用新的：扫描件一本就几十 MB */
+    try { if (window.PdfBook && PdfBook.closeDoc) PdfBook.closeDoc(); } catch (e) { }
     try {
-      /* 从备份还原的 PDF 没有缓存正文，这里补抽一次，抽完顺手存回去 */
-      if (meta.ext === 'pdf' && !rec.text) {
+      /* 从备份还原的 PDF 没有缓存正文，这里补抽一次，抽完顺手存回去。
+         图片层 PDF 例外：它本来就没有正文，抽也抽不出东西。 */
+      if (meta.ext === 'pdf' && !rec.text && !meta.picture) {
         PDFPROG.fn = function (pg, all) {
           if (pg % 4 === 1 || pg === all) toast(T('正在读 PDF：{a}/{b} 页…', { a: pg, b: all }), 1400);
         };
       }
-      BK = await parseBook(rec.buf, meta.name, meta.ext, rec.text);
+      BK = await parseBook(rec.buf, meta.name, meta.ext, rec.text, meta);
       PDFPROG.fn = null;
       if (meta.ext === 'pdf' && !rec.text && BK.pdfText) {
         rec.text = BK.pdfText;
@@ -1894,6 +2096,7 @@
     $('readTitle').title = meta.name + (meta.author ? ' · ' + meta.author : '');
     document.body.classList.remove('barsOff');    // 进书先展开工具栏，别一进来就是收着的
     showView('read');
+    if (!BK.picture) warmEngine();     // 翻开书 = 多半要听：趁这几秒把推理会话建起来（扫描件念不了，不占这份 CPU）
     hideSelTools();
     renderChapter(meta.ch || 0, { ratio: meta.ratio || 0, silent: true });
     renderSide();
@@ -1969,8 +2172,11 @@
     if (Number(CFG.hans) === 1) html = hansify(html);
     var chTitleTx = Number(CFG.hans) === 1 ? hansify(chapterTitle(i)) : chapterTitle(i);
     PG.ready = 0;                                     // 换章了，旧的页数作废
+    var tail = BK.picture
+      ? esc(T('— 第 {a} / {b} 页 —', { a: i + 1, b: chapterCount() })) + '<br><button data-act="next">' + esc(T('下一页 →')) + '</button>'
+      : esc(T('— 本章完 —')) + '<br><button data-act="next">' + esc(T('下一章 →')) + '</button>';
     $('page').innerHTML = '<div id="chTitle">' + esc(chTitleTx) + '</div>' + html +
-      '<div id="chEnd">' + esc(T('— 本章完 —')) + '<br><button data-act="next">' + esc(T('下一章 →')) + '</button></div>';
+      '<div id="chEnd">' + tail + '</div>';
     dedupeHead();
     $('pageWrap').scrollTop = 0;
     applyHighlights();
@@ -1985,6 +2191,7 @@
       waitChapterImages();          // 图/字体晚到时补测一次，免得页数被算少
     }
     applyCfg();
+    if (BK.picture) paintPdfPage(i);       // 扫描件：把这一页画出来
     if (!pgEnabled() && opt.ratio) setTimeout(function () {
       var w = $('pageWrap'); w.scrollTop = (w.scrollHeight - w.clientHeight) * opt.ratio;
     }, 60);
@@ -2003,6 +2210,70 @@
     renderSide();
     if (SPK.on && SPK.playing && opt.fromSpeak !== true) { /* 朗读跨章由朗读器接管 */ }
   }
+  /* ---------------- 图片层 PDF：按页画出来 ----------------
+     一页一个 canvas，宽度铺满正文区，高度由页面比例决定。
+     devicePixelRatio 最高按 2.5 算：再高在手机上只是白烧内存，肉眼看不出差别。 */
+  var PDFV = { ch: -1, w: 0 };
+  /* 画好的页留下几屏：翻回去不用重画，翻过去也常常已经画好了。
+     一张 700×1000 的 canvas 约 3 MB，留 4 张，别贪。 */
+  var PICC = { map: {}, order: [], max: 4, busy: {} };
+  function picCacheClear() { PICC.map = {}; PICC.order = []; PICC.busy = {}; }
+  function picCachePut(i, cv) {
+    if (PICC.map[i]) return;
+    PICC.map[i] = cv; PICC.order.push(i);
+    while (PICC.order.length > PICC.max) delete PICC.map[PICC.order.shift()];
+  }
+  /* 提前把下一页画好（静默，不碰界面）。这一步让往后翻几乎不用等。 */
+  function picPreRender(i) {
+    if (!BK || !BK.picture || i < 0 || i >= chapterCount()) return;
+    if (PICC.map[i] || PICC.busy[i]) return;
+    PICC.busy[i] = 1;
+    var cv = document.createElement('canvas');
+    cv.className = 'pdfc';
+    PdfBook.renderPage(BK.buf, i + 1, cv, { width: PDFV.w || 700, dpr: PDFV.dpr || 1, maxH: 4000 })
+      .then(function () { picCachePut(i, cv); })
+      .catch(function () { })
+      .then(function () { delete PICC.busy[i]; });
+  }
+  function paintPdfPage(i) {
+    var box = $('page').querySelector('.pdfpg');
+    if (!box || !BK || !BK.buf) return;
+    var pw = $('page').clientWidth || 700;
+    var w = Math.max(300, Math.min(1600, pw - 4));
+    var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    PDFV.ch = i; PDFV.w = w; PDFV.dpr = dpr;
+    if (Math.abs(w - (PDFV.lastW || 0)) > 40) { picCacheClear(); }   // 换了窗口宽度，旧图作废
+    PDFV.lastW = w;
+    var hit = PICC.map[i];
+    if (hit) {
+      box.innerHTML = '';
+      box.appendChild(hit);
+      box.classList.add('ok');
+      setTimeout(function () { picPreRender(i + 1); }, 200);
+      return;
+    }
+    var cv = document.createElement('canvas');
+    cv.className = 'pdfc';
+    box.innerHTML = '';
+    box.appendChild(cv);
+    var mine = i;
+    PdfBook.renderPage(BK.buf, i + 1, cv, { width: w, dpr: dpr, maxH: 4000 })
+      .then(function (r) {
+        /* 渲染期间已经翻走了：这张 canvas 早就被换掉，别再动它 */
+        if (PDFV.ch !== mine) return;
+        box.classList.add('ok');
+        picCachePut(mine, cv);
+        /* 页数比记录的多（重新导入过同一本书）：按实际页数补齐目录 */
+        if (r && r.pages && r.pages !== BK.count) { PDFV.pages = r.pages; }
+        setTimeout(function () { picPreRender(mine + 1); }, 250);
+      })
+      .catch(function (e) {
+        if (PDFV.ch !== mine) return;
+        box.innerHTML = '<div class="pdfld bad">' +
+          esc(T('这一页没能画出来：') + (e && e.message ? e.message : '')) + '</div>';
+      });
+  }
+
   var saveT = null;
   /* 改高亮 / 笔记后重绘本章，位置保持不动（翻页模式停在原页） */
   function renderKeep(opt) {
@@ -2511,7 +2782,7 @@
     scene: { f: '', m: '', lastWho: '', lastV: '' }, main: { f: '', m: '' }, castAt: '',
     watch: null, deadline: 0, timer: null, gapT: null, fb: 0, seenEnd: false, trying: false,
     audio: null, pref: {}, pre: {}, pcm: {}, fillQ: null, fillGen: 0,
-    fails: 0, skipped: 0, degraded: 0 };      // fails/skipped：跳过还是降级；degraded：本次朗读已退回系统语音
+    fails: 0, skipped: 0, degraded: 0, slowTold: 0, slowN: 0 };      // fails：真失败次数（到阈值才弹窗）；slowN：引擎「还在准备」跳过几句；slowTold：本次已提示过准备中；degraded：本次已退回系统语音
   /* 听书时让屏幕保持常亮：手机一熄屏，WebView 里的音频立刻被系统掐掉，
      走路、做家务时听书就断在半句上。Wake Lock 失败（旧内核 / file://）就算了，
      只是不如常亮，不影响朗读本身。 */
@@ -2674,9 +2945,15 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: text, voice: voice || CFG.localVoice, speed: Number(CFG.rate) || 1,
-        dn: Number(CFG.dnMode) || 0 })
+        dn: Number(CFG.dnMode) || 0, en: Number(CFG.enVoice) ? 1 : 0 })
     }).then(function (r) {
-      if (!r.ok) return r.text().then(function (t) { throw new Error(localErrText(r.status, t)); });
+      if (!r.ok) return r.text().then(function (t) {
+        /* 415 = 服务端说「这段是外文，本机没有英文模型」。这时才把 enDead 立起来，
+           后续英文块不再白送；60 秒后自动解禁，万一模型这会儿刚好建好还能用上。 */
+        if (r.status === 415 || /no_en_voice/.test(t)) enDead = Date.now();
+        throw new Error(localErrText(r.status, t));
+      });
+      enDead = 0;                                  // 这次念出来了，说明英文可用
       return r.blob();
     }).then(function (b) {
       if (!b || b.size < 1000) throw new Error(T('服务返回的音频为空'));
@@ -2843,45 +3120,108 @@
       SPK.audio = null;
     }
   }
-  /* 单段合成失败时的处置。以前一律切回系统朗读，结果就是「念到一半忽然换了个人」——
-     多角色朗读最怕这个。现在分三种：
-       ① 这一段本身合成不出来（空文本、模型没出声、音频坏、声线缺失）→ 跳过这一段接着念；
-       ② 连不上引擎，或者已经连着跳了太多段 → 才切回系统朗读（真的没声音更糟）；
-       ③ 安卓壳里系统语音是哑的，只弹诊断卡。
-     判断「是不是真挂了」靠一句 health：能回就只当这一段的事。 */
-  var SOFT_FAIL = /empty text|空文本|音频为空|音频加载失败|没有出声|model missing|音色|voice|not found/i;
+  /* 单段合成失败时的处置。
+     1.14.28 及以前，安卓分支是「错一次就弹全屏诊断卡 + 停朗读」——把「还没准备好」
+     当成「引擎坏了」。而手机上单次失败恰恰是常态：配角库要现解压 51 MB、建 38 MB
+     int8 会话，中端机半分钟起步，内存一紧连 ensureLib 都过不去。187 个声音又是
+     用户最爱点的地方，于是最想试的功能成了最容易踩弹窗的地方。（真机反馈：
+     朗读中换声线偶发无声 + 报错弹窗，退出重进又好了——重进时解压好的文件还在，不用再解。）
+     现在按原因分三档，能继续念就继续念：
+       slow —— 超时 / 服务端说正在加载：这一句跳过，库热了后面自动接上，只轻提示一次；
+       soft —— 这一段没出声（空文本、模型没吐波形、音频坏）：跳过这一句接着念；
+       hard —— 库/模型真的起不来（libErr、OOM、采样率=0）：才停下来把自检摆给用户。
+     另外连着失败太多次也算 hard——那不是「这一段的事」了。 */
+  /* @verify-speak:start —— _verify_speak.js 按这一行切出「失败分级 + 处置」整段代码，
+     在 Node 里配着假引擎跑断言。改动这段时别动标记。 */
+  var SOFT_FAIL = /empty text|空文本|音频为空|音频加载失败|没有出声|全段没出声|model missing|音色|voice|not found/i;
+  /* 真坏了的信号：模型起不来、内存不够、采样率是 0。这些重试也没用，该让人看见原因。 */
+  var HARD_FAIL = /sampleRate=0|OutOfMemory|lib: |加载失败|未就绪|引擎不可用|没有中文/;
+  /* 还在准备：请求超时、服务端说正在加载/初始化。手机上的失败大半落在这里。 */
+  var SLOW_FAIL = /timeout|超时|HTTP 503|正在加载|正在初始化|请稍等|还在准备|lib_loading/;
+  function failKind(msg) {
+    if (HARD_FAIL.test(msg)) return 'hard';
+    if (SLOW_FAIL.test(msg)) return 'slow';
+    return 'soft';
+  }
   function localFail(msg) {
     msg = String(msg || '');
     /* 415 是「这段是外文，本机没装英文模型」，不是引擎故障。
-       必须先于安卓那套弹窗判断：手机上更不该为一段英文弹「语音没有出声」。 */
-    if (/^HTTP 415|no_en_voice/.test(msg)) { speakForeign(SPK.chunks[SPK.ci]); return; }
-    if (speakEnv().android) {
-      /* 安卓壳里的系统语音是「哑」的，切过去等于没声音。这里别假装切成功，
-         也不要只弹一条 6 秒就消失的灰条——用户最需要看的就是这句原因。 */
-      SPK.gen++; clearTimeout(SPK.watch); clearTimeout(SPK.gapT);
-      stopLocalAudio();
-      localDiag(msg);
+       必须先于分级判断：手机上更不该为一段英文弹「语音没有出声」。
+       但只有整段真的是外文才该交给英文语音；中文书里夹一个英文词被回 415
+       （老版本语音包会这样），绝不能把整句中文一起丢掉——先按中文念过去。 */
+    if (/^HTTP 415|no_en_voice/.test(msg)) {
+      var bad = SPK.chunks[SPK.ci];
+      if (hasHan(bad)) { speakZhOnly(); return; }
+      speakForeign(bad); return;
+    }
+    var and = speakEnv().android;
+    var kind = failKind(msg);
+    /* 「还在准备」不计入 fails：它不是故障。配角库首次加载要跳好几句，
+       混进去就会连跳四句凑到阈值，把「正在装」判成「坏了」——那正是要修的病。 */
+    if (kind === 'slow') {
+      SPK.slowN = (SPK.slowN || 0) + 1;
+      /* 但连跳十几句还在准备，就不是准备的事了：把自检摆出来，别再安静跳过。 */
+      if (SPK.slowN > 15) {
+        SPK.gen++; clearTimeout(SPK.watch); clearTimeout(SPK.gapT);
+        stopLocalAudio();
+        if (and) localDiag(msg); else degradeLocal(msg);
+        return;
+      }
+      /* 只在第一次说一声，之后每段都提示等于每段都骚扰。 */
+      if (!SPK.slowTold) {
+        SPK.slowTold = 1;
+        toast(T('语音引擎还在准备，这几句先跳过，好了会自动接上'), 4200);
+      }
+      skipChunk(msg, true);
       return;
     }
     SPK.fails = (SPK.fails || 0) + 1;
-    if (SPK.fails > 6) { degradeLocal(msg); return; }   // 连着这么多段都出不来，别再装作没事
-    if (SOFT_FAIL.test(msg)) { skipChunk(msg); return; }
+    /* 安卓壳里的系统语音是「哑」的，切过去等于没声音，所以手机端永远不退系统语音。
+       但「不能切」只说明那条路不通，不说明整场朗读该停下——连着出不来才算真挂。
+       手机给 3 次：配角库首次加载连丢两段是正常的，第三次才算坏。 */
+    if (kind === 'hard' || SPK.fails > (and ? 3 : 6)) {
+      SPK.gen++; clearTimeout(SPK.watch); clearTimeout(SPK.gapT);
+      stopLocalAudio();
+      /* degradeLocal 会提示「双击 VoicePack/启动语音引擎.cmd」——手机上这句是胡说八道，
+         而且切过去的系统语音在壳里是哑的，用户会彻底没声音。手机只弹自检卡。 */
+      if (and) localDiag(msg); else degradeLocal(msg);
+      return;
+    }
+    if (and || SOFT_FAIL.test(msg)) { skipChunk(msg, kind !== 'soft'); return; }
+    /* 桌面端还能问一句 health：能回就只当这一段的事，回不了才是引擎没了。 */
     withTimeout(fetch(localBase() + '/health', { cache: 'no-store' }), 1600)
       .then(function (r) { if (r.ok) skipChunk(msg); else degradeLocal(msg); })
       .catch(function () { degradeLocal(msg); });
   }
+  /* @verify-speak:end */
   /* 跳过这一句，接着念下一句。只丢这一句，段里其它内容照念；
      不弹窗、不切系统语音——最多轻提示一次。 */
-  function skipChunk(msg) {
+  function skipChunk(msg, quiet) {
     if (!SPK.playing) return;
     SPK.gen++;                                   // 半路回来的旧结果就此作废
     clearTimeout(SPK.watch); clearTimeout(SPK.gapT);
     stopLocalAudio();
-    if (!SPK.skipped) {
+    if (!SPK.skipped && !quiet) {
       SPK.skipped = 1;
       toast(T('这一句没合成出来，已跳过继续朗读（{m}）', { m: String(msg).slice(0, 60) }), 3600);
     }
     speakNext(false);
+  }
+  /* 这一句明明有中文，却被回「这是外文」——语音包遇到不认识的英文词
+     （CPU / macOS / WiFi）会把整句判成外文。把拉丁字母抹掉再念一遍：
+     丢一个英文词可以接受，丢一整句中文不行。同一句只试一次，不死循环。 */
+  function speakZhOnly() {
+    if (!SPK.playing) return;
+    var i = SPK.ci, txt = SPK.chunks[i] || '';
+    var zh = txt.replace(/[A-Za-z][A-Za-z'\u2019\-]*/g, ' ');
+    if (!sayable(zh) || SPK.enDrop === i) { skipChunk(T('这一句只有外文')); return; }
+    SPK.enDrop = i;
+    if (!SPK.enTold) {
+      SPK.enTold = 1;
+      toast(T('这句里的英文词本地模型不认识，先按中文念过去'), 3600);
+    }
+    SPK.chunks[i] = zh;
+    localSpeakChunk();
   }
   function degradeLocal(msg) {
     /* 一旦退回系统语音，这一场朗读就保持系统语音，不在半路又切回神经语音：
@@ -2974,17 +3314,68 @@
   /* 开始朗读时先把配角库叫醒：分角色朗读注定要用 fanchen 那套 16 kHz 模型，
      第一次用要解压 40 MB 再建会话。放在开头几句旁白正在播的时候做，
      第一个角色开口就不用干等十几秒。只叫一次，失败也无所谓（真用到时还会再试）。 */
-  var warmedLib = false;
-  function warmLib() {
-    if (warmedLib || !CFG.roleOn || !localReady()) return;
-    warmedLib = true;
+  /* 开始朗读时先把配角库叫醒：分角色朗读注定要用 fanchen 那套 16 kHz 模型，
+     第一次用要解压 40 MB 再建会话。放在开头几句旁白正在播的时候做，
+     第一个角色开口就不用干等十几秒。失败也无所谓（真用到时还会再试）。
+     force：用户手动点了配角声线（s0…s186）。这时不管有没有开分角色都得叫醒——
+     以前只认 CFG.roleOn，结果关掉分角色的人一点配角就是冷启动，
+     阻塞几十秒然后超时弹窗，看着像「点了没声音」。
+     60 秒内不重复叫：加载失败过要能再试，但别被连点打成一片。 */
+  var warmedLib = 0;
+  /* 打开一本书就叫一次，让壳在后台把推理会话建起来。
+     以前是「应用一启动就建」，于是每次开软件都要白等十几秒——而打开软件的人
+     多半只是在书架翻一翻，根本没打算听。挪到「快要听了」这个时刻，真要听的人
+     从翻开书到点朗读之间总归要翻两页，那十几秒就藏在这段时间里。
+     桌面端的 /warm 是幂等的（只预热常驻实例），多叫一次无害。 */
+  var warmedEngine = 0;
+  function warmEngine() {
+    if (!CFG.localOn) return;
+    var now = Date.now();
+    if (warmedEngine && now - warmedEngine < 30000) return;
+    warmedEngine = now;
+    setTimeout(function () {
+      try {
+        withTimeout(fetch(localBase() + '/warm', { cache: 'no-store' }), 6000)
+          .then(function (r) { return r.text(); })
+          .catch(function () { });
+      } catch (e) { }
+    }, 120);
+    /* 会话建好之后把界面状态同步一次。启动时的探测早就判过「没有引擎」，
+       而那个判断现在只是「还没建」，不代表不可用——不清 miss 的话轮询已经停了。 */
+    setTimeout(function () {
+      LOCAL.miss = 0;
+      if (!LOCAL.ready) localProbe();
+    }, 12000);
+  }
+  function warmLib(force, delayMs) {    if (!localReady()) return;
+    if (!force && !CFG.roleOn) return;
+    var now = Date.now();
+    if (warmedLib && now - warmedLib < 60000) return;
+    warmedLib = now;
     setTimeout(function () {
       try {
         withTimeout(fetch(localBase() + '/warm?lib=1', { cache: 'no-store' }), 6000)
           .then(function (r) { return r.text(); })
           .catch(function () { });
       } catch (e) { }
-    }, 900);
+    }, delayMs === undefined ? 900 : delayMs);
+  }
+  /* 英文模型 36 MB，冷启动几十秒。等念到第一句英文才建，那几十秒就是
+     「点了朗读，界面在动，耳朵里没声」。所以只要这一章含拉丁字母，开念那一刻
+     就让桥在后台把它建起来，压在开头几句中文底下。两分钟内不重复叫。 */
+  var warmedEn = 0;
+  function warmEn() {
+    if (!localReady() || !Number(CFG.enVoice)) return;
+    var now = Date.now();
+    if (warmedEn && now - warmedEn < 120000) return;
+    warmedEn = now;
+    setTimeout(function () {
+      try {
+        withTimeout(fetch(localBase() + '/warm?en=1', { cache: 'no-store' }), 6000)
+          .then(function (r) { return r.text(); })
+          .catch(function () { });
+      } catch (e) { }
+    }, 700);
   }
   function localSpeakChunk() {
     var txt = SPK.chunks[SPK.ci];
@@ -3239,6 +3630,11 @@
     var sel = $('spVoice');
     if (sel && localReady()) sel.value = 'local:' + k;
     var box = $('pinBox'); if (box) box.innerHTML = pinChips();
+    /* 配角声线（s0…s186）：库没热的话这一下就是冷启动——解压 51 MB、建 38 MB int8
+       会话，中端机半分钟起步。先把预热叫起来，再重念当前段；话说在前面，
+       别让用户盯着不动的朗读条以为「点了没反应」。 */
+    var isLib = /^s\d+$/.test(k);
+    if (isLib) warmLib(true, 0);
     if (SPK.playing) speakJump(0);
     if (!quiet) {
       var msg = T('已切换到 {v}', { v: localVoiceName(k) });
@@ -3246,7 +3642,9 @@
       else if (slot === 'full') {
         msg += T('；朗读条里这个性别已满 {n} 个，没加进去（设置里点 × 让位后再挑）', { n: PIN_PER_GENDER });
       }
-      toast(msg, slot === 'full' ? 4200 : 3000);
+      var warming = isLib && !LOCAL.lib;
+      if (warming) msg += T('；187 人语音库正在准备，开头一两句可能跳过，好了自动接上');
+      toast(msg, warming ? 5600 : (slot === 'full' ? 4200 : 3000));
     }
     return added;
   }
@@ -3408,9 +3806,21 @@
   function foreignOnly(t) {
     return hasLatin(t) && !hasHan(t);
   }
-  /* 本地引擎自己能不能念外文（装了英文模型才会在 /health 里报 en:true）。 */
+  /* 本地引擎自己能不能念外文。
+     ⚠️ 这里**不能**看 /health 的 en 字段。英文模型是在后台线程里建的：页面一启动
+     就探测，那会儿 en 必然 false（模型还在解压/建会话），而 localProbe 之后只在
+     「整条引擎没连上」时才重试，于是 info.en 会永远停在 false。
+     结果就是 localPrefetch / fillPara 把每个英文块都跳过（它们拿 !enLocal() 当理由），
+     播到跟前才现发请求——一句英文要算 5 秒，听感正是「念一句、停半天、跳一大段」。
+     现在改成：只有「确实念不了」才判死——收到过 415 / no_en_voice，或用户自己关了
+     英文语音。没收到过就一律乐观当可用，反正送了不成就退回留白，不吃亏。 */
+  var enDead = 0;
   function enLocal() {
-    return !!(localReady() && LOCAL.info && LOCAL.info.en);
+    if (enDead && Date.now() - enDead < 60000) return false;
+    if (enDead) enDead = 0;                      // 冷却结束，再给它一次机会
+    if (!localReady()) return false;
+    if ('enVoice' in CFG && !Number(CFG.enVoice)) return false;
+    return true;
   }
   /* ---------------- 数字读法 ----------------
      中文神经语音的词典里一个阿拉伯数字都没有。小雅 / 超文这两份 22 kHz 模型靠
@@ -3601,14 +4011,34 @@
   function splitSpeak(text, maxLen) {
     var M = Math.max(14, maxLen || 60), s = normSpeak(text), out = [], parts = [], buf = '';
     if (!s) return out;
-    var sen = s.match(/[^。！？!?；;…]+[。！？!?；;…]*|[。！？!?；;…]+/g) || [s];
+    /* 英文和中文要用两套切分规则。
+       以前英文也走中文那套：句子只认「。！？!?；;…」，英文句号 . 不在里面，
+       整段英文就被当成一个巨型句子，再按 30 字硬切——每刀都落在单词中间，
+       切出 "This is a senten" + "ce that goes on" 这种。模型遇到半个词会吐静音，
+       服务端返回空，页面判失败；连续两次失败就熔断掉英文，于是后面的英文整段跳过。
+       听起来正是「念一行 → 静一下 → 跳掉一大段 → 再念一行」。
+       现在英文按 . ! ? ; : 分句、按 , 分小句，最后按空格累加，永不劈词。 */
+    var isEn = !/[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/.test(s) && /[A-Za-z]/.test(s);
+    var sen = isEn
+      ? (s.match(/[^.!?;:\n]+[.!?;:]*|[.!?;:]+/g) || [s])
+      : (s.match(/[^。！？!?；;…]+[。！？!?；;…]*|[。！？!?；;…]+/g) || [s]);
     sen.forEach(function (x) {
       if (!x) return;
       if (x.length <= M) { parts.push(x); return; }
-      var sub = x.match(/[^，,、：:]+[，,、：:]?/g) || [x], b2 = '';
+      var sub = isEn
+        ? (x.match(/[^,;:]+[,;:]?/g) || [x])
+        : (x.match(/[^，,、：:]+[，,、：:]?/g) || [x]);
+      var b2 = '';
       sub.forEach(function (y) {
         if (b2.length + y.length > M && b2) { parts.push(b2); b2 = ''; }
-        while (y.length > M) { if (b2) { parts.push(b2); b2 = ''; } parts.push(y.slice(0, M)); y = y.slice(M); }
+        while (y.length > M) {
+          if (b2) { parts.push(b2); b2 = ''; }
+          /* 优先在空格处断，绝不把单词劈成两半（劈了就是静音） */
+          var cutAt = isEn ? y.lastIndexOf(' ', M) : -1;
+          if (cutAt < Math.floor(M * 0.4)) cutAt = M;
+          parts.push(y.slice(0, cutAt));
+          y = y.slice(cutAt).replace(/^\s+/, '');
+        }
         b2 += y;
       });
       if (b2) parts.push(b2);
@@ -4221,17 +4651,24 @@
      串行而不是一起发：同一时刻只让一个合成请求占着引擎，正在播的那句
      才不会被一堆预取挤到后面（实测并发发 8 条，第一条反而慢一倍）。 */
   function pcmKey(pi, ci) { return pi + ':' + ci; }
-  function chunkMax() {
+  function chunkMax(text) {
     // 与 setPara 完全同一套口径：换段数和预演必须算出同样的句子，否则缓存对不上
     var natural = localReady() || isNatural(curVoice());
     var M = CFG.whole ? (natural ? 90 : 42) : 30;
+    /* 英文的字符密度只有中文三分之一左右：30 字只够五六个词，翻页似的切，
+       每块都要付一次完整的合成启动开销（建 context、解码、重采样）。
+       实测同一句话切成 9 块要 63 秒，放开到整句只要 20 秒出头。按 1.8 倍放宽，
+       前提是这一段没有汉字——中英混排的段落仍按中文口径走。 */
+    if (text && !/[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/.test(text) && /[A-Za-z]/.test(text))
+      M = Math.round(M * 1.8);
     return Math.round(M * Math.min(1, Number(CFG.rate) || 1));
   }
   function prefPara(pi, M) {
     var p = SPK.paras[pi];
     if (!p) return null;
-    M = Math.max(16, M || chunkMax());
     var text = p.textContent || '';
+    /* 长度按这一段自己的语言算，不信调用方传进来的那个（它不知道这段是什么语言） */
+    M = Math.max(16, chunkMax(text));
     var k = (CFG.roleOn ? 'r' : 's') + '|' + CFG.localVoice + '|' + M + '|' + text;
     var it = SPK.pre[pi];
     if (it && it.k === k) return it;
@@ -4583,6 +5020,11 @@
     try { SYN.speak(u); } catch (e) { SPK.trying = false; toast(T('试听失败：') + e.message); }
   }
   function startSpeak(fromPi, noWait) {
+    /* 扫描件没有文字层：能看不能说。别说成「引擎故障」，直说这本念不了。 */
+    if (BK && BK.picture) {
+      toast(T('这本 PDF 是扫描件，整页都是图片，没有可朗读的文字——只能看，念不了'), 4800);
+      return;
+    }
     /* 安卓壳里 System WebView 会给出一个「哑」的 speechSynthesis：对象建得出来、
        也能调 speak()，就是不出声。所以只要在安卓壳里，就必须等本机 127.0.0.1 的桥，
        不能因为 SYN 存在就走系统语音那条路——否则用户点了朗读，界面在动，耳朵里没有声音。
@@ -4620,7 +5062,7 @@
            弹出「这台手机没有中文语音」——而引擎往往下一秒就好了，那条提示纯属误导。
            现在改成一直等到就绪，最多 60 秒；真出错（有 detail）才立刻放弃。 */
         var t0 = Date.now();
-        toast(T('正在准备语音引擎，首次约十几秒…'), 4000);
+        toast(T('语音引擎正在准备，稍等一下…'), 4000);
         (function step() {
           localProbe(false).then(function (ok) {
             if (ok) { SPK.connecting = false; LOCAL.slow = false; startSpeak(fromPi); return; }
@@ -4661,11 +5103,15 @@
     if (CFG.roleOn && localReady()) buildCast(BK.ch);
     setPara(fromPi === undefined ? currentPara() : fromPi);
     SPK.playing = true;
-    SPK.fails = 0; SPK.skipped = 0;     // 每次开念都重新计：上次跳过的段不该赖到这次
+    SPK.fails = 0; SPK.skipped = 0; SPK.slowTold = 0; SPK.slowN = 0;     // 每次开念都重新计：上次跳过的段不该赖到这次
     SPK.degraded = 0;                   // 重新点朗读时再给本地语音一次机会
     try { SYN.cancel(); } catch (e) {}
     speakChunk(0); $('spPlay').textContent = '❚❚';
     warmLib();
+    /* 这一章里有英文就顺手把英文模型建起来（后台，不挡第一句） */
+    try {
+      if (hasLatin(String(BK.chapterText ? BK.chapterText(BK.ch) : '').slice(0, 6000))) warmEn();
+    } catch (e) { }
     if (!$('spVoice').options.length || $('spVoice').options[0].value === '') fillVoices();
     var cv = curVoice();
     if (SYN && !(SYN.getVoices() || []).length) toast(T('系统未检测到朗读语音；Windows 可在「设置→时间和语言→语音」添加中文语音'), 5200);
@@ -4858,6 +5304,45 @@
       '<p>它的声音理念很简单：<b>用普通人的声音，讲普通人的故事</b>。这里没有修得毫无瑕疵的录音棚嗓音——那种声音属于播音腔，听久了反倒离故事远。187 个人声，男女老少、清亮低沉都有，<b>总有一个让你心动的声音</b>；合耳的留下，不合耳的删掉，选择权在你手上。</p>' +
       '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + 三份中文 VITS 模型）：不联网、不收费、无需账号，主角是 22.05 kHz 的「墨吟 · 女声」与「墨吟 · 男声」，另带 187 个配角说话人（148 女 + 39 男），精选 21 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.14.35 改了什么</h3><ul>' +
+      '<li><b>压缩包直接导入</b>：拖进来一个 .zip 就行——网上下的一整套 txt、资料包，解开后一本一本进书架，不用先手动解压再挑。只认书（TXT / EPUB / PDF / DOCX / MOBI / AZW3），压缩包里夹的图片、说明文件、Mac 的资源叉会自动跳过；GBK 老编码的 txt 也能正确读出来。解压只发生在内存里，不往你的文件夹写东西。</li>' +
+      '<li><b>安卓念英文的节奏问题</b>：这次是「念一行、停很久、跳掉一大段、再念一行」。查出两个原因：① 英文切句沿用了中文标点表，英文句号不在里面，于是整段英文被当成一个巨型句子按字数硬切，<b>每一刀都落在单词中间</b>（This is a senten / ce that goes on），模型遇到半个词吐静音，连续两次就把英文熔断掉，后面的英文全跳过；② 前端判断英文能不能用，只看 /health 里的一个字段，而英文模型是后台加载的，页面启动那一刻必然是 false，之后不再刷新——于是英文块连预取都没做，每句都要播到跟前才现算。现在英文按 <code>. ! ?</code> 分句、按逗号分小句、按空格累加，绝不劈词；预取判据改成「没收到 415 就当可用」。另外开念时如果这一章有英文，会提前把模型建起来，不再等念到英文才发现要等几十秒。</li>' +
+      '<li><b>英文引擎开多核</b>：以前钉死单线程，是误判——真正的死锁在 Java 分句循环里，跟线程数无关。现在按 CPU 核数开 2~4 路，真机上英文合成会快一些。</li>' +
+      '</ul>' +
+      '<h3>1.14.34 改了什么</h3><ul>' +
+      '<li><b>整页扫描的书不再显示成一片水印</b>：有些扫描书被人塞了一层「加微信号领书」的文字，每页只有一句。以前只要全书字数过了门槛就当文字书打开，结果是满屏重复的水印，书本身一页都没显示。现在导入时先量每页<b>图像占多大</b>——整页都是一张图的页占多数、而每页文字少得可怜，就按扫描件打开，直接给你看原页。</li>' +
+      '<li><b>导入提示说实话</b>：这种「有文字层但只有水印」的书，会明说「文件里那层字只有一句水印，不是正文，要听书得先做 OCR」，不再含糊成「没有文字层」。</li>' +
+      '<li><b>安卓念英文的根因修掉了</b>：上一版把这个故障归到「两套模型并发互锁」，判断错了。真正的原因是 Java 里切分句子的循环——句末标点表里有半角句点 <code>.</code>，跳过标点的表里却没有，读到英文句号时下标原地不动，成了死循环。而这段循环<b>攥着旁白那把锁</b>，所以一句英文能把后面所有中文一起拖死。现在两张表对齐、并加了「没匹配上也必须前进」的兜底。模拟器实测：英文句 200 / 约 5 秒出音，念完英文中文照旧。</li>' +
+      '</ul>' +
+      '<h3>1.14.33 改了什么</h3><ul>' +
+      '<li><b>DOCX 能读了</b>：Word / WPS 存的 .docx 直接导入，正文一个字不少（表格里的字也会按行读出来），章节按标题自动分。老版 .doc（97-2003 那种二进制格式）读不了，会直说「另存为 .docx」，不会硬塞一屏乱码进来。</li>' +
+      '<li><b>MOBI / AZW3 能读了</b>：Kindle 的两种书都支持，自己解压、自己认章节，不装 Kindle、不联网。带 DRM 加密的会明确说「去掉 DRM 才能读」；少数用了 Kindle 私有压缩（HUFF）的暂时读不了，会告诉你先用 Calibre 转成 EPUB。</li>' +
+      '<li><b>英文语音在手机上也开了</b>：模型重新打进包里，中英混排时按语言切开，汉字段用当前角色的声线，英文段交给英文模型，两边重采样后接回同一句。英文模型第一次用到才在后台建，建好了自动生效。</li>' +
+      '</ul>' +
+      '<h3>1.14.32 改了什么</h3><ul>' +
+      '<li><b>扫描件 PDF 能导入、能看了</b>：整页是图片、没有文字层的 PDF（扫描的书、影印本、族谱、发票扫描），以前是当场拒收，说「要读得先做一遍 OCR」。现在按页渲染成图片放进阅读器：<b>翻页、目录（第 1 页…第 N 页）、进度条、书签、自动生成封面全都照常</b>，字清不清楚取决于扫描本身——阅读器不该替原件打折扣。</li>' +
+      '<li><b>导入不再白等</b>：以前判定「有没有文字层」要先把整本书抽一遍，589 页的册子要等一分多钟才告诉你读不了。现在先抽前 12 页探一下，一页字都没有就直接按图片模式收进来，几秒钟就好。</li>' +
+      '<li><b>说清楚哪部分做不到</b>：图片页上的字机器不认识，所以<b>不能朗读、不能划词、不能做笔记</b>——这一点主流阅读器也一样。点朗读会直说「这本是扫描件，只能看，念不了」，不会含糊成「引擎故障」。</li>' +
+      '<li><b>图片页的交互按阅读习惯来</b>：点屏幕左右半边就是上一页 / 下一页，往后翻会提前把下一页画好，基本不用等；暗色主题下把白纸压暗一点，免得太刺眼（不做反相——反相会把照片和印章都毁了）。</li>' +
+      '</ul>' +
+      '<h3>1.14.31 改了什么</h3><ul>' +
+      '<li><b>句子里夹一个英文词，不再整句跳过</b>：以前只要一句里出现 CPU、macOS、WiFi 这类词表里没有的英文词，语音这边会把整句判成「外文」退回来，朗读就直接跳过这一整句——中文书里夹英文词太常见了，一句话说没就没，确实不能接受。现在英文词单独念：认识的按词念，不认识的按字母念（C-P-U），中文一个字都不少。</li>' +
+      '<li><b>老语音包也不会再丢句</b>：万一本机的语音包还是旧版，遇到这种句子会先抹掉英文词、把中文照念完，而不是整句留白。</li>' +
+      '<li><b>桌面完整版内置英文语音</b>：EXE 里带了一套英文模型，中文书里的英文句子、英文段落都由它来念，音量与语速跟中文那副嗓子各算各的。轻量版 EXE 和纯网页版不带语音模型，自然也没有（它们本来就要配 VoicePack）。</li>' +
+      '<li><b>安卓这一版先不带英文语音</b>：英文模型在安卓的 native 层会偶发卡死，而且一卡死连中文也跟着不出声——那比没有英文更糟。所以安卓先把英文词交给中文兜底（英文词跳过，中文一个字不少），等我拿真机把这条路测通再开。</li>' +
+      '</ul>' +
+      '<h3>1.14.30 改了什么</h3><ul>' +
+      '<li><b>打开软件不再干等十几秒</b>：语音引擎每次冷启动都要重建推理会话，十几秒。以前是应用一起来就开始建，于是每次开软件都得等——可你打开软件多半只是在书架上翻一翻，根本没打算听。现在改成<b>打开一本书才建</b>：真要听的人，从翻开书到点朗读之间总归要翻两页，这十几秒就藏在那段时间里；只在书架停留的人，一次都不用等。</li>' +
+      '<li><b>那句「首次约十几秒」改了</b>：它本来是错的——只有从安装包里解压模型才是一次性的，建会话每次都做。现在只说「约十几秒」，不骗人。</li>' +
+      '<li><b>打开书时不再顺手把 187 人语音库也扛起来</b>：那份库光建会话就要二三十秒 CPU，正好撞上你刚翻开书、想点朗读的那一刻，第一句反而更慢。现在只在开始朗读、或者你点到配角声线时才热。</li>' +
+      '</ul>' +
+      '<h3>1.14.29 改了什么</h3><ul>' +
+      '<li><b>换声线不再「没声音 + 弹窗」</b>：以前朗读中切声线，只要那一下合成没成，手机端就直接弹「语音没有出声」并停下朗读——切到配角声线时最容易碰上，因为 187 人语音库第一次要现解压、建会话，慢的时候半分钟。现在分清了「引擎还在准备」和「真坏了」：<b>还在准备就跳过这一句接着念，只轻提示一次</b>；这一段没出声也只丢这一句；真坏了（内存不够、模型起不来）才把自检摆出来。连着出不来 3 次才算坏，不是错一次就判死刑。</li>' +
+      '<li><b>换声线时先说一声</b>：点到配角声线，如果语音库还没热，会写明白「187 人语音库正在准备，开头一两句可能跳过，好了自动接上」，不再让你盯着不动的朗读条猜。</li>' +
+      '<li><b>配角库不再卡住整场朗读</b>：以前合成请求会同步等库装完（几十秒），页面等到超时就当失败。现在最多陪等 6 秒，等不到就明确回「还在装」，让这一句先过。</li>' +
+      '<li><b>手动点配角也会预热</b>：以前只有开了「分角色朗读」才预热配角库，关掉它的人一点配角就是冷启动。现在点哪个声线就热哪个。</li>' +
+      '<li><b>手机上不再出现「双击启动语音引擎.cmd」</b>：那是桌面版的提示，在手机上是胡说八道——而且它切过去的系统语音在安卓壳里是哑的，等于彻底没声音。手机端只弹自检卡。</li>' +
+      '</ul>' +
       '<h3>1.14.28 改了什么</h3><ul>' +
       '<li><b>换台机器接着读</b>：设置里新增<b>网盘同步（WebDAV）</b>，填上网盘地址、账号和应用密码，进度、书签、批注、分组就在两台机器之间对上了。默认关闭，开了才联网。</li>' +
       '<li><b>不搬书，只对号</b>：每本书会算一个「内容指纹」（体积 + 书名 + 首尾各 8 KB 的摘要）。同一本书在另一台机器上再导一次，指纹一对上，进度自动接上——书文件一个字节都不用传，也不用等几十兆上传。旧书第一次同步前会自动补算。</li>' +
@@ -5181,6 +5666,8 @@
       '<div class="row"><label>' + T('选项') + '</label>' + boolSeg([
         ['autoNext', T('念完自动下一章')], ['follow', T('高亮跟随滚动')], ['whole', T('整句朗读（更自然）')],
         ['voiceAuto', T('优先自然语音')], ['motion', T('减少动效')]]) + '</div>' +
+      '<div class="row"><label>' + T('英文语音') + '</label>' + boolSeg([['enVoice', T('英文语音')]]) +
+        '<span class="kv">' + T('中文书里夹的英文词、整段英文由它念。安卓上这套模型在个别设备会卡住——如果开着发现朗读停住不动，把它关掉，中文立刻恢复。') + '</span></div>' +
       '<div class="row"><label>' + T('语音') + '</label><button data-doc="voice">' + T('语音与朗读说明') + '</button><span class="kv">' + T('当前：') +
       esc(voiceLabel(curVoice() || { name: T('系统默认'), lang: 'zh-CN', localService: true })) + '</span></div>' +
       '<h3>' + T('免费神经语音 · 离线开源') + '</h3>' +
@@ -6033,6 +6520,12 @@
       /* 工具栏收着时，点屏幕最上面那条窄边就能唤回来，不用猜 */
       if (!barsVisible() && y < 54) { setBars(true); return; }
       if (!pgEnabled()) {
+        /* 图片层 PDF：点左右半边翻页。整页图上没有字可选、没有链接可点，
+           在这儿点一下除了翻页没别的心思。 */
+        if (BK && BK.picture) {
+          if (x < box.width / 3) { autoPause(); readPrev(); return; }
+          if (x > box.width * 2 / 3) { autoPause(); readNext(); return; }
+        }
         if (touchy()) toggleBars();            // 滚动模式：点一下收 / 放工具栏
         return;
       }
@@ -6123,8 +6616,17 @@
         CFG.localVoice = v.slice(6); CFG.voiceAuto = 0; saveCfg();
         resetCast();                            // 旁白换了，角色池要重新避开新声线
         voiceBadge(null);
+        /* 和 pickLocalVoice 保持同一套：配角声线要先把 187 人语音库叫醒。
+           朗读条上直接下拉也是「朗读中换声线」的主要路径，这里不能漏。 */
+        var libV = /^s\d+$/.test(CFG.localVoice), warmingV = libV && !LOCAL.lib;
+        if (libV) warmLib(true, 0);
         if (SPK.playing) { speakJump(0); }
-        else { toast(T('音色已切到 ') + localVoiceName(CFG.localVoice) + T('（本机离线合成）'), 2600); }
+        if (warmingV) {
+          toast(T('{v}：187 人语音库正在准备，开头一两句可能跳过，好了自动接上',
+            { v: localVoiceName(CFG.localVoice) }), 5600);
+        } else if (!SPK.playing) {
+          toast(T('音色已切到 ') + localVoiceName(CFG.localVoice) + T('（本机离线合成）'), 2600);
+        }
         return;
       }
       CFG.voiceURI = v; CFG.voiceAuto = 0; SPK.fb = 0; SPK.seenEnd = false;
@@ -6246,8 +6748,9 @@
         var bkey = bookKey(buf, name.replace(/\.[^.]+$/, ''), buf.byteLength);
         var b = await parseBook(buf, name, e0);
         var id = 'b' + Date.now() + Math.random().toString(36).slice(2, 7);
-        await dbPut('blobs', { id: id, buf: buf, text: b.pdfText || '' });
+        await dbPut('blobs', { id: id, buf: buf, text: b.pdfText || b.fmtText || '' });
         var m = { id: id, key: bkey, name: name.replace(/\.[^.]+$/, ''), ext: e0, size: buf.byteLength, pages: b.pdfPages || 0,
+          picture: b.picture ? 1 : 0, pdfWhy: b.pdfWhy || '',
           added: Date.now(), last: Date.now(), ch: 0, ratio: 0, progress: 0, cover: b.cover || '',
           title: b.title, author: b.author || '', marks: [], hl: [], chapters: b.titles.slice(0, 1000),
           tocCount: b.toc.length, enc: b.enc || '', group: '', fav: 0, rt: 0, sessions: 0, first: 0 };

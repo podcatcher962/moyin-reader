@@ -408,6 +408,12 @@
     '音频加载失败': 'Failed to load audio',
     '浏览器阻止了播放，请点一下页面': 'The browser blocked playback — click the page once',
     '请求失败': 'Request failed',
+    '语音引擎还在准备，这几句先跳过，好了会自动接上':
+      'The speech engine is still warming up — skipping these few lines; it will pick up as soon as it is ready',
+    '；187 人语音库正在准备，开头一两句可能跳过，好了自动接上':
+      '; the 187-voice library is warming up — the first line or two may be skipped, then it picks up on its own',
+    '{v}：187 人语音库正在准备，开头一两句可能跳过，好了自动接上':
+      '{v}: the 187-voice library is warming up — the first line or two may be skipped, then it picks up on its own',
     '自然': 'Natural',
     '在线': 'Online',
     '本地': 'Local',

@@ -323,6 +323,15 @@ html[data-mode] #page{margin:0 auto;padding:34px var(--padx) 70px;
 html[data-mode="page"] #page{padding:24px var(--padx) calc(24px + .9em)}
 @keyframes pgFade{from{opacity:.30}to{opacity:1}}
 html[data-mode="page"] #chEnd{break-inside:avoid}
+/* ---------- 图片层 PDF（扫描件）：一页一张 canvas ---------- */
+#page .pdfpg{margin:0 auto;max-width:100%;text-align:center}
+#page .pdfpg .pdfc{display:block;width:100%;height:auto;margin:0 auto;
+  background:#fff;border-radius:2px;box-shadow:0 2px 12px rgba(0,0,0,.30)}
+#page .pdfpg .pdfc:only-child{margin-bottom:.4em}
+/* 暗底上看白纸太刺眼，压一点亮度；不做反相——反相会把照片和印章都毁了 */
+html[data-theme="dark"] #page .pdfpg .pdfc{filter:brightness(.88)}
+#page .pdfld{padding:56px 10px;text-align:center;opacity:.62;font-size:.92em}
+#page .pdfld.bad{opacity:.92;color:#e0736a}
 /* 翻页模式：左右点击区提示（与点屏幕 1/3 的判定同宽） */
 #pgHintL,#pgHintR{position:absolute;top:0;bottom:0;width:33.3%;pointer-events:none;opacity:0;transition:opacity .2s;z-index:5}
 #pgHintL{left:0;background:linear-gradient(90deg,rgba(128,128,128,.16),transparent)}
@@ -445,7 +454,7 @@ body.imm #clockFloat{display:block}
         <button class="sec" id="btnLang" data-i18n-title="切换界面语言" title="切换界面语言">EN</button>
         <button id="btnMoreLib" class="only-narrow" data-i18n-title="更多：管理书架、使用说明、常见问题、免责声明、关于、语言" title="更多">⋯</button>
       </div>
-      <input type="file" id="fileInput" multiple accept=".txt,.epub,.pdf,.text,.TXT,.EPUB,.PDF" hidden>
+      <input type="file" id="fileInput" multiple accept=".txt,.epub,.pdf,.docx,.mobi,.azw3,.azw,.prc,.text,.zip,.rar,.7z,.TXT,.EPUB,.PDF,.DOCX,.MOBI,.AZW3,.ZIP,.RAR,.7Z,text/plain,application/epub+zip,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/zip,application/x-zip-compressed,application/x-rar-compressed,application/x-7z-compressed" hidden>
       <input type="file" id="dirInput" webkitdirectory directory multiple hidden>
     </header>
     <div id="shelfBar"></div>
