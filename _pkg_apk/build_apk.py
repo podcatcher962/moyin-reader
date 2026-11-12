@@ -73,7 +73,13 @@ if not SHERPA:
 SHERPA_AAR = os.path.join(SHERPA, 'aar')
 SHERPA_JAR = os.path.join(SHERPA_AAR, 'classes.jar')
 KOTLIN_JAR = os.path.join(SHERPA, 'kotlin-stdlib.jar')
-SHERPA_ABI = 'arm64-v8a'
+# 目标架构。默认 arm64-v8a（真机）；设 MOYIN_ABI=x86_64 可打模拟器调试包。
+# sherpa 的 aar 四套 ABI 都有，所以模拟器不必靠 ARM 转译，能原生跑 onnxruntime。
+SHERPA_ABI = os.environ.get('MOYIN_ABI', 'arm64-v8a').strip()
+if SHERPA_ABI != 'arm64-v8a':
+    # 非真机架构的包不能和正式包同名，否则一次误操作就把发行包覆盖成模拟器版
+    FINAL = os.path.join(ROOT, ('MoYinReader-diag' if DIAG else 'MoYinReader')
+                         + '-' + SHERPA_ABI.split('_')[0] + '.apk')
 SHERPA_LIBS = ['libonnxruntime.so', 'libsherpa-onnx-c-api.so',
                'libsherpa-onnx-cxx-api.so', 'libsherpa-onnx-jni.so']
 # 三套模型：女主小雅（22.05 kHz）+ 男主超文（22.05 kHz）+ 配角库 fanchen（187 人，16 kHz）
@@ -87,7 +93,12 @@ VOICE_BOY_FILES = ['model.onnx']
 VOICE_SHARED = os.path.join(ROOT, 'VoicePack', 'models', 'shared')
 VOICE_SHARED_FILES = ['lexicon.txt', 'tokens.txt',
                       'date.fst', 'number.fst', 'phone.fst']
+# 英文模型（VoicePack/models/en-ljs）暂不入安卓包：native generate 会偶发
+# 把库锁死（见 TtsEngine.EN_ON 的说明）。桌面 EXE 照旧内置。
+VOICE_EN = os.path.join(ROOT, 'VoicePack', 'models', 'en-ljs')
+VOICE_EN_FILES = ['model.onnx', 'lexicon.txt', 'tokens.txt']
 VOICE_LIB = os.path.join(ROOT, 'VoicePack', 'models', 'fanchen')
+
 VOICE_LIB_FILES = ['model.onnx', 'lexicon.txt', 'tokens.txt',
                    'dict/jieba.dict.utf8', 'dict/hmm_model.utf8', 'dict/idf.utf8',
                    'dict/stop_words.utf8', 'dict/user.dict.utf8']
@@ -100,8 +111,8 @@ os.makedirs(STAGE, exist_ok=True)
 MANIFEST = '''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="%s"
-    android:versionCode="11427"
-    android:versionName="1.14.27">
+    android:versionCode="11435"
+    android:versionName="1.14.35">
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
     <!-- 只有两条：WebView 访问本机 127.0.0.1 需要明文 http；
          不申请麦克风、定位、通讯录、存储，读书不需要这些。 -->
@@ -503,6 +514,7 @@ def stage_voice_model(assets):
                     (VOICE_SHARED, VOICE_SHARED_FILES))),
         ('chaowen', ((VOICE_BOY, VOICE_BOY_FILES),)),
         ('fanchen', ((VOICE_LIB, VOICE_LIB_FILES),)),
+        ('en', ((VOICE_EN, VOICE_EN_FILES),)),
     )
     total = 0
     for sub, groups in plan:
@@ -653,7 +665,9 @@ def audit(allcls, dexfile, has_neuro):
         allowed = ({'assets/index.html'}
                    | {'assets/tts/xiaoya/' + f for f in VOICE_GIRL_FILES}
                    | {'assets/tts/chaowen/' + f for f in VOICE_BOY_FILES}
-                   | {'assets/tts/fanchen/' + f for f in VOICE_LIB_FILES})
+                   | {'assets/tts/fanchen/' + f for f in VOICE_LIB_FILES}
+                   | {'assets/tts/en/' + f for f in VOICE_EN_FILES}
+)
         extra = sorted(set(n for n in names if n.startswith('assets/')) - allowed)
         ok &= ck(not extra, 'assets 只有页面与三套语音模型，多余项 %r' % extra[:3])
         ok &= ck(all('assets/tts/xiaoya/' + f in names for f in VOICE_GIRL_FILES),
@@ -662,6 +676,8 @@ def audit(allcls, dexfile, has_neuro):
                  '男主（超文）模型齐全')
         ok &= ck(all('assets/tts/fanchen/' + f in names for f in VOICE_LIB_FILES),
                  '配角库（fanchen 187 人）8 个文件齐全')
+        ok &= ck(all('assets/tts/en/' + f in names for f in VOICE_EN_FILES),
+                 '英文模型 3 个文件齐全')
         libs = [n for n in names if n.startswith('lib/')]
         ok &= ck(len(libs) == len(SHERPA_LIBS) and
                  all(n.startswith('lib/%s/' % SHERPA_ABI) for n in libs),

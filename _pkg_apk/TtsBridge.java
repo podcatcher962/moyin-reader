@@ -53,7 +53,9 @@ public class TtsBridge {
     private volatile String probe = "";
 
     /** 等 WebView 把第一帧画完再加载 so，避开和 Chromium 抢 linker 锁。 */
-    private static final long NEURO_DELAY_MS = 9000;
+    /** 页面叫过一次 /warm 之后再等这么久才 dlopen：给 Chromium 留点余量，
+     *  免得它的动态库和 onnxruntime 抢 linker 的全局锁（老 MIUI 上会 SIGSEGV）。 */
+    private static final long NEURO_DELAY_MS = 500;
 
     private final Map<String, CountDownLatch> waits = new ConcurrentHashMap<String, CountDownLatch>();
     private final Map<String, Boolean> results = new ConcurrentHashMap<String, Boolean>();
@@ -96,7 +98,11 @@ public class TtsBridge {
             ready = false;
             engineName = "语音引擎不可用";
         }
-        startNeuroLater();
+        /* 这里**故意不建神经语音会话**。
+           从前是构造完 9 秒就建，代价是每次冷启动都要白等十几秒——而这时用户
+           多半只是在书架上翻一翻，根本没打算听。现在改成由页面在「打开一本书」
+           那一刻叫 GET /warm 才建：真要听的人，打开书到点朗读之间正好翻两页，
+           十几秒被藏在这段时间里；不听的人一次都不用等。 */
     }
 
     /**
@@ -111,12 +117,12 @@ public class TtsBridge {
      *
      * 页面画出来之前一次都不碰它。朗读本来也要等页面就绪，晚几秒没人察觉。
      */
-    private void startNeuroLater() {
+    private void startNeuroLater(long delayMs) {
         try {
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
                     new Runnable() {
                         public void run() { startNeuro(); }
-                    }, NEURO_DELAY_MS);
+                    }, delayMs);
         } catch (Throwable t) { }
     }
 
@@ -141,27 +147,22 @@ public class TtsBridge {
                             + " 用时 " + (System.currentTimeMillis() - t0) + "ms");
                     if (ok) {
                         neuro = e;
-                        /* 加载完先自己合成三句短的：一是把推理会话热起来
-                           （第一句本来就要现建，提前做掉用户就感觉不到），
-                           二是把结果留给 /diag —— 真机上「没声音」时这是唯一能
-                           看清是模型没出声还是根本没跑到合成的线索。 */
-                        try { probe = e.selfTest(); }
-                        catch (Throwable t) { probe = "自检异常 " + t.getClass().getSimpleName(); }
-                        /* 187 人配角库第一次用要先把 51 MB 解到 files、再建 38 MB 会话，
-                           中端手机半分钟起步——按需加载的话，用户点第一个配角声线就是
-                           「等 45 秒然后超时，没声音」。所以这里趁他还在听女声旁白，
-                           悄悄把它预热掉；延迟 3 秒是为了不跟第一句合成抢 CPU。 */
-                        try {
-                            Thread w = new Thread(new Runnable() {
-                                @Override public void run() {
-                                    try { Thread.sleep(3000); } catch (InterruptedException ignored) { }
-                                    try { e.preloadLib(); } catch (Throwable ignored) { }
-                                }
-                            }, "moyin-lib-preload");
-                            w.setDaemon(true);
-                            w.setPriority(Thread.MIN_PRIORITY);
-                            w.start();
-                        } catch (Throwable ignored) { }
+                        /* 自检（合成三句短的）放到 15 秒后的低优先级线程里跑。
+                           它只服务于 /diag——真机上「没声音」时，能看清是模型没出声
+                           还是压根没跑到合成。但它是真合成，会抢 CPU；而打开书之后
+                           那十几秒正是用户最可能点朗读的时候，不能跟第一句争。 */
+                        new Thread(new Runnable() {
+                            public void run() {
+                                try { Thread.sleep(15000); } catch (InterruptedException ignored) { }
+                                try { probe = e.selfTest(); }
+                                catch (Throwable t) { probe = "自检异常 " + t.getClass().getSimpleName(); }
+                            }
+                        }, "moyin-selftest").start();
+                        /* 187 人配角库（58 MB）**不在这里预热**。
+                           它一旦开跑就是二三十秒的 CPU，正好撞上「刚打开书、想点朗读」
+                           的那几十秒，第一句合成反倒被拖慢。现在改成真要用才热：
+                           前端在开始朗读时叫 /warm?lib=1，或者用户点某个 s* 声线时
+                           按需建——没建好会立刻回 503，页面跳过这一句接着念，不会卡死。 */
                     }
                     else { neuroErr = e.lastError(); e.close(); }
                 } catch (Throwable t) {
@@ -319,6 +320,9 @@ public class TtsBridge {
             voice = j.optString("voice", "");
             rate = (float) j.optDouble("speed", 1.0);
             dn = j.optInt("dn", Denoise.OFF);      // 男声降噪档位，0/1/2
+            /* 页面设置的「英文语音」开关。关掉就彻底不碰那套模型：
+               个别设备上它会在 native 里卡死，用户得有办法自救。 */
+            if (neuro != null) neuro.setEnEnabled(j.optInt("en", 1) != 0);
         } catch (Throwable t) {
             err(c, 400, "正文不是 JSON");
             return;
@@ -337,13 +341,20 @@ public class TtsBridge {
                送进去必然「全段没出声」。这不是引擎故障，别让页面弹
                「语音没有出声」——回 415，页面会按语速留白跳过这一段。
                （桌面端装了英文模型就能念，见 VoicePack/tts_server.py。） */
-            if (TtsEngine.foreignOnly(text) && !neuro.enReady()) {
-                err(c, 415, "no_en_voice");
-                return;
-            }
+            /* 纯外文块交给引擎自己去试：里面有英文模型时它按语言切开念，
+               没有才回 415（页面据此换系统英文语音或留白）。
+               以前这里是「没英文模型就直接 415」，等于把英文模型锁在门外。 */
             byte[] wav = neuro.synth(text, voice, rate, dn);
             if (wav != null) { ok(c, "audio/wav", wav); return; }
             String why = neuro.lastError();
+            if (!neuro.enReady() && TtsEngine.foreignOnly(text)) {
+                err(c, 415, "no_en_voice");
+                return;
+            }
+            /* 配角库还在后台装（51 MB 解压 + 38 MB 建会话）：这不是「引擎坏了」，
+               是「还没热」。回 503 让页面按「准备中」跳过这一句接着念；
+               用 502 会触发「语音没有出声」的诊断卡 + 停读——真机上就是这么弹出来的。 */
+            if ("lib_loading".equals(why)) { err(c, 503, "voice_lib_loading"); return; }
             err(c, 502, "神经语音没合成出这一段" + (why != null && why.length() > 0 ? "：" + why : "（引擎没给原因）"));
             return;
         }
@@ -360,6 +371,8 @@ public class TtsBridge {
         try {
             sb.append("引擎=").append(neuro != null ? "已建" : "未建")
               .append(" 就绪=").append(neuroReady())
+              .append(" 配角库=").append(neuro == null ? "-"
+                      : (neuro.libReady() ? "就绪" : (neuro.libLoading() ? "正在装" : "未加载")))
               .append(" 加载错误=").append(neuroErr.length() == 0 ? "无" : neuroErr)
               .append('\n');
             String p = probe;
@@ -374,25 +387,42 @@ public class TtsBridge {
         }
     }
 
-    // ── GET /warm?lib=1 ──────────────────────────────────────────────
-    /** 后台预热配角库（分角色朗读用的 187 人模型）。
+    // ── GET /warm ── GET /warm?lib=1 ─────────────────────────────────
+    /** 预热。
      *
-     *  页面在「开始朗读」那一刻叫一次：那时正在播开头几句旁白，
-     *  40 MB 的解压和建会话就被这几句盖过去了，第一个角色开口不用再干等。
-     *  立刻返回，不占着连接——真去加载的是另一条线程。 */
+     *  · 不带参数：页面**打开一本书**时叫一次，用来建神经语音的推理会话
+     *    （17 MB 模型，冷启动十几秒）。从前是应用启动就建，于是每次开软件
+     *    都要白等；翻书架的人根本用不到语音。改到这里，真要听的人从打开书
+     *    到点朗读之间正好翻两页，这段等待就被自然盖掉了。
+     *
+     *  · lib=1：预热配角库（187 人那份 58 MB 模型）。开始朗读那一刻叫，
+     *    压在开头几句旁白底下。
+     *
+     *  两种情况都立刻返回，真正干活的是另一条线程。 */
     public void handleWarm(Socket c, String query, String method) {
         if (!"GET".equals(method) && !"HEAD".equals(method)) { err(c, 405, "只收 GET"); return; }
         boolean lib = query != null && query.indexOf("lib=1") >= 0;
+        boolean en = query != null && query.indexOf("en=1") >= 0;
         final TtsEngine e = neuro;
-        if (lib && e != null && e.ready()) {
-            try {
-                Thread th = new Thread(new Runnable() {
-                    public void run() { e.preloadLib(); }
-                }, "moyin-warm-lib");
-                th.setDaemon(true);
-                th.setPriority(Thread.MIN_PRIORITY);
-                th.start();
-            } catch (Throwable ignored) { }
+        /* en=1：这本书里有英文，提前把英文模型建起来。
+           模型是 36 MB 的 VITS，冷启动要几十秒；等念到第一句英文才建，
+           那几十秒就是「点了朗读没声音」。放在开始朗读那一刻压在中文底下最划算。 */
+        if (en && e != null) {
+            try { e.preloadEn(); } catch (Throwable ignored) { }
+        }
+        if (lib) {
+            if (e != null && e.ready()) {
+                try {
+                    Thread th = new Thread(new Runnable() {
+                        public void run() { e.preloadLib(); }
+                    }, "moyin-warm-lib");
+                    th.setDaemon(true);
+                    th.setPriority(Thread.MIN_PRIORITY);
+                    th.start();
+                } catch (Throwable ignored) { }
+            }
+        } else {
+            startNeuroLater(NEURO_DELAY_MS);
         }
         try {
             ok(c, "application/json; charset=utf-8",

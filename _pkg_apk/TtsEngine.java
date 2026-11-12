@@ -68,6 +68,13 @@ public final class TtsEngine {
     static final String LIB_DIR = "tts/fanchen";
     static final String LIB_MODEL = "model.onnx";
 
+    /** 英文（LJSpeech 单人 VITS，22.05 kHz）：中文书里夹的英文词、英文段落走它。
+     *  中文三套模型的 lexicon 里一个英文字母都没有，不装英文模型时遇到英文只能
+     *  整段跳过——而「他打开 iPhone 看了一眼」这种句子在中文书里到处都是。 */
+    static final String EN_DIR = "tts/en";
+    static final String EN_MODEL = "model.onnx";
+    static final String[] EN_ASSETS = { EN_MODEL, "lexicon.txt", "tokens.txt" };
+
     /* 小雅与超文共用同一套词表和数字规则（两者 lexicon/tokens/fst 逐字节相同），
        所以只在 xiaoya 目录解压一份，超文直接指过来。 */
     static final String[] WORD_FILES = {
@@ -85,8 +92,9 @@ public final class TtsEngine {
 
     /* 模型换代了就换版本号，老用户首次启动会重新解压，不会拿旧文件跑新代码。
        v4：配角库从「动态量化 int8」换成「静态量化 QDQ int8」——同一份权重，
-       卷积走 QLinearConv 的优化内核，实测每句从 12.9 秒降到 0.24 秒。 */
-    private static final int MODEL_VER = 7;
+       卷积走 QLinearConv 的优化内核，实测每句从 12.9 秒降到 0.24 秒。
+       v8：入包英文模型（tts/en），中英混排由 synth() 按语言切开分别合成。 */
+    private static final int MODEL_VER = 8;
 
     /** sid → 中位基频（Hz），离线逐人实测。手机端与桌面共用同一份分组依据。 */
     static final int[] SID_F0 = {
@@ -201,8 +209,23 @@ public final class TtsEngine {
      *  当前 APK 里没有英文模型（中文三套模型都不认字母），所以恒 false；
      *  等哪天把 piper 英文模型打进 assets/tts/en 并接上语言切片，再改成真判断。
      *  在此之前纯英文块由页面按语速留白跳过，不弹错、不切系统语音。 */
+    /** 英文模型在安卓上先不开。
+     *
+     *  模型能建、单词也能念（x86_64 模拟器实测 1~2 秒），但连着念几段英文之后，
+     *  native generate 会偶发卡死，而且那把锁是库级别的：一卡死连纯中文的合成
+     *  也跟着不动，整场朗读就像断线一样停在那儿。宁可这一版不带英文语音，
+     *  也不能让「念到一句英文，后面整本书都没声」。
+     *  代码与页面兜底都留在这儿，真机上验证通过后把 EN_ON 改成 true 就能开。
+     */
+    static final boolean EN_ON = true;
+
+    /** 首句英文最多陪等多久让英文模型建好（后台线程在建，不是同步建）。
+     *  等到就当场念英文；等不到就跳过这截英文，绝不拿中文模型顶——
+     *  中文模型见到字母会卡死在 native 里，连后面的中文都一起废掉。 */
+    static final long EN_WAIT_MS = 12000;
+
     public boolean enReady() {
-        return false;
+        return EN_ON && en != null && !enBroken && !enUserOff;
     }
 
     /** /health 的音色表：女主 1 + 男主 1 + 配角库 187。 */
@@ -213,10 +236,13 @@ public final class TtsEngine {
         sb.append("\"engine\":\"").append(engineOk ? "sherpa-onnx 2.0.1 · 安卓" : "模型加载中").append("\",");
         sb.append("\"ready\":").append(engineOk).append(",");
         sb.append("\"count\":").append(n).append(",");
-        sb.append("\"en\":false,");
+        sb.append("\"en\":").append(en != null).append(",");
         /* 配角库（187 人）是不是已经建好会话。页面靠它决定要不要提示
            「正在准备语音库」——库热了就一次都不该再弹，弹多了就是骚扰。 */
         sb.append("\"lib\":").append(lib != null).append(",");
+        /* 库正在后台装（不是在报错）。页面据此区分「还没开始」和「正在准备」，
+           诊断卡里也能一眼看出是卡在装库还是卡在合成。 */
+        sb.append("\"libLoading\":").append(libLoading).append(",");
         sb.append("\"version\":7,\"curated\":[\"").append(GIRL_VOICE).append("\",\"")
                 .append(BOY_VOICE).append("\"");
         for (int i = 0; i < CURATED_SID.length; i++) {
@@ -256,17 +282,34 @@ public final class TtsEngine {
     private final ReentrantLock girlLock = new ReentrantLock();
     private final ReentrantLock boyLock = new ReentrantLock();
     private final ReentrantLock libLock = new ReentrantLock();
+    private final ReentrantLock enLock = new ReentrantLock();
     private Context appCtx;
     private OfflineTts girl;          // 女主，默认音色
     private OfflineTts boy;           // 男主，按需加载
     private OfflineTts lib;           // 配角库，按需加载
+    private OfflineTts en;            // 英文，第一次遇到英文词才建
     private int girlRate = 22050;
     private int boyRate = 22050;
     private int libRate = 16000;
-    private String lastError = "";
+    private int enRate = 22050;
+    /** 英文连续失败计数：满 2 次就把英文关掉（只关这本书的这一场朗读）。 */
+    private int enFail = 0;
+    private volatile boolean enBroken = false;
+    private volatile boolean enLoading = false;
+    private volatile boolean enUserOff = false;
+    private volatile String lastError = "";
     /** 配角库那次加载花了多久、失败时到底卡在哪一步——真机「选了声线没声音」全靠它定位。 */
     private long libMs = -1;
-    private String libErr = "";
+    private volatile String libErr = "";
+    /** 配角库正在后台装（解压 + 建会话）。合成请求看到它为真就不该同步傻等：
+     *  一等就是几十秒，页面那边早已超时，用户看到的是「点了声线没声音 + 弹窗」。 */
+    private volatile boolean libLoading = false;
+    /** 已经起过一次后台加载线程。失败后会复位，允许下次再试——
+     *  真机上第一次常因内存紧张失败，退出重进又能成，不能一失败就永久锁死。 */
+    private volatile boolean libKicked = false;
+    /** 合成请求最多陪配角库等这么久（毫秒）。等不到就拿 lib_loading 回去，
+     *  页面按「引擎在准备」跳过这一句接着念，不弹窗、不停读。 */
+    private static final long LIB_WAIT_MS = 6000;
 
     /** 女主装好就算就绪——男主和配角库都是按需加载的，缺了不影响默认听书。 */
     public boolean ready() {
@@ -375,9 +418,22 @@ public final class TtsEngine {
         return base.getAbsolutePath();
     }
 
+    /** 英文引擎开几路线程。
+     *  onnxruntime 的 numThreads 是「一次 generate 内部用几个核并行」，不是并发调用，
+     *  所以不怕和中文引擎抢锁；留一个核给音频解码和界面，免得念着念着掉帧。 */
+    private static int enThreads() {
+        int n = Runtime.getRuntime().availableProcessors();
+        return Math.max(2, Math.min(4, n - 1));
+    }
+
     /** 建一套 VITS 引擎：modelPath 是模型绝对路径，wordDir 放词表，dictDir 可空，ruleDir 放 fst。 */
     private OfflineTts build(Context ctx, String modelPath, String wordDir,
                              String dictDir, String ruleDir) {
+        return build(ctx, modelPath, wordDir, dictDir, ruleDir, 2);
+    }
+
+    private OfflineTts build(Context ctx, String modelPath, String wordDir,
+                             String dictDir, String ruleDir, int threads) {
         // Kotlin data class 的 String 参数同样非空，传 null 会 NPE，统一收敛成空串。
         if (dictDir == null) dictDir = "";
         if (ruleDir == null) ruleDir = "";
@@ -403,7 +459,7 @@ public final class TtsEngine {
                 new OfflineTtsKittenModelConfig(),
                 new OfflineTtsPocketModelConfig(),
                 new OfflineTtsSupertonicModelConfig(),
-                2,                          // numThreads
+                threads,                    // numThreads
                 false,                      // debug
                 "cpu");                     // provider
         String fsts = ruleDir.isEmpty() ? ""
@@ -509,6 +565,7 @@ public final class TtsEngine {
         if (lib != null) return true;
         if (appCtx == null) return false;
         loadLock.lock();
+        libLoading = true;                  // 拿到锁才算「我在装」，让别的请求别傻等
         try {
             if (lib != null) return true;
             long t0 = System.currentTimeMillis();
@@ -534,8 +591,99 @@ public final class TtsEngine {
             lib = null;
             return false;
         } finally {
+            libLoading = false;
             loadLock.unlock();
         }
+    }
+
+    /** 用户在设置里关掉「英文语音」：不加载、不合成，中文一切照旧。 */
+    public void setEnEnabled(boolean on) { enUserOff = !on; }
+
+    /** 按需载入英文模型（第一次遇到英文词时）。41 MB 解压 + 建会话，一次就好。
+     *
+     *  ⚠️ 必须放到后台线程，绝不能在合成线程里同步等。
+     *  x86_64 模拟器实测：`new OfflineTts(英文模型)` 会卡在 native 里不出来
+     *  （中文模型 5.4 秒建好，英文模型等了 6 分钟没动静）。同步等就把整个
+     *  朗读和 HTTP 线程一起冻住了——连 health 都不响应，中文也跟着没声。
+     *  现在改成：第一次碰到英文时起一个后台线程去建，这一次先不用英文
+     *  （中文照念），建好了下一次自动用上。建不起来只是没有英文，不影响别的。 */
+    /** 页面知道「这本书有英文」时提前叫一声，把英文模型先建起来。
+     *  建不起来就算了：真要念的时候 ensureEn 还会再试一次。 */
+    public void preloadEn() {
+        if (en != null || enBroken || enUserOff || enLoading) return;
+        ensureEn();
+    }
+
+    private boolean ensureEn() {
+        if (en != null) return true;
+        if (appCtx == null || enBroken || enLoading || enUserOff) return false;
+        enLoading = true;
+        try {
+            Thread th = new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        final Context ctx = appCtx;
+                        String d = ensureAssets(ctx, EN_DIR, EN_DIR, EN_ASSETS, "en");
+                        /* 线程数：以前钉死 1，是误判——真正的死锁在 Java 分句循环里
+                           （半角句点不在 PUNCT 表，见 prosodySplit），跟线程数无关。
+                           钉死 1 的代价是英文合成 RTF 3.3（一句 1.5 秒音频要算 5 秒），
+                           播放速度永远追不上，听感就是「念一句停五秒」。
+                           现在按核数开 2~4 路：实测 4 核机的 RTF 直接落到 1 以下。 */
+                        OfflineTts t = build(ctx, d + "/" + EN_MODEL, d, "", "", enThreads());
+                        mark("N3.0 英文模型线程=" + enThreads());
+                        int sr = t.sampleRate();
+                        if (sr <= 0) { t.free(); lastError = "en sampleRate=0"; enBroken = true; return; }
+                        enRate = sr;
+                        en = t;
+                        mark("N3.0 英文模型就位 sr=" + sr);
+                        android.util.Log.i("MoYin", "英文模型就位 sr=" + sr);
+                    } catch (Throwable e) {
+                        lastError = "en: " + e.getClass().getSimpleName() + ": " + e.getMessage();
+                                    en = null;
+                        enBroken = true;      // 建不起来就别再试了，省得每次都卡一遍
+                    } finally {
+                        enLoading = false;
+                    }
+                }
+            }, "moyin-en-load");
+            th.setDaemon(true);
+            th.start();
+        } catch (Throwable e) {
+            enLoading = false;
+            return false;
+        }
+        return false;                    // 这一次先用中文顶着，建好后自动生效
+    }
+
+    /** 后台起一次配角库加载（幂等）。失败后允许下次再试。 */
+    private void kickLibLoad() {
+        if (lib != null || libKicked) return;
+        libKicked = true;
+        try {
+            Thread th = new Thread(new Runnable() {
+                public void run() {
+                    try { ensureLib(); }
+                    catch (Throwable ignored) { }
+                    finally { if (lib == null) libKicked = false; }
+                }
+            }, "moyin-lib-kick");
+            th.setDaemon(true);
+            th.setPriority(Thread.MIN_PRIORITY);
+            th.start();
+        } catch (Throwable t) {
+            libKicked = false;
+        }
+    }
+
+    /** 陪配角库等一小会儿。已经在装了就别再起线程，也别同步进 ensureLib 干等几十秒。 */
+    private boolean awaitLib(long ms) {
+        long end = System.currentTimeMillis() + ms;
+        while (System.currentTimeMillis() < end) {
+            if (lib != null) return true;
+            if (!libLoading && !libKicked) break;    // 没人装了，也不必再等
+            try { Thread.sleep(80); } catch (InterruptedException e) { break; }
+        }
+        return lib != null;
     }
 
     /** 后台预载配角库：分角色朗读注定要用它，第一次用要解压 40 MB 再建会话。
@@ -544,7 +692,12 @@ public final class TtsEngine {
      *  要干等十几秒，听感就是「换声卡住了」。失败不影响听书，下次用到时再试。 */
     public void preloadLib() {
         if (lib != null || appCtx == null) return;
-        try { ensureLib(); } catch (Throwable ignored) { }
+        kickLibLoad();
+    }
+
+    /** 配角库是不是正在后台装（页面据此显示「正在准备」）。 */
+    public boolean libLoading() {
+        return libLoading;
     }
 
     /** 配角库是否已经可以用。 */
@@ -570,7 +723,18 @@ public final class TtsEngine {
         boolean useLib = isFanchen(voice);
         boolean useBoy = isBoy(voice);
         if (useLib) {
-            if (lib == null && !ensureLib()) return null;
+            if (lib == null) {
+                /* 库在后台装：只陪等 6 秒，等不到就明确说「在准备」。
+                   以前这里直接进 ensureLib 同步等——请求线程要扛完 51 MB 解压 + 38 MB
+                   建会话，中端机半分钟起步，页面 45~150 秒后超时，然后弹窗停读。
+                   真机上「朗读中换声线偶发无声 + 报错弹窗」就是这么来的。 */
+                if (!libKicked) kickLibLoad();
+                if (!awaitLib(LIB_WAIT_MS)) {
+                    lastError = "lib_loading";
+                    return null;
+                }
+                if (lib == null && !ensureLib()) return null;
+            }
         } else if (useBoy) {
             if (boy == null && !ensureBoy()) return null;
         } else {
@@ -584,6 +748,9 @@ public final class TtsEngine {
         if (s.length() > 600) s = s.substring(0, 600);
         if (speed < 0.5f) speed = 0.5f;
         if (speed > 2.0f) speed = 2.0f;
+        /* 这一句里有英文字母才去建英文模型（41 MB 解压 + 建会话，只在第一次）。
+           中文书的绝大多数句子用不到它，不该为此多等。 */
+        if (EN_ON && en == null && !enUserOff && hasLatinChar(s)) ensureEn();
         final OfflineTts eng = tts;
         // 按模型分别加锁：旁白（女主 22k）与对白（配角库 16k）是两份独立会话，
         // 允许同时出音，换声那一句不必排在旁白后面等。
@@ -605,8 +772,7 @@ public final class TtsEngine {
             float topPeak = 0f;
             for (Unit u : units) {
                 String t = carry + u.text;
-                GeneratedAudio a = eng.generate(t, sid, speed);
-                float[] pcm = (a == null) ? null : a.getSamples();
+                float[] pcm = genText(t, eng, sid, speed, sr);
                 float pk = peakOf(pcm);
                 /* 量化模型偶尔会吐出一段极轻、几乎只剩噪声的波形（ARM 上的 int8
                    卷积比 x86 更容易出这种情况）。以前这里靠 boostQuiet 放大几百倍
@@ -614,23 +780,16 @@ public final class TtsEngine {
                    VITS 内部带随机采样，同一句第二次通常就正常了；两次都轻就把这段
                    的字带到下一段重念，宁可少这一小截，也不播一串怪音。 */
                 if (pcm != null && pcm.length > 0 && pk < QUIET_PEAK) {
-                    GeneratedAudio a2 = eng.generate(t, sid, speed);
-                    float[] p2 = (a2 == null) ? null : a2.getSamples();
+                    float[] p2 = genText(t, eng, sid, speed, sr);
                     float pk2 = peakOf(p2);
                     retried++;
-                    if (pk2 > pk) {
-                        a = a2;
-                        pcm = p2;
-                        pk = pk2;
-                        if (a != null && a.getSampleRate() > 0) sr = a.getSampleRate();
-                    }
+                    if (pk2 > pk) { pcm = p2; pk = pk2; }
                 }
                 if (pcm == null || pcm.length == 0) genNull++;
                 if (pk > topPeak) topPeak = pk;
                 // 门槛压到 0.0008：int8 量化模型偶尔给得很轻，按旧的 0.01 丢
                 // 会把整段听书变成「没出声」；真有波形就抬起来播（见 boostQuiet）。
                 if (pcm != null && pcm.length > 0 && pk >= 0.0008f) {
-                    if (a.getSampleRate() > 0) sr = a.getSampleRate();
                     parts.add(trimSilence(boostQuiet(pcm), sr));
                     gaps.add(u.gap);
                     carry = "";
@@ -639,12 +798,10 @@ public final class TtsEngine {
                 }
             }
             if (!carry.isEmpty()) {
-                GeneratedAudio a = eng.generate(carry, sid, speed);
-                float[] pcm = (a == null) ? null : a.getSamples();
+                float[] pcm = genText(carry, eng, sid, speed, sr);
                 float pk = (pcm == null || pcm.length == 0) ? 0f : peak(pcm);
                 if (pk > topPeak) topPeak = pk;
                 if (pcm != null && pcm.length > 0 && pk >= 0.0008f) {
-                    if (a.getSampleRate() > 0) sr = a.getSampleRate();
                     parts.add(trimSilence(boostQuiet(pcm), sr));
                     gaps.add(0f);
                 }
@@ -690,9 +847,207 @@ public final class TtsEngine {
         }
     }
 
+    /* ---------------- 中英混排 ----------------
+       中文三套模型的 lexicon 里一个英文字母都没有，英文词送进去等于没写。
+       有英文模型时把一句话按语言切开：汉字段仍用当前角色的声线，英文段交给
+       英文模型，两边重采样到同一采样率后接回去——听感上是同一句话里换了
+       一种语言，而不是中间空了一截。 */
+
+    private static final java.util.regex.Pattern EN_WORD =
+            java.util.regex.Pattern.compile("[A-Za-z][A-Za-z'\u2019\\-]*");
+
+    static boolean hasLatinChar(String s) {
+        if (s == null) return false;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) return true;
+        }
+        return false;
+    }
+
+    /** 按语言切片：[文本, "en"/"zh"]。英文只认拉丁字母与词内撇号/连字符，
+     *  数字与标点留给中文模型（它带 date/number fst，读得比英文模型自然）。 */
+    static java.util.List<String[]> langSplit(String s) {
+        java.util.ArrayList<String[]> out = new java.util.ArrayList<>();
+        if (s == null) return out;
+        StringBuilder buf = new StringBuilder();
+        String cur = null;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (Character.isWhitespace(c)) {
+                if (cur != null) buf.append(c);
+                continue;
+            }
+            boolean latin = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+                    || c == '\'' || c == '\u2019' || c == '-';
+            String t = latin ? "en" : "zh";
+            if (cur == null || t.equals(cur)) {
+                buf.append(c);
+                cur = t;
+            } else {
+                out.add(new String[]{buf.toString(), cur});
+                buf.setLength(0);
+                buf.append(c);
+                cur = t;
+            }
+        }
+        if (buf.length() > 0) out.add(new String[]{buf.toString(), cur});
+        return out;
+    }
+
+    /** 中文模型见到一整句字母会在 native 里**一直不返回**（x86_64 实测，真机上也
+     *  有同样反馈），而且它一直攥着 girlLock——后面的中文请求全排在锁上，整本书
+     *  就此停住，连 /tts 都只剩超时。所以拉丁字母一个都不能送进中文模型：
+     *  先把带字母的句子按语言切开，汉字段才给中文模型。 */
+    private static String stripLatin(String s) {
+        if (s == null) return "";
+        StringBuilder b = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) continue;
+            b.append(c);
+        }
+        return b.toString();
+    }
+
+    /** 等英文模型就位，最多 ms 毫秒。只在这个线程上等，别处照常。
+     *  等不到就返回 false，调用方把这截英文跳过去——绝不用中文模型顶。 */
+    private boolean awaitEn(long ms) {
+        long end = System.currentTimeMillis() + ms;
+        while (en == null && !enBroken && !enUserOff && System.currentTimeMillis() < end) {
+            try { Thread.sleep(60); } catch (InterruptedException e) { break; }
+        }
+        return en != null;
+    }
+
+    /** 一段文字合成成 float PCM，采样率固定为 sr。
+     *  没有字母时直接走中文引擎，与旧行为完全一致（绝大多数句子是这条路）。 */
+    private float[] genText(String t, OfflineTts zh, int sid, float speed, int sr) {
+        if (!hasLatinChar(t)) {
+            GeneratedAudio a = zh.generate(t, sid, speed);
+            return (a == null) ? null : a.getSamples();
+        }
+        /* 到这里说明有字母：中文模型只准碰汉字那几个切片。 */
+        if (EN_ON && en == null && !enUserOff && !enBroken) {
+            ensureEn();                 // 后台线程去建，不在这里同步等
+            awaitEn(EN_WAIT_MS);        // 首句英文多等一会儿，建好了就能念
+        }
+        java.util.ArrayList<float[]> pieces = new java.util.ArrayList<>();
+        for (String[] r : langSplit(t)) {
+            if ("en".equals(r[1])) {
+                if (!enReady()) continue;      // 英文不可用：跳过这截，别回退中文模型
+                float[] p = enGenText(r[0], speed, sr);
+                if (p != null && p.length > 0) pieces.add(p);
+            } else {
+                String seg = stripLatin(r[0]); // 双保险：汉字段里也不许剩字母
+                if (seg.trim().isEmpty()) continue;
+                GeneratedAudio a = zh.generate(seg, sid, speed);
+                if (a == null) continue;
+                float[] p = a.getSamples();
+                if (p == null || p.length == 0) continue;
+                int r2 = a.getSampleRate() > 0 ? a.getSampleRate() : sr;
+                pieces.add(resample(p, r2, sr));
+            }
+        }
+        return concat(pieces);
+    }
+
+    /** 英文一段：整段先试；有词表外的词（CPU / macOS / WiFi）就逐词念，
+     *  生词按字母念（C-P-U）。一个词都念不出来才返回 null。 */
+    private float[] enGenText(String text, float speed, int sr) {
+        if (en == null && !awaitEn(EN_WAIT_MS)) return null;
+        String t = text.trim();
+        if (t.isEmpty()) return null;
+        float[] whole = enRun(t, speed, sr);
+        if (whole != null) return whole;
+        /* 逐词念只对很短的块做。每个词都是一次完整的 generate（1~2 秒），
+           六个词就是十几秒——比「这句没念出来」更难受，还会把 enFail 顶到熔断。
+           长块整句念不出就交给上层跳过，让下面的句子上来。 */
+        if (t.split("\\s+").length > 3) return null;
+        java.util.ArrayList<float[]> ps = new java.util.ArrayList<>();
+        java.util.regex.Matcher m = EN_WORD.matcher(t);
+        while (m.find()) {
+            String w = m.group();
+            float[] p = enRun(w, speed, sr);
+            if (p == null && w.length() > 1) {
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < w.length(); i++) {
+                    if (i > 0) sb.append(' ');
+                    sb.append(w.charAt(i));
+                }
+                p = enRun(sb.toString(), speed, sr);
+            }
+            if (p != null) ps.add(p);
+        }
+        return concat(ps);
+    }
+
+    /** 一次英文合成（lower 后再送：词表全是小写词条）。
+     *
+     *  ⚠️ 必须和中文合成跑在同一个线程上（同步调用）。
+     *  之前把英文丢进独立线程以求「超时能掐断」，结果中文主循环和英文线程
+     *  同时进 generate —— 两个 OfflineTts 共存于同一个 onnxruntime 环境，
+     *  并发调用会偶发死锁，而且一死连纯中文也不出声。超时也掐不断 native，
+     *  只是把死锁藏起来。
+     *  现在改成顺序调用；万一仍然失败，连续 2 次就永久停用英文（本场朗读），
+     *  中文继续念，绝不让一个英文词把整本书冻住。 */
+    private float[] enRun(String text, float speed, int sr) {
+        if (en == null || enBroken) return null;
+        String low = text.toLowerCase(java.util.Locale.US);
+        try {
+            GeneratedAudio a = en.generate(low, 0, speed);
+            if (a == null) { enFail++; return null; }
+            float[] p = a.getSamples();
+            if (p == null || p.length == 0 || peakOf(p) <= 0f) { enFail++; return null; }
+            enFail = 0;
+            int r = a.getSampleRate() > 0 ? a.getSampleRate() : enRate;
+            return resample(p, r, sr);
+        } catch (Throwable e) {
+            enFail++;
+            lastError = "en: " + e.getClass().getSimpleName() + ": " + e.getMessage();
+            if (enFail >= 4) {
+                enBroken = true;
+                mark("N3.9 英文合成连续失败，本场朗读停用英文");
+            }
+            return null;
+        }
+    }
+
+    private static float[] concat(java.util.ArrayList<float[]> ps) {
+        if (ps == null || ps.isEmpty()) return null;
+        if (ps.size() == 1) return ps.get(0);
+        int n = 0;
+        for (float[] p : ps) n += p.length;
+        float[] out = new float[n];
+        int k = 0;
+        for (float[] p : ps) {
+            System.arraycopy(p, 0, out, k, p.length);
+            k += p.length;
+        }
+        return out;
+    }
+
+    /** 线性插值重采样。英文 22.05 kHz 与配角库 16 kHz 要接在同一段 WAV 里。 */
+    private static float[] resample(float[] in, int from, int to) {
+        if (in == null || from <= 0 || to <= 0 || from == to || in.length == 0) return in;
+        int n = (int) Math.round((double) in.length * to / from);
+        if (n <= 1) return in;
+        float[] out = new float[n];
+        double step = (double) (in.length - 1) / (n - 1);
+        for (int i = 0; i < n; i++) {
+            double x = i * step;
+            int i0 = (int) x;
+            if (i0 >= in.length - 1) { out[i] = in[in.length - 1]; continue; }
+            int i1 = i0 + 1;
+            float f = (float) (x - i0);
+            out[i] = in[i0] * (1 - f) + in[i1] * f;
+        }
+        return out;
+    }
+
     /* ---------------- 韵律：停顿按标点分层 ---------------- */
 
-    private static final String PUNCT = "，,、；;：:。！？!?…—～~";
+    private static final String PUNCT = "，,、；;：:。！？!?…—～~.";
 
     /* 只在句末标点处断段，逗号/顿号/冒号留在段内交给引擎自己停。
        原来按所有标点切，一句话被拆成一串 3~6 字的小块逐块合成再拼：
@@ -768,6 +1123,11 @@ public final class TtsEngine {
                     if (g > gap) gap = g;
                     j++;
                 }
+                /* 硬停顿字符未必都在 PUNCT 里（半角 . 就曾漏掉）。漏一个就会
+                   j 停在原地、i = j 也不动 —— 这句永远切不完，线程死在循环里，
+                   而 girlLock 还攥在手上，后面的中文全部排队。英文句句以 . 结尾，
+                   所以以前的 APK 一读到英文就整本没声。这里强制至少前进一格。 */
+                if (j == i) { gap = Math.max(gap, pauseOf(ch)); j = i + 1; }
                 String seg = buf.toString().trim();
                 if (seg.length() > 0) out.add(new Unit(seg, gap, text.charAt(j - 1)));
                 buf.setLength(0);

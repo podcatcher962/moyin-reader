@@ -108,3 +108,12 @@ _shot_pins.png
 
 # ---- 英文语音包的打包产物（26.7 MB，走 Release 资产，不入库） ----
 _dist_voice/
+
+# ---- 1.14.33~35 的临时测试件：书箱样本与截图（体积大 / 含书内容） ----
+_testdata/
+_verify_*.png
+_verify_pdfpic.png
+_verify_zip.png
+_tmp_*.json
+_rel0.json
+_assets.json

@@ -667,14 +667,8 @@ def _en_pool():
     return EN['pool']
 
 
-def _synth_en(text, speed):
-    """英文片段：走 icefall 英文模型，不和中文声线抢实例池。
-
-    词典全是小写词条（12.3 万条，零个大写开头），所以先 lower()——
-    否则 Hello / CPU 这类词会被当成 OOV 直接跳过，念出来缺字。
-    合成结果为空 = 整句一个词都不认识，抛 NoEnVoice 让页面换系统英文语音，
-    总比静音好。
-    """
+def _en_gen(text, speed):
+    """一次英文模型调用。念不出声（整句 OOV）返回 None，不抛异常。"""
     p = _en_pool()
     inst = p['q'].get()
     try:
@@ -682,8 +676,73 @@ def _synth_en(text, speed):
     finally:
         p['q'].put(inst)
     if not len(au.samples):
-        raise NoEnVoice(text)
+        return None
     return _pcm16(au.samples, au.sample_rate)
+
+
+EN_LEX = {'set': None}
+
+
+def _en_lex():
+    """词表里有哪些词（小写）。12.3 万条，只读一次。
+
+    用来在合成之前就认出 OOV 词——CPU / macOS / WiFi 这类缩写和产品名
+    一个都不在 LJSpeech 词表里。以前它们会让整段英文返回空音频，
+    再往上把整句中文一起拖成 415，听书时表现为「这一句被跳过」。
+    """
+    if EN_LEX['set'] is not None:
+        return EN_LEX['set']
+    s = set()
+    try:
+        with io.open(os.path.join(_en_dir(), 'lexicon.txt'), encoding='utf-8') as f:
+            for line in f:
+                w = line.split(' ', 1)[0]
+                if w:
+                    s.add(w)
+    except Exception:
+        pass
+    EN_LEX['set'] = s
+    return s
+
+
+# 一个英文词：字母开头，允许词内撇号 / 连字符（don't、state-of-the-art）
+_EN_WORD = re.compile(r"[A-Za-z][A-Za-z'\u2019\-]*")
+
+
+def _synth_en(text, speed):
+    """英文片段：走 icefall 英文模型，不和中文声线抢实例池。
+
+    词典全是小写词条（12.3 万条，零个大写开头），所以先 lower()。
+    整段都认识 -> 一次调用，快。有生词（CPU / macOS / WiFi / 人名）时改成
+    逐词合成：认识的照常念，生词按字母念（a-p-p-l-e），再一个词都念不出来
+    才抛 NoEnVoice。这样「一台 iPhone 15 Pro」不会因为 Pro 是生词就整段哑掉。
+    """
+    t = (text or '').strip()
+    if not t:
+        raise NoEnVoice(text)
+    low = t.lower()
+    words = _EN_WORD.findall(low)
+    known = _en_lex()
+    if not words or all(w in known for w in words):
+        d = _en_gen(low, speed)
+        if d:
+            return d
+    pieces = []
+    for w in _EN_WORD.findall(t):
+        lw = w.lower()
+        d = _en_gen(lw, speed) if (not known or lw in known) else None
+        if not d and len(lw) > 1:
+            # 生词按字母念：「CPU」->「C P U」；字母 26 个在词表里都有
+            d = _en_gen(' '.join(lw), speed)
+        if not d:
+            d = _en_gen(lw, speed)          # 再原样试一次（词形变化、大小写混写）
+        if d:
+            pieces.append(d)
+    if not pieces:
+        raise NoEnVoice(text)
+    if len(pieces) == 1:
+        return pieces[0]
+    return _join([(x, 0.0) for x in pieces])
 
 
 def _pcm16(samples, sr):
@@ -1203,11 +1262,17 @@ def _synth_mixed(text, voice, length_scale):
     pieces = []
     for seg, lang in lang_split(text):
         if lang == 'en':
-            pieces.append((_synth_en(seg, speed), 0.0))
+            # 这一小段英文念不出来，只丢这一小段，中文照念。
+            # 以前异常直接往上抛，整句变 415，页面把整句跳过——
+            # 中文书里夹一个 CPU 就丢一句话，是最不能接受的一种「降级」。
+            try:
+                pieces.append((_synth_en(seg, speed), 0.0))
+            except NoEnVoice:
+                continue
         else:
             pieces.append((_synth_zh(seg, voice, length_scale, SILENCE_SCALE), 0.0))
     if not pieces:
-        raise RuntimeError('empty text')
+        raise NoEnVoice(text)
     if len(pieces) == 1:
         return pieces[0][0]
     return _join(pieces)
