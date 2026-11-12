@@ -11,6 +11,9 @@ REPO = sys.argv[1]
 TAG = sys.argv[2]
 TOKEN = sys.argv[3]
 BODY_FILE = sys.argv[4]
+# Release 标题：以前写死成 v1.10.2，之后每个版本标题都是错的。改成用环境变量传，
+# 不传就退回 tag 名，至少不会张冠李戴。
+TITLE = os.environ.get('RELEASE_TITLE') or TAG
 ASSETS = sys.argv[5:]
 
 API = 'https://api.github.com'
@@ -52,14 +55,14 @@ if rel is None:
         print('建 tag 失败（可能已存在）: %s' % e)
     rel = gh('POST', '/repos/%s/releases' % REPO, {
         'tag_name': TAG,
-        'name': 'v1.10.2 — 繁简转换 / 插图放大 / 双指缩放 + Linux .deb',
+        'name': TITLE,
         'body': body,
         'draft': False,
         'prerelease': False,
     })
     print('已建 Release id=%s' % rel['id'])
 else:
-    rel = gh('PATCH', '/repos/%s/releases/%s' % (REPO, rel['id']), {'body': body, 'name': 'v1.10.2 — 繁简转换 / 插图放大 / 双指缩放 + Linux .deb'})
+    rel = gh('PATCH', '/repos/%s/releases/%s' % (REPO, rel['id']), {'body': body, 'name': TITLE})
     print('已更新 Release 说明')
 
 existing = {a['name']: a for a in rel.get('assets', [])}
