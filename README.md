@@ -7,7 +7,7 @@
 🌐 **[在线使用（免安装）](https://podcatcher962.github.io/moyin-reader/)** — 浏览器直接打开，导入的书与进度存在本机，不上传任何服务器。
 
 
-一个单文件、默认离线的中文 TXT / EPUB / PDF 阅读器，带朗读、划线批注与阅读总结；版式做到成熟阅读软件的水准——滚动或整屏翻页、宽屏双栏手机单栏、六套主题、自动阅读与沉浸全屏。男女主角各有一个 22.05 kHz 高清声线，另有 187 个离线中文说话人（39 男 148 女，精选 21 个直接可选），支持分角色朗读；界面中英双语一键切换。Windows 一个 exe 直接跑，安卓一个 apk，浏览器双击 HTML 也能用。
+一个单文件、默认离线的中文 **TXT / EPUB / PDF / DOCX / MOBI / AZW3** 阅读器（`.zip` 压缩包拖进来就整包导入，扫描版 PDF 也能翻页看原页），带朗读、划线批注与阅读总结；版式做到成熟阅读软件的水准——滚动或整屏翻页、宽屏双栏手机单栏、六套主题、自动阅读与沉浸全屏。朗读用三份离线模型：**男女主角各一条 22.05 kHz 高清声线**（精选列表的头两条，删不掉，是默认兜底），加一份 187 人的中文多说话人库（39 男 148 女）——**所有声线都能当主角**，桌面版精选 50 条、手机版 30 条，一句二十字约 0.9 秒；支持分角色朗读，中英混排时英文交给单独的英文模型。界面中英双语一键切换。Windows 一个 exe 直接跑，安卓一个 apk，浏览器双击 HTML 也能用。
 
 > 名字取「以墨为文、吟而出声」：把纸上的字念出来。与任何同名公司、配音平台、有声主播无关。
 
@@ -101,10 +101,10 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 | 类别 | 说明 |
 |---|---|
 | 📚 格式 | TXT（自动识别 UTF-8 / GBK / Big5 / UTF-16）、EPUB（内置 ZIP/OPF/NCX/Nav 解析，正文与插图都支持） |
-| 🗣️ 朗读 | 男女主角各 1 个 22.05 kHz 高清声线；桌面版另按音高做出 8 个快速声线（每性别 4 个，分角色朗读用它，一句二十字约 0.5 秒）；安卓包内仍带 187 个离线中文说话人（16 kHz，共用一份 61 MB 半精度 fp16 模型；int8 只有 41 MB 但实测字错率从 11% 升到 25%，发音会糊，所以不用 int8，一句二十字约 1.5 秒），按实测音高分 7 档，**桌面端精选 50 条、安卓端 30 条**直接可选，朗读条随时切换 |
+| 🗣️ 朗读 | 男女主角各 1 条 22.05 kHz 高清声线（「墨吟 · 女声」「墨吟 · 男声」，精选列表头两条，删不掉——删了就没默认声音兜底）；另加 187 个离线中文说话人（16 kHz，共用一份 61.4 MB 半精度 fp16 模型；int8 只有 41 MB 但实测字错率从 11% 升到 25%，发音会糊，所以不用 int8），按实测基频分 7 档。**1.14.39 起桌面端把这份库也放进常驻引擎**，一句二十字约 0.9 秒（与主角同速），精选 50 条；安卓走 JNI 桥仍稍慢，精选 30 条。**任何一条都能设成主角**，朗读条随时切换；分角色朗读时一句话一个人一个嗓子 |
 | ⚡ 不等 | 1.14.8 起语音引擎**常驻内存**（sherpa-onnx 的 Python 绑定 + 实例池），不再每句起一次进程：短句从 1.9 秒降到 0.19 秒，长段对白从 9.9 秒降到 2.7 秒。换了进程残留的旧引擎也能自动认出来重起，不会「升级了没变化」 |
-| 🎭 分角色 | **默认开启**：旁白用所选声线，对白按人物换声，同一人物全书同一声音。开口前先把本章前后几章的人物一次性配好声线（人物表），「他 / 她」这类代词绑回最近那位实名角色，不另占声线；没写是谁说的短对白按一问一答推定，也只用已定好的那位。认识「张三说」「他盯我一眼，说」「我说」「他突然问我」，不会把「我对某人说」的听话人当说话人；人物多时声线池自动从 21 个扩到全部 187 个 |
-| 🔤 英文 | 中文模型一个英文字母都不认识（实测 68 012 条词条，连 `hello` / `OK` / `CPU` 都查不到）。纯英文句子按三条路走：装了英文模型就用本地神经语音念；没有就用系统英文语音；都没有就按字母数留白 0.5–4.5 秒再往下念，**只轻提示一次，不弹窗、不降级、不切机械音**。中英混排照常用人物声音念中文，英文单词另交给英文模型（可选装） |
+| 🎭 分角色 | **默认开启**：旁白用所选声线，对白按人物换声，同一人物全书同一声音。开口前先把本章前后几章的人物一次性配好声线（人物表），「他 / 她」这类代词绑回最近那位实名角色，不另占声线；没写是谁说的短对白按一问一答推定，也只用已定好的那位。认识「张三说」「他盯我一眼，说」「我说」「他突然问我」，不会把「我对某人说」的听话人当说话人；人物多时声线池自动从精选扩到全部 187 个 |
+| 🔤 英文 | 中文模型一个英文字母都不认识（实测 68 012 条词条，连 `hello` / `OK` / `CPU` 都查不到）。纯英文句子按三条路走：装了英文模型就用本地神经语音念；没有就用系统英文语音；都没有就按字母数留白 0.5–4.5 秒再往下念，**只轻提示一次，不弹窗、不降级、不切机械音**。中英混排照常用人物声音念中文，英文词另交给英文模型（桌面完整版与安卓完整版随包自带，轻量版可另行安装） |
 | 🩹 容错 | 只有标点的块（「？？？」「……」）按符号长度留白，不送合成、不报错；单句没合成出来只跳这一句，段里其它照念；连不上引擎或连着几段都出不来才退回系统语音，且这一场不再中途切回来 |
 | 🔢 数字与符号 | 朗读前先把阿拉伯数字换成汉字读法，再把数字旁边那些「念不出来的符号」换成人话。数字：`1934年4月13日` → 「一九三四年四月十三日」，`2026上半年` → 「二零二六上半年」（年份逐位，后接量词才按数值）、`12:30`、`63%`、`3.5公里`、`50000元`、手机号（逐位）都对。符号：`-2.08` → 「负二点零八」、`+42,933` → 「正四万二千九百三十三」、`>0.05` → 「大于零点零五」、`3~5` / `60-52` / `1月5日-29日` → 「到」、`->` → 停顿、`2.` → 「二、」。中文模型的词典里没有一个阿拉伯数字，符号更是一个都不认——不换就等于把它们整段吞掉 |
 | 🎚️ 声线自由配置 | 朗读条上**只有「原版」男女主不可删**（删了就没默认声音兜底），其余全部自由：六个音高变体、187 个配角、自己挑的，都能删能加，置顶位 **女声 10 + 男声 10**。点 × 只从朗读条移除，声线本身没丢，随时加回来 |
@@ -115,7 +115,7 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 | 📊 阅读总结 | 累计时长、进度、批注 / 书签数、逐章摘录一页看完，可复制或导出成笔记 |
 | 🗂️ 书架 | 自建书架分组、★收藏、批量移动 / 移除、改书名作者、整目录导入、阅读计时 |
 | 📄 PDF | 导入 PDF 时把**文字层**逐页抽出来，按章节排好，阅读 / 朗读 / 划词 / 笔记 / 繁简全部照常；抽出的正文随书存在本机，第二次打开不再重解。扫描件（整页图片）与字体没带 Unicode 映射的 PDF（抽出来是乱码）会当场说清原因并跳过，不塞进书架 |
-| 📥 拖拽导入 | 把 TXT / EPUB / PDF（或整个文件夹）直接拖进窗口，松手就导入，正在看书也不打断 |
+| 📥 拖拽导入 | 把 TXT / EPUB / PDF / DOCX / MOBI / AZW3 / ZIP（或整个文件夹）直接拖进窗口，松手就导入，正在看书也不打断。压缩包在内存里解开，包里只挑书，图片与说明文件自动跳过 |
 | 🖧 网络位置 | **桌面版**可直接读局域网共享（SMB）：填 `\\192.168.1.10\Books`、映射盘 `Z:\书` 或本机任意路径，像本地文件夹一样扫描导入，凭据交给 Windows 记住 |
 | ☁️ 网盘同步（**实验性**） | 设置里填 WebDAV 地址与**应用密码**就能跨设备接读（坚果云、InfiniCLOUD、Nextcloud 都行）。只同步进度 / 书签 / 批注 / 分组，**不传书文件**：每本书有「内容指纹」（体积 + 书名 + 首尾各 8 KB 摘要），同一本书在另一台机器导入后进度自动接上，一个字节都不用搬。进度只前进不倒退，笔记两边都留（按内容去重）。默认关闭；密码只存本机，不进设置、不进备份、不上传；网页版没有本地通道，UI 上直说用不了 |
 | 🌐 双语 | 全窗口中英切换（含设置、弹窗、提示与全部说明文档），选择记住 |
@@ -145,11 +145,54 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 | `MoYinReader-Linux-*.tar.gz` | 约 0.7 MB | 免安装版：解压双击「墨吟阅读器.sh」，U 盘带走也能用 |
 | `MoYinReader-macOS-*.zip` | 约 0.7 MB | macOS 源码 + 打包脚本，在本机跑一次 `build-macos.sh` 出 `.app`（内含的页面就是当前版本，跟 Win 版同一个 md5） |
 
+### 这 150 MB 里到底是什么
+
+总有人问「一个阅读器为什么 150 MB」。把 exe 尾部的语音包拆开量一遍，账是这样的（2026-11-13 实测，LZMA 压缩后计入 exe）：
+
+| 组成 | 原始 | 压进 exe 后 | 说明 |
+|---|---:|---:|---|
+| Python 运行时 + 页面 + 语音服务脚本 | — | 38.4 MiB | 阅读器本体，含 2.1 MB 的单文件页面 |
+| fanchen 187 人配角库 | 75.5 MB | 58.3 MB | 一份模型 + jieba 词典 + 词表，187 个人共用，**加人不加体积** |
+| en-ljs 英文模型 | 41.1 MB | 26.5 MB | 中英混排里那些英文词靠它念 |
+| sherpa-onnx 运行时 | 23.2 MB | 6.0 MB | `onnxruntime.dll` 等 5 个文件 |
+| **chaowen 22 kHz 男声（主角）** | 18.65 MB | **12.6 MB** | 精选第 2 条「墨吟 · 男声」 |
+| **xiaoya 22 kHz 女声（主角）** | 18.65 MB | **12.6 MB** | 精选第 1 条「墨吟 · 女声」 |
+| shared 词典与数字 / 电话规则 | 2.3 MB | 0.5 MB | 全库共用的分词与读法规则 |
+| **合计** | **180.1 MB** | **111.5 MB + 38.4 MiB = 149.9 MiB** | |
+
+也就是说：**男女主角那两条 22 kHz 声线一直在包里**（合计占 25.2 MB 压缩后体积），1.14.39 动的是「谁能当主角」和「精选列几条」，没删过任何一条模型。想省体积只有两条路，都在 Lite 版：不带 fanchen 库（-58 MB）或不带英文模型（-26 MB），代价是配角声线和英文词没了。
+
 不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本；或者用 **[在线版](https://podcatcher962.github.io/moyin-reader/)** 什么都不装。
 
-### 最近改动（1.14.8 → 1.14.28）
+### 最近改动（1.14.8 → 1.14.39）
 
-一口气六版，前四版是「听感」上的修补，1.14.12 是手机上的「手感」。
+从 1.14.8「不再等十秒」到 1.14.39「187 个声音全部能当主角」，一共三十多个版本。按批次写在下面，新的在前。
+
+**1.14.39 · 187 个声音，全部能当主角**
+
+这一版只做一件事：把「配角」两个字从产品里去掉。
+
+- **187 人那份库接进常驻引擎。** 以前只有两份 22 kHz 主角是常驻的，配角库每念一句都要重起一次进程（载模型 1.9 秒），实测一句 12 秒——所以桌面端只敢把 8 个「音高变体」放进精选，真正的人声全藏在二级菜单里。这次把它也接进常驻池：同一份 fanchen 模型、只靠 `sid` 换人，**一句 19 字实测 0.92 秒**，与 22 kHz 主角（0.91 秒）持平。省下的时间全换成了可选的声音，一个字节的模型都没多。
+- **桌面精选 30 → 50 条。** 新加的 18 条不是随手挑：补的是各档原本空着的音高位置——男低沉补到 4 条、男偏高补 2 条填住 182 Hz 以下的低端（原来 5 条全挤在 182~194）、女低音 / 成年 / 青年各补几条，女高音第一次有了成年女声（以前这一档只有两个童声）。**原来的 30 条 sid 一个没动**，你选中的声音还是同一个。手机屏小、一次翻不完，保持 30 条。
+- **「置顶」就是「设为主角」，写在界面上。** 设置页那一栏改叫「我的主角声线」，朗读条下拉标成「📌 置顶＝主角 · 女声 / 男声」——点哪个名字朗读立刻换哪个，不用先挑一次再设一次。点 × 只从下拉里移除，不会取消正在念的声音。
+- **男女主角下拉放开全库。** 不再只列前 12 个，同性别的一条不漏（男 43 / 女 152，共 195 条）；组名只报本组条数，修掉「全部 152 个」却只列了 140 条的错标。
+- **第一次打开给 20 个推荐。** 男 9、女 10、童 1，青年占四成，低沉只留一条——以前前八张卡全是低沉和中年男，还没滑到女声就把窗口关了。
+- **旁白可以分男女两条。** 同一本书适合女声娓娓道来，另一本可能适合男声沉稳；两条各记各的，换书不用重新翻声线表。
+- **配角池只开一个实例。** 三套池全建起来 737 MB → 560 MB，稳态速度没差；开念时后台把三套一起预热，第一句对白不再冷等 9 秒。
+
+**1.14.29 ~ 1.14.35 · 六种书都能进来**
+
+这七版的主线是「拿到手的书，先能打开」。以前只认 TXT / EPUB / PDF，现在按读者的实际书堆补齐：
+
+| 能进来 | 怎么做 | 边界说清楚 |
+|---|---|---|
+| `.zip` 压缩包 | 拖进来整包导入，内存里解压，不往你的文件夹写一个字节 | 只认书，包里的图片、说明文件、Mac 资源叉自动跳过；GBK 老编码的 txt 也能读对 |
+| `.docx` | 正文一个字不少，表格里的字按行读出来，章节按标题自动分 | 老版 `.doc`（97-2003 二进制）读不了，会直说「另存为 .docx」 |
+| `.mobi` / `.azw3` | Kindle 两种格式自己解压、自己认章节，不装 Kindle、不联网 | 带 DRM 的明说「要去 DRM 才能读」；少数用 Kindle 私有压缩（HUFF）的，会建议先用 Calibre 转 EPUB |
+| 扫描版 PDF | 按页渲染成图片进阅读器，翻页、目录、进度条、书签、封面全照常 | 图上的字机器不认识，所以不能朗读 / 划词 / 笔记——点朗读会直说「这本只能看」，不含糊成「引擎故障」 |
+| 水印扫描书 | 导入时先量每页图像占比，整页是图且文字少得可怜就按扫描件打开，直接给原页 | 有些书被塞了一层「加微信领书」的水印，以前会打开满屏重复的水印句 |
+
+朗读这边同时修了一批「一句话说没就没」的问题：换声线不再「没声音 + 弹窗」（分清了「引擎还在准备」和「真坏了」，连着 3 次才算坏）；打开软件不再干等十几秒（只在你真打开一本书时才建会话）；句子里夹一个 `CPU` / `WiFi` 这类英文词不再整句跳过（英文词单独念，不认识的按字母念 C-P-U）；`DOCX` 里的英文段落交给单独的英文模型；安卓念英文从「念一行、停很久、跳掉一大段」修到「按句子切、绝不劈词」——根因是 Java 切句循环里句末标点表有半角 `.`、跳过标点表没有，读到英文句号时下标原地不动成了死循环，而它攥着旁白那把锁，一句英文能把后面所有中文一起拖死。
 
 **1.14.28 · 换台机器接着读（网盘同步 WebDAV）**
 
@@ -223,7 +266,7 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 ### 使用
 
 1. 双击 `MoYinReader.exe`（或 `MoYinReader.html`）。
-2. 「＋ 导入书籍」选一本 `.txt` / `.epub`。
+2. 「＋ 导入书籍」选一本 `.txt` / `.epub` / `.pdf` / `.docx` / `.mobi` / `.azw3`，或者直接把书（甚至一整个 `.zip`）拖进窗口。
 3. 点书打开，点右上「朗读」开始听；朗读条最左边可换声线。
 4. 回到书架能看见「▶ 续听 · 第 N 章」，接着上次听的地方继续。
 5. 选中正文任意一句即可高亮、写批注、复制或生成分享图；右侧「笔记」页汇总全部批注，可导出 Markdown 或打开阅读总结。
@@ -336,7 +379,7 @@ _unit_zip.js                       ZIP 解压内核单测（482 项）
 
 ## English
 
-**MoYin Reader** (Chinese: 墨吟, pinyin *mó yín* — "ink" + "to chant") is a single-file, offline-first Chinese TXT / EPUB reader with text-to-speech, highlights, notes and reading summaries — and typography that can hold its own: scroll or turn whole pages, two columns on wide screens and one on phones, six themes, auto reading and immersive full screen. a pair of 22.05 kHz leads plus 187 offline Chinese speakers (39 male, 148 female; 21 curated by default), with role-based reading that switches voices per character in dialogue. The whole interface toggles between Chinese and English. One portable exe on Windows, one apk on Android, or just double-click the HTML.
+**MoYin Reader** (Chinese: 墨吟, pinyin *mó yín* — "ink" + "to chant") is a single-file, offline-first Chinese reader for TXT / EPUB / PDF / DOCX / MOBI / AZW3 (drop a `.zip` of books and the whole bundle imports at once; scanned PDFs page through as page images) with text-to-speech, highlights, notes and reading summaries — and typography that can hold its own: scroll or turn whole pages, two columns on wide screens and one on phones, six themes, auto reading and immersive full screen. Speech uses three offline models: a pair of 22.05 kHz leads (the first two entries in the curated list, and they cannot be deleted — they are the fallback) plus 187 offline Chinese speakers (39 male, 148 female; 50 curated on desktop, 30 on phones, **any of which can be set as a lead**), with role-based reading that switches voices per character in dialogue. The whole interface toggles between Chinese and English. One portable exe on Windows, one apk on Android, or just double-click the HTML.
 
 Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 
@@ -383,7 +426,7 @@ Five releases in a row: the first four are about how it *sounds*, the last one a
 ### Features
 
 - **Formats** — TXT (auto-detects UTF-8 / GBK / Big5 / UTF-16) and EPUB, with a built-in ZIP / OPF / NCX / Nav parser and image support.
-- **Speech** — a pair of 22.05 kHz high-fidelity leads (one female, one male), eight fast voices derived from them by pitch, plus 187 offline Chinese speakers sharing a single 61 MB fp16 model (the int8 build is only 41 MB but pushes character error rate from 11% to 25% — audibly slurred — so we ship fp16 instead, which halves the size with no audible loss; about 1.5 s for a 20-character line on a phone), grouped into seven measured-pitch bands; 21 hand-picked voices up front, switch any of them right from the playback bar, even mid-sentence. The engine runs resident in-process (since 1.14.8), so a short line takes 0.19 s instead of 1.9 s.
+- **Speech** — a pair of 22.05 kHz high-fidelity leads (one female, one male; the first two curated entries, undeletable because they are the fallback), plus 187 offline Chinese speakers sharing a single 61.4 MB fp16 model (the int8 build is only 41 MB but pushes character error rate from 11% to 25% — audibly slurred — so we ship fp16 instead, which halves the size with no audible loss; about 1.5 s for a 20-character line on a phone), grouped into seven measured-pitch bands. 50 curated voices on desktop / 30 on phones, and **any voice in the library can be set as a lead** — switch it right from the playback bar, even mid-sentence. Since 1.14.39 the 187-speaker library also lives in the resident pool (same model, different `sid`), so a 19-character line takes 0.92 s — the same as the 22 kHz leads.
 - **English** — Chinese models know no Latin letters, so English is routed three ways: a bundled-if-present local English model, else the system English voice, else a pause measured by letter count. Never an error, never a fallback to the robotic voice mid-chapter.
 - **Role reading** — narration keeps your chosen voice while quoted dialogue switches per character, consistently for the whole book.
 - **Listening** — paragraph highlight with auto-scroll, auto-advance to the next chapter, sleep timer, speed control.
@@ -392,7 +435,7 @@ Five releases in a row: the first four are about how it *sounds*, the last one a
 - **Traditional → Simplified** — a Chinese switch in Settings renders Traditional books in Simplified; body and contents both convert. It is a **same-length substitution** done at display time, so the file is untouched, switching back restores it, and highlight / note / speech positions never drift. Full-text search follows the switch too.
 - **Illustrations** — tap any image in an EPUB for a full-screen view; tap anywhere or press Esc to close.
 - **Touch** — swipe left/right to turn pages, pinch to change text size (saved on release).
-- **Drag & drop** — drop TXT / EPUB (or a whole folder) onto the window to import; dropping while reading does not interrupt you.
+- **Drag & drop** — drop TXT / EPUB / PDF / DOCX / MOBI / AZW3 or a whole `.zip` (or a folder) onto the window to import; dropping while reading does not interrupt you. Archives are unpacked in memory and only books are taken.
 - **Appearance** — dark / light / sepia / green / slate / pure black, picked from a card panel in one go, plus your own paper and text colour and a brightness dimmer for reading in the dark.
 - **Network share (desktop)** — read straight from a LAN share (SMB): type `\\192.168.1.10\Books`, a mapped drive such as `Z:\books`, or any local path, and its TXT / EPUB are imported as if they were on this machine. Credentials are handled by Windows, so anything File Explorer can open, the reader can scan.
 - **Reading clock & breaks** — the toolbar shows the time and how long you have read this session (amber at 30 minutes, red at 60); a reminder offers a break or a ten-minute snooze after your chosen stretch.
