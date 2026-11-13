@@ -321,8 +321,29 @@ SID_F0 = {
     186: 229,
 }
 
-# 用户逐条试听敲定的 20 个配角声线（2026-11-08），列表里排在最前，按年龄层从低到高：
-# 老生 2、中年男 4、男声中音 2、青年男 1、沉稳女 2、成年女 5、青年女 3、童声 2。
+# 桌面端精选 50 条（2026-11-13 由 30 扩到 50）。
+#
+# 为什么桌面能放 50 条、手机还是 30 条：桌面端把 fanchen 那套 187 人也放进了
+# 常驻引擎（见 _probe_resident），每句实测 0.9 秒，跟 22 kHz 主角一样快；
+# 安卓端走的是另一套 JNI 桥，同时加载 50 条没必要，30 条够用。
+#
+# 扩表不换人：30 条全都留着（sid 不变，已选配置不受影响），只往后加 18 条，
+# 补的是各档原来空着的音高位置——
+#   男低沉 118/121 → 补 131/139（男声 · 低沉 3/4）
+#   男中年 146/150/160 → 补 161/163/164（中年男 4/5/6）
+#   男偏高 182~194 全挤在高处 → 补 167/175 填低端（男声 · 偏高 1/2）
+#   女低音 204/205/213 → 补 211（女声 · 低音 3）
+#   女成年 217/220/232/238 → 补 239/239（成年女 5/6）
+#   女青年 249~270 → 补 243/246/251/257/262/269（青年女 9~14）
+#   女高音只有童声 → 补 278/280（女声 · 高音 1/2，成年女高音）
+#
+# 命名原则没变：只给实测基频说得清的名字（档位 + 序号），不给年龄预期；
+# 编号接着同家族最大号往上加，sid 一个都没动。
+#
+# 2026-11-13 用户反馈「精选里男女青年占比要稍多一些」「低沉少一点」时扩到 30 条：
+#   男 13 条：低沉 2、中年 3、中音 3、青年 5
+#   女 15 条：女低 2、沉稳 1、成年 4、青年 8
+#   童 2 条；青年合计 13/30 = 43%，低沉只占 6.7%。
 #
 # 2026-11-11 按实测基频重命名（依据 _voice_audit.md，测试句「那年冬天老李拎着一篮梨从南方慢慢走来」）：
 # 原来的「青年男 1~4」名不副实——实测 s110 133 Hz 是全组第二低，s52 144、s102 151 都在中年男区间，
@@ -331,23 +352,50 @@ SID_F0 = {
 CURATED = [
     ('s124', '老生 · 低沉 1'),
     ('s74',  '老生 · 低沉 2'),
+    ('s119', '男声 · 低沉 3'),
+    ('s40',  '男声 · 低沉 4'),
     ('s58',  '中年男 1'),
-    ('s156', '中年男 2'),
-    ('s167', '中年男 3'),
-    ('s110', '中年男 4'),
+    ('s163', '中年男 2'),
+    ('s156', '中年男 3'),
+    ('s98',  '中年男 4'),
+    ('s143', '中年男 5'),
+    ('s107', '中年男 6'),
+    ('s76',  '男声 · 偏高 1'),
     ('s52',  '男声 · 中音 1'),
-    ('s102', '男声 · 中音 2'),
-    ('s32',  '青年男 1'),
+    ('s110', '男声 · 中音 2'),
+    ('s102', '男声 · 中音 3'),
+    ('s65',  '男声 · 偏高 2'),
+    ('s174', '青年男 1'),
+    ('s32',  '青年男 2'),
+    ('s148', '青年男 3'),
+    ('s72',  '青年男 4'),
+    ('s83',  '青年男 5'),
     ('s36',  '女声 · 低音 1'),
-    ('s169', '沉稳女 2'),
+    ('s23',  '女声 · 低音 2'),
+    ('s144', '女声 · 低音 3'),
+    ('s169', '沉稳女 1'),
     ('s13',  '成年女 1'),
     ('s149', '成年女 2'),
-    ('s106', '成年女 3'),
-    ('s19',  '成年女 4'),
-    ('s165', '成年女 5'),
+    ('s19',  '成年女 3'),
+    ('s165', '成年女 4'),
+    ('s84',  '成年女 5'),
+    ('s178', '成年女 6'),
+    ('s6',   '青年女 9'),
+    ('s77',  '青年女 10'),
     ('s129', '青年女 1'),
+    ('s164', '青年女 11'),
     ('s120', '青年女 2'),
+    ('s22',  '青年女 12'),
+    ('s103', '青年女 13'),
     ('s20',  '青年女 3'),
+    ('s28',  '青年女 4'),
+    ('s185', '青年女 5'),
+    ('s71',  '青年女 6'),
+    ('s108', '青年女 7'),
+    ('s68',  '青年女 14'),
+    ('s64',  '青年女 8'),
+    ('s125', '女声 · 高音 1'),
+    ('s139', '女声 · 高音 2'),
     ('s41',  '童声 1'),
     ('s105', '童声 2'),
 ]
@@ -392,12 +440,18 @@ def _shared_files():
 
 
 def _v(sid, label, hz):
-    """fanchen 的一个说话人：三个库文件共用，靠 sid 切声线。"""
+    """fanchen 的一个说话人：三个库文件共用，靠 sid 切声线。
+
+    resbase='s' 表示这套声线也进得了常驻引擎（sherpa_onnx 的 generate(sid=) 直接切人）。
+    常驻可用时 _probe_resident 会给它置 fast=True，之后就不必每条起一个子进程——
+    2026-11-13 实测：常驻下 fanchen 一句 19 字 0.92 秒，跟 22 kHz 主角一样快，
+    以前「每句 12 秒」全是命令行子进程反复载模型的账。"""
     d = os.path.join(MODEL_DIR, FANCHEN_DIR)
     files = [os.path.join(d, 'model.onnx'), os.path.join(d, 'tokens.txt'),
              os.path.join(d, 'lexicon.txt')]
     return {'kind': 'vits', 'model': files[0], 'files': files, 'sid': sid,
-            'dict_dir': os.path.join(d, 'dict'),
+            'dict_dir': os.path.join(d, 'dict'), 'resbase': 's', 'base': 's',
+            'pitch': 1.0,
             'label': label, 'band': band_of(hz, sid), 'f0': hz}
 
 
@@ -464,28 +518,37 @@ _PITCH = [('', 1.0), ('b', 0.94), ('c', 0.89), ('d', 1.06)]
 _BASE_DIR = {'f': XIAOYA_DIR, 'm': CHAOWEN_DIR}
 _BASE_F0 = {'f': XIAOYA_F0, 'm': CHAOWEN_F0}
 # 每个基干声线给出 4 个变体的显示名与音高档（band 必须以「男声/女声」开头，
-# 页面那边靠这个前缀判男女，别改。）
+# 页面那边靠这个前缀判男女，别改）。
+# 第 0 个是基干原声，键名沿用老配置里的 x0 / c0：升级后「墨吟 · 女声」还是同一个声音。
+# 1.14.39 起精选是 50 条真人声线（fanchen 也进了常驻），这 6 个变调不再进精选，
+# 只在「全部声线」里留着——同一个人的四种音高，挑不到合适的真人时仍是好用的备选。
 _FAST_META = {
-    'f': [('女声 1 · 原声', '女声 · 成年', 266),
+    'f': [('墨吟 · 女声', '女声 · 清亮', 266),
           ('女声 2 · 沉稳', '女声 · 低音', 250),
           ('女声 3 · 低沉', '女声 · 低音', 237),
           ('女声 4 · 明亮', '女声 · 青年', 282)],
-    'm': [('男声 1 · 原声', '男声 · 中年', 163),
+    'm': [('墨吟 · 男声', '男声 · 中音', 163),
           ('男声 2 · 沉稳', '男声 · 中年', 153),
           ('男声 3 · 低沉', '男声 · 低沉', 145),
           ('男声 4 · 清亮', '男声 · 偏高', 173)],
 }
+_FAST_KEY = {'f': ['x0', 'f1', 'f2', 'f3'], 'm': ['c0', 'm1', 'm2', 'm3']}
 
 RES = {'tried': False, 'mod': None, 'pool': {}, 'lock': threading.Lock(), 'err': ''}
 FAST = False          # 常驻引擎可用时置 True，_synth_one 据此分派
 
 
 def _fast_spec():
-    """把 f0..f3 / m0..m3 塞进 VOICES。base=基干模型，pitch=音高倍率。"""
+    """把 x0/f1..f3、c0/m1..m3 塞进 VOICES。base=基干模型，pitch=音高倍率。
+
+    0 号就是基干原声，键名沿用老配置里的 x0 / c0，用户选中的「墨吟 · 女声」
+    升级后还是同一个声音。f0 / m0 这两个旧键名不再单独建——老配置指到它们时
+    由页面的 fixLocalVoice 落到默认 x0 / c0，听到的是同一个声音。
+    """
     out = {}
     for base, metas in _FAST_META.items():
         for i, (label, band, hz) in enumerate(metas):
-            key = '%s%d' % (base, i)
+            key = _FAST_KEY[base][i]
             out[key] = {'kind': 'fast', 'fast': True, 'base': base,
                         'pitch': _PITCH[i][1], 'sid': None,
                         'model': os.path.join(MODEL_DIR, _BASE_DIR[base], 'model.onnx'),
@@ -514,11 +577,13 @@ def _probe_resident():
         RES['err'] = 'model missing'
         return False
     VOICES.update(_fast_spec())
-    # 老配置里存的是 x0/c0，让它们指向同一套常驻实例，用户不用重新选音色
-    if 'x0' in VOICES:
-        VOICES['x0'] = VOICES['f0']
-    if 'c0' in VOICES:
-        VOICES['c0'] = VOICES['m0']
+    # 187 个配角也走常驻：多说话人模型的 generate(sid=) 直接换人，不用每条起一个子进程。
+    # 2026-11-13 实测一句 19 字 0.92 秒（子进程方式 12 秒上下），从此精选才敢放到 50 条。
+    # 每条声线只是模型里的一个说话人向量，多开一条不多占一个字节。
+    if os.path.isfile(os.path.join(MODEL_DIR, FANCHEN_DIR, 'model.onnx')):
+        for _k, _s in VOICES.items():
+            if _s.get('resbase') == 's':
+                _s['fast'] = True
     FAST = True
     return True
 
@@ -526,6 +591,20 @@ def _probe_resident():
 def _res_cfg(base):
     """常驻配置：与命令行版逐项对齐（silence 0.35 让引擎念紧凑，停顿我们自己插）。"""
     so = RES['mod']
+    if base == 's':
+        # 配角库跟主角不同源：它自带 tokens / lexicon 和 jieba 分词表，
+        # 也没有 shared 那三个数字规则 fst（命令行路径里同样是 len(files) > 3 才加）。
+        d = os.path.join(MODEL_DIR, FANCHEN_DIR)
+        v = so.OfflineTtsVitsModelConfig(
+            model=os.path.join(d, 'model.onnx'),
+            tokens=os.path.join(d, 'tokens.txt'),
+            lexicon=os.path.join(d, 'lexicon.txt'),
+            dict_dir=os.path.join(d, 'dict'))
+        m = so.OfflineTtsModelConfig(vits=v, num_threads=2, debug=False, provider='cpu')
+        c = so.OfflineTtsConfig(model=m)
+        c.silence_scale = SILENCE_SCALE
+        c.max_num_sentences = 1
+        return c
     d = _BASE_DIR[base]
     v = so.OfflineTtsVitsModelConfig(
         model=os.path.join(MODEL_DIR, d, 'model.onnx'),
@@ -542,15 +621,23 @@ def _res_cfg(base):
 
 
 def _res_pool(base, n=None):
-    """每个基干声线建 n 个实例轮转（单实例常驻约 105 MB）。
+    """每个基干声线建 n 个实例轮转（22 kHz 单实例约 105 MB，配角库约 175 MB）。
 
     实例数按 CPU 核数给：本机 12 核实测 10 个片段 2 实例 2.7 秒 / 3 实例 2.1 秒 /
     4 实例 1.8 秒，收益递减而内存线性上涨。女主声线用得最多（旁白＋多数对白）给 3 个，
     男声给 2 个；4 核及以下的小机器各减一个，别为了快把内存吃光。
+
+    配角库 's' 只给 1 个：实测 187 人那套每句 1.2~1.6 秒（和 22 kHz 主角同速），
+    对白本来就是一句接一句，多开一个实例内存 +175 MB，实测稳态几乎看不出差别
+    （三个池全建好是 737 MB，只留一个就回到 560 MB）。这一份只在第一次用到
+    配角声线时才建，光听旁白的人内存停在 390 MB。
     """
     if n is None:
         cores = os.cpu_count() or 4
-        n = (3 if base == 'f' else 2) if cores >= 8 else (2 if base == 'f' else 1)
+        if base == 's':
+            n = 1
+        else:
+            n = (3 if base == 'f' else 2) if cores >= 8 else (2 if base == 'f' else 1)
     p = RES['pool'].get(base)
     if p:
         return p
@@ -772,12 +859,16 @@ def _pitch_shift(samples, r):
     return np.interp(idx, src, s).astype(np.float32)
 
 
-def _synth_res(text, base, speed, pitch):
-    """常驻合成一句。实例从池里借，借不到就排队等——不会并发踩同一个实例。"""
+def _synth_res(text, base, speed, pitch, sid=None):
+    """常驻合成一句。实例从池里借，借不到就排队等——不会并发踩同一个实例。
+
+    sid：配角库靠它选说话人（0~186）；主角是单说话人模型，传 None 即可。
+    主角的 4 个音高变体靠 pitch 做重采样，配角库不重采样（pitch=1.0）。
+    """
     p = _res_pool(base)
     inst = p['q'].get()
     try:
-        au = inst.generate(text, sid=0, speed=speed)
+        au = inst.generate(text, sid=(0 if sid is None else int(sid)), speed=speed)
     finally:
         p['q'].put(inst)
     s = au.samples
@@ -790,7 +881,7 @@ def warm_resident(which='fm'):
     """后台把所有常驻实例建起来。点「朗读」之前先叫醒，第一句就不用等 1.6 秒。"""
     if not FAST:
         return False
-    for base in ('f', 'm'):
+    for base in ('f', 'm', 's'):
         if base not in which:
             continue
         try:
@@ -803,8 +894,9 @@ def warm_resident(which='fm'):
 # 启动时就探一次：常驻引擎能不能用决定后续走哪条路，也决定 /health 报什么。
 _probe_resident()
 
-# 默认音色：女主优先；没装就退回 matcha，再没有就用挑过的 12 号。
+# 默认音色：女主优先；没装女主就退男主，再没有就退回配角库第一个。
 DEFAULT_VOICE = ('x0' if 'x0' in VOICES
+                 else 'c0' if 'c0' in VOICES
                  else 'm0' if 'm0' in VOICES else 's12')
 
 
@@ -883,20 +975,12 @@ def voice_ready(voice):
 def health():
     exe = find_exe()
     voices = {v: voice_ready(v) for v in VOICES}
+    # 推荐列表 = 主角两条 + 精选（桌面端 50 条）。1.14.39 起配角库也走常驻，
+    # 每句 0.9 秒，跟主角没差别，所以不再分「常驻推荐 8 条 / 子进程推荐 30 条」两套。
     order = []
-    if FAST:
-        # 常驻模式下推荐的就是这 8 个：两个基干声线各 4 个音高变体。
-        # 187 个 16k 配角声线仍然在 VOICES 里（老配置不会失效），
-        # 但不再进推荐列表——它们每句要 12 秒，放进去只会让人以为软件卡了。
-        for b in ('f', 'm'):
-            for i in range(len(_FAST_META[b])):
-                k = '%s%d' % (b, i)
-                if k in VOICES:
-                    order.append(k)
-    else:
-        for v in ['x0', 'c0'] + [k for k, _l in CURATED]:
-            if v in VOICES:
-                order.append(v)
+    for v in ['x0', 'c0'] + [k for k, _l in CURATED]:
+        if v in VOICES:
+            order.append(v)
     return {
         'ok': (bool(exe) or FAST) and any(voices.values()),
         'engine': 'sherpa-onnx 2.0.1' if (exe or FAST) else 'missing',
@@ -1248,7 +1332,8 @@ def _synth_zh(text, voice, length_scale, silence_scale):
     """中文片段：常驻引擎优先，没有才退子进程。"""
     s = VOICES.get(voice) or VOICES[DEFAULT_VOICE]
     if s.get('fast'):
-        return _synth_res(text, s['base'], 1.0 / (length_scale or 1.0), s['pitch'])
+        return _synth_res(text, s.get('base') or 's', 1.0 / (length_scale or 1.0),
+                          s.get('pitch', 1.0), s.get('sid'))
     return _synth_cli(text, voice, length_scale, silence_scale)
 
 
@@ -1450,10 +1535,12 @@ class Handler(BaseHTTPRequestHandler):
         if p in ('/health', ''):
             self._send(200, json.dumps(health(), ensure_ascii=False))
         elif p == '/warm':
-            # 常驻模式下这次真的有意义：把两个基干声线的实例建起来（约 3 秒），
+            # 常驻模式下这次真的有意义：把三套实例都建起来（约 3~5 秒），
             # 页面在开头几句旁白还在播时叫一次，等角色第一次开口就已经热好了。
+            # 1.14.39 起连配角库一起热：187 人也常驻了，不预热的话第一句对白要等
+            # 9 秒左右（冷建池 + 和 fm 抢 CPU），预一下是 2.5 秒，且全在后台。
             if FAST:
-                threading.Thread(target=warm_resident, kwargs={'which': 'fm'},
+                threading.Thread(target=warm_resident, kwargs={'which': 'fms'},
                                  daemon=True).start()
             self._send(200, json.dumps({'ok': True, 'lib': True, 'resident': FAST},
                                        ensure_ascii=False))

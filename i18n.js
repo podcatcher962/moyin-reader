@@ -235,23 +235,29 @@
 
     /* ---------- 我的声线（朗读条置顶） ---------- */
     '我的声线': 'My voices',
+    '我的主角声线': 'My lead voices',
+    '这一栏就是「主角声线」：点哪个名字，朗读立刻换成那个声音，同时它进朗读条最左边的下拉——所以「置顶」和「设为主角」是同一件事，不用分两步做。点 × 只是把它从朗读条里拿掉，不会取消正在用的声音，声线本身也没丢。':
+      'This row <b>is</b> the lead-voice list: tap a name and reading switches to it immediately, and it also goes into the leftmost dropdown of the reading bar — so “pinning” and “setting as the lead voice” are the same action, not two steps. The × only drops it from the bar; it does not stop the voice you are using, and the voice itself is never removed.',
     '只有「原版」男女主是固定的——删了就没默认声音兜底。其余全部自由：六个音高变体、187 个配角声线、你自己挑的，都能删能加，最多 {max} 个（女声、男声各 {half}）。点 × 只从朗读条移除，声线本身没丢，随时在下面加回来。':
       'Only the two original lead voices are fixed — without them there is no fallback voice. Everything else is free: the six pitch variants, the 187 supporting voices and anything you pick, all removable and re-addable, up to {max} ({half} female + {half} male). The × only removes it from the reading bar; the voice itself is still there.',
     '这套中性音色不合耳朵很正常——187 个人声，总有一个让你心动的声音。合耳的留下，不合耳的删掉，把选择权留给你自己。':
       'Not every neutral voice will suit your ear — with 187 of them, one is bound to. Keep the ones you like, drop the rest; the choice is yours.',
     '主角那组固定、删不掉；下面是你自己挑的：女声 {a} 个 + 男声 {b} 个。挑中哪个就自动进这里并存进本机，下次打开还在。点 × 只从朗读条移除，声线本身没丢，随时能加回来。':
       'The lead group is fixed and cannot be removed. Below it are your own picks: {a} female + {b} male. Picking a voice above adds it here and saves it on this device. Tap × to drop it from the bar only — the voice itself stays and can be added back anytime.',
-    '📌 置顶 · 女声（{n}/{max}）': '📌 Pinned · female ({n}/{max})',
-    '📌 置顶 · 男声（{n}/{max}）': '📌 Pinned · male ({n}/{max})',
+    '📌 置顶＝主角 · 女声（{n}/{max}）': '📌 Pinned = lead · female ({n}/{max})',
+    '📌 置顶＝主角 · 男声（{n}/{max}）': '📌 Pinned = lead · male ({n}/{max})',
+    '📌 置顶＝主角 · 女声 {n}/{max}': '📌 Pinned = lead · female {n}/{max}',
+    '📌 置顶＝主角 · 男声 {n}/{max}': '📌 Pinned = lead · male {n}/{max}',
     '原版声线 · 固定 {n} 个（不可删）': 'Original voices · {n} fixed (not removable)',
     '主角声线 · 固定 {n} 个（不可删）': 'Lead voices · {n} fixed (not removable)',
-    '我置顶的女声 {n} / {max}': 'Pinned female {n} / {max}',
-    '我置顶的男声 {n} / {max}': 'Pinned male {n} / {max}',
     '还没挑': 'none yet',
     '⭐ 原版声线 · 固定（{n} 个）': '⭐ Original voices · fixed ({n})',
     '⭐ 主角声线 · 固定（{n} 个）': '⭐ Lead voices · fixed ({n})',
     '▶ 正在使用': '▶ In use',
     '⋯ 更多声线': '⋯ More voices',
+    '⋯ 其余{v}（{n} 个）': '⋯ More {v} ({n})',
+    '从低沉到清亮，{n} 个男女各档都有，男女青年占四成。点 ▷ 听一句，挑一个就能开始。以后随时能在朗读条最左边的下拉里换。':
+      'From deep to bright, {n} voices across every register, male and female, with young voices making up about 40%. Tap ▷ to hear a line, then pick one. You can switch anytime from the leftmost dropdown on the reading bar.',
     '添加 / 删除置顶声线（去设置）': 'Add / remove pinned voices (in Settings)',
     '还有 {n} 个声线，去设置里挑': '{n} more voices — pick them in Settings',
     '男': 'male',
@@ -445,6 +451,21 @@
     '在线自然语音连接失败，已自动切回本地语音（联网恢复后可在语音下拉里重新选）':
       'Could not reach the online natural voice; fell back to a local voice. Pick it again from the dropdown once the network is back.',
     '对白': 'Dialogue',
+    /* ---------- 旁白与主角声线 ---------- */
+    '旁白男 / 女声': 'Narration voice',
+    '男声': 'Male',
+    '女声': 'Female',
+    '未选': 'not set',
+    '按书换：温情文学可用女声，武侠历史可用男声。点一下整本旁白都换过去，阅读进度不受影响；男女两条各自记住上次选的声线。':
+      'Switch per book: a warm novel often suits a female narrator, wuxia and history a male one. One tap changes the whole book — your reading position stays. Each of the two remembers its own last voice.',
+    '{r}旁白还没选过声线，先在上面挑一个': 'No {r} narrator voice yet — pick one from the list above first.',
+    '旁白已经是 {v}': 'Narration already uses {v}',
+    '旁白换成{r}：{v}': 'Narration switched to {r}: {v}',
+    '🎚 旁白用（整本切换）': '🎚 Narration (whole book)',
+    '男主声线': 'Male lead',
+    '女主声线': 'Female lead',
+    '分角色朗读时，书里男角色里的主角用这一条': 'The male lead uses this voice in multi-voice reading',
+    '分角色朗读时，书里女角色里的主角用这一条': 'The female lead uses this voice in multi-voice reading',
     '朗读启动失败：': 'Could not start reading: ',
     '分角色朗读已开启：旁白用当前声线，引号里的对白按人物换声。点击关闭':
       'Multi-voice is on: narration keeps this voice, quoted dialogue switches per character. Click to turn off.',

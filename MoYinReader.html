@@ -421,6 +421,29 @@ body.imm #clockFloat{display:block}
 @keyframes restIn{from{opacity:0;transform:translateX(-50%) translateY(14px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 #restTip .rtTx{line-height:1.5}
 #restTip button{min-height:30px;padding:4px 11px;border-radius:14px;white-space:nowrap}
+/* ---------- 首次启动：挑一个朗读的声音 ---------- */
+.ivmask{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.55);padding:16px}
+.ivbox{width:min(96vw,540px);max-height:88vh;overflow:auto;background:var(--card);color:var(--tx);
+  border:1px solid var(--line);border-radius:18px;padding:20px 20px 0;
+  box-shadow:0 26px 70px rgba(0,0,0,.5)}
+.ivbox h3{margin:0 0 7px;font-size:1.1em;font-weight:600}
+.ivbox p{margin:0 0 14px;font-size:.82em;color:var(--tx2);line-height:1.65}
+.ivgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.ivcard{position:relative;display:flex;flex-direction:column;gap:2px;align-items:flex-start;
+  padding:11px 12px;border-radius:12px;background:var(--card2);border:1px solid var(--line);
+  cursor:pointer;text-align:left;color:var(--tx);transition:border-color .16s,box-shadow .16s}
+.ivcard b{font-size:.9em;font-weight:600;padding-right:26px}
+.ivcard span{font-size:.74em;color:var(--tx2);font-variant-numeric:tabular-nums}
+.ivcard.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.ivcard .ivtry{position:absolute;right:8px;top:8px;width:26px;height:26px;min-height:0;padding:0;
+  border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--acc);
+  font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.ivcard .ivtry:hover{border-color:var(--acc)}
+.ivfoot{display:flex;gap:10px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;
+  position:sticky;bottom:0;background:var(--card);padding:12px 0 18px;
+  box-shadow:0 -14px 18px -14px rgba(0,0,0,.55)}
+.ivfoot button{min-height:38px;padding:0 18px;border-radius:12px}
 /* 窄屏（按屏幕宽度自动） */
 @media (max-width:860px){
 
@@ -1820,23 +1843,29 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
 
     /* ---------- 我的声线（朗读条置顶） ---------- */
     '我的声线': 'My voices',
+    '我的主角声线': 'My lead voices',
+    '这一栏就是「主角声线」：点哪个名字，朗读立刻换成那个声音，同时它进朗读条最左边的下拉——所以「置顶」和「设为主角」是同一件事，不用分两步做。点 × 只是把它从朗读条里拿掉，不会取消正在用的声音，声线本身也没丢。':
+      'This row <b>is</b> the lead-voice list: tap a name and reading switches to it immediately, and it also goes into the leftmost dropdown of the reading bar — so “pinning” and “setting as the lead voice” are the same action, not two steps. The × only drops it from the bar; it does not stop the voice you are using, and the voice itself is never removed.',
     '只有「原版」男女主是固定的——删了就没默认声音兜底。其余全部自由：六个音高变体、187 个配角声线、你自己挑的，都能删能加，最多 {max} 个（女声、男声各 {half}）。点 × 只从朗读条移除，声线本身没丢，随时在下面加回来。':
       'Only the two original lead voices are fixed — without them there is no fallback voice. Everything else is free: the six pitch variants, the 187 supporting voices and anything you pick, all removable and re-addable, up to {max} ({half} female + {half} male). The × only removes it from the reading bar; the voice itself is still there.',
     '这套中性音色不合耳朵很正常——187 个人声，总有一个让你心动的声音。合耳的留下，不合耳的删掉，把选择权留给你自己。':
       'Not every neutral voice will suit your ear — with 187 of them, one is bound to. Keep the ones you like, drop the rest; the choice is yours.',
     '主角那组固定、删不掉；下面是你自己挑的：女声 {a} 个 + 男声 {b} 个。挑中哪个就自动进这里并存进本机，下次打开还在。点 × 只从朗读条移除，声线本身没丢，随时能加回来。':
       'The lead group is fixed and cannot be removed. Below it are your own picks: {a} female + {b} male. Picking a voice above adds it here and saves it on this device. Tap × to drop it from the bar only — the voice itself stays and can be added back anytime.',
-    '📌 置顶 · 女声（{n}/{max}）': '📌 Pinned · female ({n}/{max})',
-    '📌 置顶 · 男声（{n}/{max}）': '📌 Pinned · male ({n}/{max})',
+    '📌 置顶＝主角 · 女声（{n}/{max}）': '📌 Pinned = lead · female ({n}/{max})',
+    '📌 置顶＝主角 · 男声（{n}/{max}）': '📌 Pinned = lead · male ({n}/{max})',
+    '📌 置顶＝主角 · 女声 {n}/{max}': '📌 Pinned = lead · female {n}/{max}',
+    '📌 置顶＝主角 · 男声 {n}/{max}': '📌 Pinned = lead · male {n}/{max}',
     '原版声线 · 固定 {n} 个（不可删）': 'Original voices · {n} fixed (not removable)',
     '主角声线 · 固定 {n} 个（不可删）': 'Lead voices · {n} fixed (not removable)',
-    '我置顶的女声 {n} / {max}': 'Pinned female {n} / {max}',
-    '我置顶的男声 {n} / {max}': 'Pinned male {n} / {max}',
     '还没挑': 'none yet',
     '⭐ 原版声线 · 固定（{n} 个）': '⭐ Original voices · fixed ({n})',
     '⭐ 主角声线 · 固定（{n} 个）': '⭐ Lead voices · fixed ({n})',
     '▶ 正在使用': '▶ In use',
     '⋯ 更多声线': '⋯ More voices',
+    '⋯ 其余{v}（{n} 个）': '⋯ More {v} ({n})',
+    '从低沉到清亮，{n} 个男女各档都有，男女青年占四成。点 ▷ 听一句，挑一个就能开始。以后随时能在朗读条最左边的下拉里换。':
+      'From deep to bright, {n} voices across every register, male and female, with young voices making up about 40%. Tap ▷ to hear a line, then pick one. You can switch anytime from the leftmost dropdown on the reading bar.',
     '添加 / 删除置顶声线（去设置）': 'Add / remove pinned voices (in Settings)',
     '还有 {n} 个声线，去设置里挑': '{n} more voices — pick them in Settings',
     '男': 'male',
@@ -2030,6 +2059,21 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     '在线自然语音连接失败，已自动切回本地语音（联网恢复后可在语音下拉里重新选）':
       'Could not reach the online natural voice; fell back to a local voice. Pick it again from the dropdown once the network is back.',
     '对白': 'Dialogue',
+    /* ---------- 旁白与主角声线 ---------- */
+    '旁白男 / 女声': 'Narration voice',
+    '男声': 'Male',
+    '女声': 'Female',
+    '未选': 'not set',
+    '按书换：温情文学可用女声，武侠历史可用男声。点一下整本旁白都换过去，阅读进度不受影响；男女两条各自记住上次选的声线。':
+      'Switch per book: a warm novel often suits a female narrator, wuxia and history a male one. One tap changes the whole book — your reading position stays. Each of the two remembers its own last voice.',
+    '{r}旁白还没选过声线，先在上面挑一个': 'No {r} narrator voice yet — pick one from the list above first.',
+    '旁白已经是 {v}': 'Narration already uses {v}',
+    '旁白换成{r}：{v}': 'Narration switched to {r}: {v}',
+    '🎚 旁白用（整本切换）': '🎚 Narration (whole book)',
+    '男主声线': 'Male lead',
+    '女主声线': 'Female lead',
+    '分角色朗读时，书里男角色里的主角用这一条': 'The male lead uses this voice in multi-voice reading',
+    '分角色朗读时，书里女角色里的主角用这一条': 'The female lead uses this voice in multi-voice reading',
     '朗读启动失败：': 'Could not start reading: ',
     '分角色朗读已开启：旁白用当前声线，引号里的对白按人物换声。点击关闭':
       'Multi-voice is on: narration keeps this voice, quoted dialogue switches per character. Click to turn off.',
@@ -2526,7 +2570,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p class="kv">Want natural Chinese quickly? See <b>Settings → Free neural voices</b>: install the open-source voice library once and it works offline forever, free of charge.</p>' +
       '<p>Browser speech uses the operating system engine. The built-in Windows voices (Huihui / Kangkang / Yaoyao) are old concatenative synthesis — flat pitch, hard pauses, robot-like. Voices named <code>Online (Natural)</code> are neural: they handle intonation, stress and sentence-final falls, and sound close to a human.</p>' +
       '<h3>Three options</h3><ul>' +
-      '<li><b>⭐ Free offline neural voices (recommended)</b>: sherpa-onnx plus three open-source Chinese VITS models — XiaoYa and ChaoWen at 22.05 kHz for the two leads, FanChen-C at 16 kHz for the supporting cast — running on your own CPU. Near-human intonation, <b>no network, no fees, no account, no API key</b>. The supporting library holds 187 Chinese speakers (39 male + 148 female); 21 curated voices are listed by default and role-based reading is supported. Double-click the launcher before listening.</li>' +
+      '<li><b>⭐ Free offline neural voices (recommended)</b>: sherpa-onnx plus three open-source Chinese VITS models — XiaoYa and ChaoWen at 22.05 kHz for the two leads, FanChen-C at 16 kHz for the supporting cast — running on your own CPU. Near-human intonation, <b>no network, no fees, no account, no API key</b>. The supporting library holds 187 Chinese speakers (39 male + 148 female); {cur} curated voices are listed by default and role-based reading is supported. Double-click the launcher before listening.</li>' +
       '<li><b>⭐ Natural voices</b>: names containing <code>Natural</code> / <code>Neural</code>, provided by Microsoft Edge. Good quality but <b>needs a connection</b>, and the service is often unreachable from mainland China.</li>' +
       '<li><b>Local voices</b>: fully offline and instant, but clearly mechanical. Use as a fallback.</li></ul>' +
       '<p>The voice list is grouped accordingly and the badge next to it shows “● Free neural voices” or “● Local voice (robotic)”. <b>Preview</b> compares voices without touching your reading position.</p>' +
@@ -2554,7 +2598,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<li>When the badge in the reading bar turns green — “● Free neural voices” — it is connected. Hit <b>Preview voice</b> to confirm sound. Closing that window stops the service and the app falls back to system voices; reading is unaffected.</li></ol>' +
       '<p class="kv">Moving to another computer: copy the whole <code>VoicePack</code> folder (engine and model already inside, about 53 MB). If you only copy the scripts, run <code>安装语音包.cmd</code> on the new machine to download the same files (about 53 MB, from a China-friendly mirror, chunked and parallel). The Windows voice library cannot be reused on other systems. <b>The full Windows EXE has the library appended inside the executable</b>: copy that single file (about 47 MB) and you can listen immediately; it unpacks to the local cache on first run.</p>' +
       '<h3>Built-in voices · 187 Chinese speakers (39 male + 148 female)</h3>' +
-      '<p>One supporting model contains 187 different Chinese speakers. The dropdown lists the <b>21 hand-picked, named</b> voices by default; to hear more, open <b>Settings → Free neural voices → Voice range</b> and choose “All 187”. The list is then sorted into seven pitch bands (low / mid / bright male; low / mid / clear / high female). Use <b>Preview voice</b> to compare, or switch directly from the dropdown at the left of the reading bar — while reading, the current paragraph restarts with the new voice. Everything is offline neural speech and real-time on an ordinary CPU.</p>' +
+      '<p>One supporting model contains 187 different Chinese speakers. The dropdown lists the <b>{cur} hand-picked, named</b> voices by default (30 on phones); to hear more, open <b>Settings → Free neural voices → Voice range</b> and choose “All {total}”. The list is then sorted into seven pitch bands (low / mid / bright male; low / mid / clear / high female). Use <b>Preview voice</b> to compare, or switch directly from the dropdown at the left of the reading bar — while reading, the current paragraph restarts with the new voice. Everything is offline neural speech and real-time on an ordinary CPU.</p>' +
       '<p><b>Why 187 supporting voices cost no space</b>: they all come from the same 38 MB FanChen-C multi-speaker model — switching only changes a <code>--sid</code> index. The official model ships numbers without nicknames; the “low / clear / bright” labels come from each speaker’s measured median pitch (F0) and exist only to help you tell them apart. <b>Preview and pick the one you like.</b></p>' +
       '<p class="kv">For long novels the default “Voice 12” (warm, slightly low) is a good start; try “Voice 160” or “Voice 150” for something brighter, “Voice 110” for a male voice. Synthesis is fast (about one second for a 4–7 second sentence). Only installed voices are listed; missing files are hidden automatically.</p>' +
       '<h3>Role-based reading (a different voice per character)</h3>' +
@@ -2580,7 +2624,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<h3>Cleared browser data and lost my books?</h3><p>Data lives in IndexedDB; clearing site data deletes it. <b>Back up</b> first, and keep the original files.</p>' +
       '<h3>How do I move to another computer or phone?</h3><p>Export a backup JSON (tick “include book files”), copy it together with this HTML file, then use <b>Restore</b> on the new device. Or just copy the HTML and re-import the books. The offline voice library is Windows-only: copy the <code>VoicePack</code> folder as well.</p>' +
       '<h3>What is “Resume” on the shelf?</h3><p>Listening position is remembered separately from reading position, so the two never interfere. After listening, the book card shows “▶ Resume · ch. N”; tap it to continue from the exact paragraph. To read from your reading position instead, open the book and tap <b>Read aloud</b>. The button only appears for books you have listened to.</p>' +
-      '<h3>Can I change voice halfway through?</h3><p>Use the dropdown at the left of the reading bar — 21 curated voices by default, up to all 187 in Settings. To give dialogue its own voices, tap <b>Multi-voice</b>. The current paragraph is re-read with the new voice; no need to stop or go back to the shelf. <b>Preview voice</b> in Settings lets you compare first.</p>' +
+      '<h3>Can I change voice halfway through?</h3><p>Use the dropdown at the left of the reading bar — {cur} curated voices by default, up to all {total} in Settings. Pinning a voice there <b>is</b> setting it as the lead voice. To give dialogue its own voices, tap <b>Multi-voice</b>. The current paragraph is re-read with the new voice; no need to stop or go back to the shelf. <b>Preview voice</b> in Settings lets you compare first.</p>' +
       '<h3>How do highlights and notes work?</h3><p>Select text in the page, then choose a colour, add a note, copy, or make a share card. All highlights are listed under <b>Notes</b> in the side panel and stored with the book — they travel with a full backup. Export them as Markdown from that panel; the <b>Reading summary</b> collects them chapter by chapter.</p>' +
       '<h3>Buttons cramped on a phone?</h3><p>The reader bar is a single row now — back, title, clock, contents, read aloud and <b>⋯</b>. Everything else (search, type, bookmarks, notes, theme, auto reading, full screen, settings) sits behind <b>⋯</b> in a panel that floats over the page instead of making the bar taller. Tapping the middle of a page hides both bars entirely.</p>' +
       '<h3>How do I get two columns?</h3><p>Tap <b>⋯</b> in the reader bar, then <b>Type</b> and look at <b>Reading mode</b>: switch to <b>Pages</b>, and Columns set to <b>Auto</b> gives you two columns on a wide window; <b>Two</b> forces it when the window is wide enough. Narrow windows and phones fall back to a single column rather than squeezing the text.<br>Paged mode turns whole screens, not pixels: tap the <b>left third</b> for the previous page, the <b>right third</b> for the next, use the wheel, space or ← →, or swipe on a phone. Tapping the <b>middle</b> hides or shows both toolbars — hidden, the body fills the screen; tap the middle again or the thin strip at the very top to bring them back.</p>' +
@@ -2618,7 +2662,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p>A single-file, offline-first TXT / EPUB reader with text-to-speech. Double-click the HTML and read; works in any modern browser on Windows, Linux, Android and iOS.</p>' +
       '<p>The Chinese name “墨吟” (“ink, and reading aloud”) and the English name are used by this project only. They are <b>not affiliated with</b> any company, voice platform or streamer of a similar name, and imply no commercial endorsement.</p>' +
       '<p>The shelf + reader layout and the speech scheduling were informed by Koodo Reader on this machine, with all code rewritten from zero and no dependencies: EPUB unzipping, OPF / NCX / Nav contents, body and illustration parsing are all built in, with no external scripts or CDN.</p>' +
-      '<p class="kv">Speech can use the free open-source offline neural voices (sherpa-onnx + XiaoYa / ChaoWen / FanChen-C VITS): no network, no fees, no account. The supporting library contains 187 Chinese speakers (39 male + 148 female), 21 curated by default, and supports role-based reading. The library ships in <code>VoicePack</code>; the full Windows EXE has it appended inside, so one file is enough.</p>' +
+      '<p class="kv">Speech can use the free open-source offline neural voices (sherpa-onnx + XiaoYa / ChaoWen / FanChen-C VITS): no network, no fees, no account. The supporting library contains 187 Chinese speakers (39 male + 148 female), {cur} curated by default, and supports role-based reading. The library ships in <code>VoicePack</code>; the full Windows EXE has it appended inside, so one file is enough.</p>' +
       '<p>Released under the <b>MIT License</b>: use, modify and redistribute freely, including commercially, keeping the copyright and license notice. Full terms under <b>Open source &amp; license</b>.</p>' +
       '<h3>What changed in 1.10.2</h3><ul>' +
       '<li><b>Traditional to Simplified</b>: Settings has a Chinese switch — Original or Simplified. Turn it on for books from Taiwan or old texts; body and contents both convert, and <b>the file itself is never touched</b> — switch back to restore. Built on OpenCC\'s table (2965 one-to-one characters) and a same-length substitution, so highlights, notes and speech positions never drift.</li>' +
@@ -2694,7 +2738,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.14.35';
+  var VER = '1.14.39';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -2784,6 +2828,16 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     /* 朗读条置顶：从「全部」里挑过的声线记在这里，可增可删。以前只记当前那一个，
        选第二个就把第一个挤掉，所以看着像「加了又被删」。 */
     pinVoices: [],
+    /* 分角色时男女主角各用哪一条声线。空 = 还没定，由 fixLead() 按模式补默认。
+       以前男女主是靠角色池顺序发出来的，而池子头一个是 s124（118 Hz 老生·低沉），
+       于是全书男主一开口就是最沉那嗓子。现在主角单独一条，绕开池子。 */
+    leadM: '', leadF: '',
+    /* 旁白也分男/女两条：书不一样，有的适合女声娓娓道来，有的适合男声沉稳。
+       两条都记住，设置页/朗读条一键换，换书不用重新翻一遍声线表。
+       空 = 还没定，由 fixNarr() 按模式补默认。 */
+    narrM: '', narrF: '',
+    /* 首次启动的「挑一个声音」只弹一次。0 = 还没弹过 */
+    introRev: 0,
     /* 1.14.23 起声线范围默认「全部」：让用户一进设置就能挑到全部音色，
        不必先切一次范围。精选仍然保留，作为「不想挑就用这几个」的推荐位。 */
     voiceSet: 'all', voiceSetRev: 0,
@@ -3010,13 +3064,17 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     // 性别配额要等引擎报上档位才能判，这里只做类型过滤 + 总上限，剩下交给 fixPinBalance()。
     if (!Array.isArray(CFG.pinVoices)) CFG.pinVoices = [];
     else CFG.pinVoices = CFG.pinVoices.filter(function (k) { return typeof k === 'string' && k; }).slice(0, 20);
-    /* 1.14.27：六个音高变体从「主角固定」改成「可删的置顶」。升级时补进去一次，
-       条上不会突然少掉六个；用户之后自己删掉就不再自动加回来（pinSeedRev 记着）。
-       这里用常量键名而不是读 /health：loadCfg 跑的时候引擎还没探测，拿不到声线表。 */
+    /* 新装的默认置顶：6 条精选真人声线（女 3 + 男 3）。
+       1.14.27 那会儿补的是六个音高变体，可那六个都是同一个人的四种音高，
+       拿来做新用户的默认推荐太单薄——现在精选里有 50 个真人，就换成真人。
+       老配置有 pinSeedRev 记着，一个都不会被改。这里仍用常量键名：
+       loadCfg 跑的时候引擎还没探测，拿不到声线表。 */
     if (!CFG.pinSeedRev) {
-      CFG.pinSeedRev = 1;
+      CFG.pinSeedRev = 2;
       var seed = Array.isArray(CFG.pinVoices) ? CFG.pinVoices.slice() : [];
-      VARIANT_KEYS.forEach(function (k) { if (seed.indexOf(k) < 0) seed.push(k); });
+      ['s13', 's129', 's36', 's32', 's58', 's174'].forEach(function (k) {
+        if (seed.indexOf(k) < 0) seed.push(k);
+      });
       CFG.pinVoices = seed;
       saveCfg();
     }
@@ -5498,31 +5556,58 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
      配角库是 187 个说话人的多说话人模型（16 kHz），靠 --sid 切换，
      所以放开到 187 个音色也不增加体积。
      每项：[音色 key, 显示名, 音高分档]；服务在线时用 /health 返回的全量表，
-     服务没起来时用下面这份精选 23 个兜底（缺文件的音色会自动隐藏）。 */
+     服务没起来时用下面这份精选 50 个兜底（缺文件的音色会自动隐藏）。 */
   var LOCAL_VOICES = [
-    ['x0',   '墨吟 · 女声',      '女声 · 清亮'],
-    ['c0',   '墨吟 · 男声',      '男声 · 中音'],
-    ['s124', '老生 · 低沉 1',    '男声 · 低沉'],
-    ['s74',  '老生 · 低沉 2',    '男声 · 低沉'],
-    ['s58',  '中年男 1',         '男声 · 中年'],
-    ['s156', '中年男 2',         '男声 · 中年'],
-    ['s167', '中年男 3',         '男声 · 中年'],
-    ['s110', '中年男 4',         '男声 · 中年'],
-    ['s52',  '男声 · 中音 1',    '男声 · 中年'],
-    ['s102', '男声 · 中音 2',    '男声 · 中年'],
-    ['s32',  '青年男 1',         '男声 · 偏高'],
-    ['s36',  '女声 · 低音 1',    '女声 · 低音'],
-    ['s169', '沉稳女 2',         '女声 · 低音'],
-    ['s13',  '成年女 1',         '女声 · 成年'],
-    ['s149', '成年女 2',         '女声 · 成年'],
-    ['s106', '成年女 3',         '女声 · 成年'],
-    ['s19',  '成年女 4',         '女声 · 成年'],
-    ['s165', '成年女 5',         '女声 · 成年'],
-    ['s129', '青年女 1',         '女声 · 青年'],
-    ['s120', '青年女 2',         '女声 · 青年'],
-    ['s20',  '青年女 3',         '女声 · 青年'],
-    ['s41',  '童声 1',           '童声 · 高音'],
-    ['s105', '童声 2',           '童声 · 高音']
+    ['x0',    '墨吟 · 女声',            '女声 · 清亮'],
+    ['c0',    '墨吟 · 男声',            '男声 · 中音'],
+    ['s124',  '老生 · 低沉 1',          '男声 · 低沉'],
+    ['s74',   '老生 · 低沉 2',          '男声 · 低沉'],
+    ['s119',  '男声 · 低沉 3',          '男声 · 低沉'],
+    ['s40',   '男声 · 低沉 4',          '男声 · 低沉'],
+    ['s58',   '中年男 1',                '男声 · 中年'],
+    ['s163',  '中年男 2',                '男声 · 中年'],
+    ['s156',  '中年男 3',                '男声 · 中年'],
+    ['s98',   '中年男 4',                '男声 · 中年'],
+    ['s143',  '中年男 5',                '男声 · 中年'],
+    ['s107',  '中年男 6',                '男声 · 中年'],
+    ['s76',   '男声 · 偏高 1',          '男声 · 偏高'],
+    ['s52',   '男声 · 中音 1',          '男声 · 中年'],
+    ['s110',  '男声 · 中音 2',          '男声 · 中年'],
+    ['s102',  '男声 · 中音 3',          '男声 · 中年'],
+    ['s65',   '男声 · 偏高 2',          '男声 · 偏高'],
+    ['s174',  '青年男 1',                '男声 · 偏高'],
+    ['s32',   '青年男 2',                '男声 · 偏高'],
+    ['s148',  '青年男 3',                '男声 · 偏高'],
+    ['s72',   '青年男 4',                '男声 · 偏高'],
+    ['s83',   '青年男 5',                '男声 · 偏高'],
+    ['s36',   '女声 · 低音 1',          '女声 · 低音'],
+    ['s23',   '女声 · 低音 2',          '女声 · 低音'],
+    ['s144',  '女声 · 低音 3',          '女声 · 低音'],
+    ['s169',  '沉稳女 1',                '女声 · 低音'],
+    ['s13',   '成年女 1',                '女声 · 成年'],
+    ['s149',  '成年女 2',                '女声 · 成年'],
+    ['s19',   '成年女 3',                '女声 · 成年'],
+    ['s165',  '成年女 4',                '女声 · 成年'],
+    ['s84',   '成年女 5',                '女声 · 成年'],
+    ['s178',  '成年女 6',                '女声 · 成年'],
+    ['s6',    '青年女 9',                '女声 · 青年'],
+    ['s77',   '青年女 10',               '女声 · 青年'],
+    ['s129',  '青年女 1',                '女声 · 青年'],
+    ['s164',  '青年女 11',               '女声 · 青年'],
+    ['s120',  '青年女 2',                '女声 · 青年'],
+    ['s22',   '青年女 12',               '女声 · 青年'],
+    ['s103',  '青年女 13',               '女声 · 青年'],
+    ['s20',   '青年女 3',                '女声 · 青年'],
+    ['s28',   '青年女 4',                '女声 · 青年'],
+    ['s185',  '青年女 5',                '女声 · 青年'],
+    ['s71',   '青年女 6',                '女声 · 青年'],
+    ['s108',  '青年女 7',                '女声 · 青年'],
+    ['s68',   '青年女 14',               '女声 · 青年'],
+    ['s64',   '青年女 8',                '女声 · 高音'],
+    ['s125',  '女声 · 高音 1',          '女声 · 高音'],
+    ['s139',  '女声 · 高音 2',          '女声 · 高音'],
+    ['s41',   '童声 1',                  '女声 · 高音'],
+    ['s105',  '童声 2',                  '女声 · 高音'],
   ];
   /* 用 /health 的结果构造全量列表：精选排最前，其余按基频从低到高，
      正好自然落进「男低 → 男中 → 男亮 → 女沉 → 女中 → 女清亮 → 女高」7 个档。 */
@@ -5540,7 +5625,8 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     if (!x) return k;
     return (/号$/.test(x[1]) && x[2]) ? x[1] + '（' + x[2] + '）' : x[1];
   }
-  /* 精选 / 全部：精选只列人工命名过的 21 个；全部则按音高分 7 组列出 187 个 */
+  /* 精选 / 全部：精选只列人工命名过的 50 个（桌面端；手机端 30 个）；
+     全部则按音高分 7 组列出 187 个。数字一律取自 /health，别在这里写死。 */
   function localVoiceList() {
     var av = (LOCAL.info && LOCAL.info.voices) || null;
     var all = LOCAL.list || LOCAL_VOICES;
@@ -5550,16 +5636,22 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     var only = all.filter(function (x) { return cur.indexOf(x[0]) >= 0; });
     return only.length ? only : all;
   }
-  function voiceGroup(x) {
+  function voiceGroup(x, forceAll) {
     var cur = (LOCAL.info && LOCAL.info.curated) || null;
     if (cur && cur.indexOf(x[0]) >= 0) return T('⭐ 推荐音色');
-    if (CFG.voiceSet === 'all' && LOCAL.list) return T(x[2] || '其他音色');
+    if ((forceAll || CFG.voiceSet === 'all') && LOCAL.list) return T(x[2] || '其他音色');
     return T('⭐ 推荐音色');
   }
-  function localVoiceOptions() {
-    var list = localVoiceList(), html = '', last = null;
+  /* forceAll：设置页永远列全库（187 + 主角），不受「声线范围」影响。
+     范围只该管朗读条那个短下拉——设置页是用来翻库、挑新声音的地方，
+     在这里藏起 166 个声线，用户就再也没地方把它们找出来了。 */
+  function localVoiceOptions(forceAll) {
+    var av = (LOCAL.info && LOCAL.info.voices) || null;
+    var list = forceAll ? (LOCAL.list || LOCAL_VOICES) : localVoiceList();
+    if (forceAll && av) list = list.filter(function (x) { return av[x[0]] !== false; });
+    var html = '', last = null;
     list.forEach(function (x) {
-      var g = voiceGroup(x);
+      var g = voiceGroup(x, forceAll);
       if (g !== last) {
         if (last !== null) html += '</optgroup>';
         html += '<optgroup label="' + esc(g) + '">'; last = g;
@@ -5568,14 +5660,109 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     });
     return html + (last !== null ? '</optgroup>' : '');
   }
-  /* 旧配置指向已删除 / 未安装的音色时，自动落到第一个可用音色 */
+  /* 旧配置指向已删除 / 未安装的音色时，自动落到第一个可用音色。
+     引擎说了默认是谁（/health 的 default）就用它——精简包没有 x0，
+     列表第一个是低音男声（老生 · 低沉），拿来念旁白没法听。 */
   function fixLocalVoice() {
     var av = (LOCAL.info && LOCAL.info.voices) || null;
     var pool = (LOCAL.list || LOCAL_VOICES).filter(function (x) { return !av || av[x[0]] !== false; });
     if (!pool.length) return;
     if (!pool.some(function (x) { return x[0] === CFG.localVoice; })) {
-      CFG.localVoice = pool[0][0]; saveCfg();
+      var def = LOCAL.info && LOCAL.info['default'];
+      var pick = (def && pool.some(function (x) { return x[0] === def; })) ? def : pool[0][0];
+      CFG.localVoice = pick; saveCfg();
     }
+  }
+
+  /* ---------------- 旁白的男声 / 女声 ----------------
+     同一本书适合女声娓娓道来，换一本武侠/历史可能男声更对味。所以旁白留两条：
+     男一条、女一条，都记在本机，设置页与朗读条各有一个一键切换的入口。
+     当前真正在用的是 CFG.localVoice，这两条只是「这个性别上次选的是谁」。 */
+  var NARR_FALLBACK_M = ['s32', 's167', 's52', 's102', 's58'];
+  var NARR_FALLBACK_F = ['s36', 's13', 's149', 's129', 's169'];
+  function fixNarr() {
+    if (!localReady()) return 0;
+    var core = fixedVoiceKeys();                 // [女, 男]，精简版是空的
+    var firstOk = function (list) {
+      for (var i = 0; i < list.length; i++) if (voiceUsable(list[i])) return list[i];
+      return '';
+    };
+    var ch = 0;
+    /* 一开始就在听男声的，别把「男声旁白」记成别的：先认当前旁白 */
+    if (!voiceUsable(CFG.narrF)) {
+      CFG.narrF = core[0] || firstOk(NARR_FALLBACK_F) || CFG.localVoice; ch++;
+    }
+    if (!voiceUsable(CFG.narrM)) {
+      CFG.narrM = (voiceGender(CFG.localVoice) === 'm' && voiceUsable(CFG.localVoice))
+        ? CFG.localVoice : (core[1] || firstOk(NARR_FALLBACK_M)); ch++;
+    }
+    if (ch) saveCfg();
+    return ch;
+  }
+  function setNarr(g) {
+    var k = (g === 'm' ? CFG.narrM : CFG.narrF);
+    var who = g === 'm' ? T('男声') : T('女声');
+    if (!k) { toast(T('{r}旁白还没选过声线，先在上面挑一个', { r: who }), 3000); return; }
+    if (k === CFG.localVoice) { toast(T('旁白已经是 {v}', { v: localVoiceName(k) }), 2400); return; }
+    pickLocalVoice(k, true);
+    toast(T('旁白换成{r}：{v}', { r: who, v: localVoiceName(k) }), 2600);
+  }
+
+  /* ---------------- 男女主角的声线 ----------------
+     完整版有 22 kHz 的两份主角模型，主角就用它们；精简版没有，从 187 人库里挑。
+     为什么不能留给角色池自己发：池子按精选表顺序取，头一个是 s124（118 Hz
+     「老生 · 低沉 1」），于是全书男主一开口就是最沉的那嗓子——「男声太低」
+     其实是这个顺序造成的，不是缺候选。 */
+  var LEAD_FALLBACK_M = ['s32', 's167', 's52', 's102', 's58'];
+  var LEAD_FALLBACK_F = ['s13', 's149', 's36', 's129', 's169'];
+  function voiceUsable(k) {
+    if (!k) return false;
+    var av = (LOCAL.info && LOCAL.info.voices) || null;
+    if (av && av[k] === false) return false;
+    return (LOCAL.list || LOCAL_VOICES).some(function (x) { return x[0] === k; });
+  }
+  /* 补默认：指向的声线不在了（换了语音包 / 首次启动）就按模式挑一个 */
+  function fixLead() {
+    if (!localReady()) return 0;
+    var core = fixedVoiceKeys();          // [女, 男]，精简版是空的
+    var firstOk = function (list, avoid) {
+      for (var i = 0; i < list.length; i++) {
+        if (voiceUsable(list[i]) && list[i] !== avoid) return list[i];
+      }
+      return '';
+    };
+    var ch = 0;
+    if (!voiceUsable(CFG.leadM)) {
+      CFG.leadM = core[1] || firstOk(LEAD_FALLBACK_M, CFG.localVoice); ch++;
+    }
+    if (!voiceUsable(CFG.leadF)) {
+      /* 完整版就用 22 kHz 的主角女声，哪怕和旁白是同一个——那本来就是书里的女主。
+         只有精简版（没有主角模型）才要避开旁白，换一条别的女声，不然女主和旁白
+         一模一样，分角色等于白开。 */
+      var f = core[0];
+      if (!f) f = firstOk(LEAD_FALLBACK_F, CFG.localVoice);
+      CFG.leadF = f; ch++;
+    }
+    if (ch) saveCfg();
+    return ch;
+  }
+  /* who 是不是这本书的男女主；是就返回该用的那条声线，否则空（照旧走角色池） */
+  function leadFor(who, g) {
+    if (!who || !CFG.roleOn) return '';
+    var main = (g === 'm' ? SPK.main.m : g === 'f' ? SPK.main.f : '');
+    if (!main || who !== main) return '';
+    var k = (g === 'm' ? CFG.leadM : CFG.leadF);
+    return voiceUsable(k) ? k : '';
+  }
+  function setLead(g, k) {
+    if (!k) return;
+    if (g === 'm') CFG.leadM = k; else CFG.leadF = k;
+    saveCfg(); resetCast();                // 主角换人，角色分配要重排
+    fillVoices();
+    toast(T('{r}的主角声线已设为 {v}', {
+      r: g === 'm' ? T('男主') : T('女主'), v: localVoiceName(k)
+    }), 2600);
+    if (SPK.playing) speakJump(0);
   }
   /* slow：等到超时引擎仍没就绪；firstSynth：还没成功合成过（首段要建会话，慢得多） */
   var LOCAL = { ready: false, checking: false, info: null, list: null, miss: 0,
@@ -5609,7 +5796,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
         if (j && typeof j.lib !== 'undefined') LOCAL.lib = !!j.lib;
         LOCAL.list = buildVoiceList(j);
         LOCAL.miss = LOCAL.ready ? 0 : LOCAL.miss + 1;
-        if (LOCAL.ready) { fixLocalVoice(); fixPinBalance(); }
+        if (LOCAL.ready) { fixLocalVoice(); fixPinBalance(); fixLead(); fixNarr(); maybeIntro(); }
         /* 连上的是升级前残留的旧引擎？提示一句「重启就好」，
            免得用户以为这一版什么都没改。 */
         if (LOCAL.ready && !speakEnv().android && (j.version || 0) < LOCAL_MINVER && !LOCAL.oldTip) {
@@ -6034,6 +6221,11 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       LOCAL.miss = 0;
       if (!LOCAL.ready) localProbe();
     }, 12000);
+    /* 首次启动的「挑一个声音」在等引擎就绪：先探一次早的，
+       别让人对着书架干等 20 秒才见弹窗 */
+    if (!CFG.introRev) setTimeout(function () {
+      if (!CFG.introRev && !LOCAL.ready) { LOCAL.miss = 0; localProbe(); }
+    }, 5000);
   }
   function warmLib(force, delayMs) {    if (!localReady()) return;
     if (!force && !CFG.roleOn) return;
@@ -6176,18 +6368,17 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       : (on ? T('在线合成，需联网。点击看说明') : T('系统本地语音，离线可用但音质较机械。点击看说明'));
   }
   /* 朗读条放什么：
-     ① 主角那套（原版男女主 + 8 个音高变体）固定在上面，不能删——它是默认音色，删了没兜底；
+     ① 原版男女主（x0 / c0）固定在上面，不能删——它是默认音色，删了没兜底；
      ② 其余全自由：在设置里挑中的声线自动进「我置顶的」，点 × 就删，存在本机配置里。
+        置顶就是设为主角，点哪个名字朗读立刻换成哪个——下拉里的组名也照着这么写。
      ③ 自选位男女各半：20 个 = 10 女 + 10 男。听书时换声线，男女都够用，
         也不会挑着挑着整条全是同一种性别。
-     187 个全库声线不铺在条上，否则下拉拉成一条长龙；要挑去设置里挑。 */
+     195 个声线不铺在条上，否则下拉拉成一条长龙；要挑去设置里挑。 */
   var PIN_MAX = 20;
   var PIN_PER_GENDER = 10;               // 女声 10 + 男声 10
   var CORE_ALIAS = { x0: 'f0', c0: 'm0' };
-  /* 1.14.27 起：朗读条上只有「原版」男女主不可删——它们是默认兜底，删了朗读就没声。
-     f1~f3 / m1~m3 这六个音高变体、187 个配角库、自己挑的音色，一律自由增删。
-     之前六个变体跟着主角一起钉死，想只留听得顺的那一两个也不行，位置被占着。 */
-  var VARIANT_KEYS = ['f1', 'f2', 'f3', 'm1', 'm2', 'm3'];
+  /* 朗读条上只有「原版」男女主不可删——它们是默认兜底，删了朗读就没声。
+     音高变体（f1~f3 / m1~m3）、187 个配角库、自己挑的音色，一律自由增删。 */
   function keyNorm(k) { return CORE_ALIAS[k] || k; }
   /* 原版男女主：基干索引 0 的那两个（新引擎 f0 / m0，老引擎 x0 / c0）。 */
   function fixedVoiceKeys() {
@@ -6310,6 +6501,8 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     if (!k) return false;
     var slot = pinSlot(k), added = false;
     CFG.localVoice = k; CFG.voiceAuto = 0;
+    /* 顺手记进「男声旁白 / 女声旁白」那一格：下次换书一键就能回到这条 */
+    if (voiceGender(k) === 'm') CFG.narrM = k; else CFG.narrF = k;
     if (slot === 'ok' || slot === 'in') added = pinVoice(k, true);
     saveCfg();
     resetCast();                            // 旁白换了，角色池要重新避开新声线
@@ -6358,9 +6551,9 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       html += head(T('原版声线 · 固定 {n} 个（不可删）', { n: core.length })) +
         core.map(function (k) { return chip(k, false); }).join('');
     }
-    html += head(T('我置顶的女声 {n} / {max}', { n: fem.length, max: PIN_PER_GENDER })) +
+    html += head(T('📌 置顶＝主角 · 女声 {n}/{max}', { n: fem.length, max: PIN_PER_GENDER })) +
       (fem.length ? fem.map(function (k) { return chip(k, true); }).join('') : none);
-    html += head(T('我置顶的男声 {n} / {max}', { n: mal.length, max: PIN_PER_GENDER })) +
+    html += head(T('📌 置顶＝主角 · 男声 {n}/{max}', { n: mal.length, max: PIN_PER_GENDER })) +
       (mal.length ? mal.map(function (k) { return chip(k, true); }).join('') : none);
     return html;
   }
@@ -6385,16 +6578,177 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     var fem = pins.filter(function (k) { return voiceGender(k) !== 'm'; });
     var mal = pins.filter(function (k) { return voiceGender(k) === 'm'; });
     if (fem.length) {
-      out.push([T('📌 置顶 · 女声（{n}/{max}）', { n: fem.length, max: PIN_PER_GENDER }),
+      out.push([T('📌 置顶＝主角 · 女声（{n}/{max}）', { n: fem.length, max: PIN_PER_GENDER }),
         fem.map(function (k) { used.push(k); return byKey[k]; })]);
     }
     if (mal.length) {
-      out.push([T('📌 置顶 · 男声（{n}/{max}）', { n: mal.length, max: PIN_PER_GENDER }),
+      out.push([T('📌 置顶＝主角 · 男声（{n}/{max}）', { n: mal.length, max: PIN_PER_GENDER }),
         mal.map(function (k) { used.push(k); return byKey[k]; })]);
     }
     var ck = CFG.localVoice;
     if (ck && byKey[ck] && used.indexOf(ck) < 0) out.push([T('▶ 正在使用'), [byKey[ck]]]);
     return out;
+  }
+  /* 朗读条里的「设为男主 / 女主」两组候选：当前值排最前，再跟置顶的、精选的。
+     只列同性别、且文件还在的；上限 12 个，免得下拉比正文还长。
+     全库 187 个不放进来——那去设置页挑，这里只放常用的。 */
+  function leadCandList(g) {
+    var want = g === 'm' ? 'm' : 'f', out = [], seen = {};
+    var av = (LOCAL.info && LOCAL.info.voices) || null;
+    var pool = LOCAL.list || LOCAL_VOICES, cur = (LOCAL.info && LOCAL.info.curated) || [];
+    var push = function (k) {
+      if (!k || seen[k] || (av && av[k] === false)) return;
+      var x = pool.filter(function (y) { return y[0] === k; })[0];
+      if (!x || voiceGender(k) !== want) return;
+      seen[k] = 1; out.push(x);
+    };
+    push(g === 'm' ? CFG.leadM : CFG.leadF);
+    pinKeys().forEach(push);
+    cur.forEach(push);
+    /* 所有声线都能当主角：常用（当前 / 置顶 / 精选）排前面，
+       剩下按音高补全，同性别的一条不漏。 */
+    pool.forEach(function (x) { push(x[0]); });
+    return out;
+  }
+  function leadOptGroup(g) {
+    var all = leadCandList(g);
+    if (!all.length) return '';
+    var cur = g === 'm' ? CFG.leadM : CFG.leadF;
+    var lab = g === 'm'
+      ? T('🎙 设为男主声线（现：{v}）', { v: localVoiceName(cur) || T('未定') })
+      : T('🎙 设为女主声线（现：{v}）', { v: localVoiceName(cur) || T('未定') });
+    var opt = function (x) {
+      return '<option value="lead' + g + ':' + x[0] + '">' + esc(T(x[1])) + '</option>';
+    };
+    /* 前 12 条是当前 / 置顶 / 精选，日常要用的都在这一屏里；剩下同性别的一律可选，
+       但折进第二组，免得一拉开就是一百多项把人劝退。组名只报这一组自己的条数，
+       别写「全部 152 个」——那会让人以为组里少了一百多条。 */
+    var head = all.slice(0, 12), rest = all.slice(12);
+    var html = '<optgroup label="' + esc(lab) + '">' + head.map(opt).join('') + '</optgroup>';
+    if (rest.length) {
+      html += '<optgroup label="' +
+        esc(T('⋯ 其余{v}（{n} 个）', { v: g === 'm' ? T('男声') : T('女声'), n: rest.length })) +
+        '">' + rest.map(opt).join('') + '</optgroup>';
+    }
+    return html;
+  }
+  /* ---------------- 首次启动：挑一个声音 ----------------
+     187 个声音一次摊开只会让人关掉。这里按音高从低到高取 10 个，
+     每个都能当场试听；挑完就写进配置并置顶，之后不再弹。
+     「以后再说」也算走过——弹第二次就是骚扰。 */
+  /* 首启弹窗的 20 张卡：从 30 条精选里挑，男女各半、青年占四成、低沉只留一条。
+     精选本身的排序基本跟着音高走，但首启不能照抄——那样前八张全是低沉和中年男，
+     用户还滑不到女声就把窗口关了。这里手工排：男 9（含青年 4）、女 10（含青年 4）、童 1。 */
+  var INTRO_KEYS = ['s124', 's58', 's163', 's156', 's52',
+                    's174', 's32', 's148', 's72',
+                    's36', 's169', 's13', 's149', 's19', 's165',
+                    's129', 's120', 's20', 's185', 's41'];
+  var INTRO_TXT = '窗外的雨下得很细，字落在纸上，像脚印落在雪里。';
+  function maybeIntro() {
+    if (CFG.introRev || !localReady()) return false;
+    if ($('introVoice')) return false;                       // 已经摊在屏幕上了
+    /* 用户已经进设置页（多半就在挑声音）就别盖他一层：算走过，不再弹 */
+    var mb = $('modal');
+    if (mb && mb.classList.contains('on')) { CFG.introRev = 1; saveCfg(); return false; }
+    /* 完整版有 22 kHz 的主角模型，先把它们摆在最前面——那是这套方案的招牌；
+       精简版没有，就只列库里的（按音高从低到高，10 个）。 */
+    var core = fixedVoiceKeys(), lib = INTRO_KEYS.filter(voiceUsable);
+    /* 完整版把两份 22 kHz 主角摆在最前，再从库里补到 20；精简版 20 个全从库里出 */
+    var have = core.length ? core.concat(lib.slice(0, 20 - core.length)) : lib.slice(0, 20);
+    if (have.length < 4) return false;
+    CFG.introRev = 1; saveCfg();
+    showIntroVoice(have);
+    return true;
+  }
+  function showIntroVoice(keys) {
+    var old = $('introVoice'); if (old) old.remove();
+    var sel = keys.indexOf(CFG.localVoice) >= 0 ? CFG.localVoice : keys[0];
+    var cards = keys.map(function (k) {
+      var x = (LOCAL.list || LOCAL_VOICES).filter(function (y) { return y[0] === k; })[0] || [];
+      var hz = (LOCAL.info && LOCAL.info.f0 && LOCAL.info.f0[k]) || 0;
+      return '<div class="ivcard' + (k === sel ? ' on' : '') + '" data-iv="' + esc(k) + '">' +
+        '<button class="ivtry" data-ivtry="' + esc(k) + '" title="' + esc(T('听一句')) + '">▶</button>' +
+        '<b>' + esc(T(x[1] || k)) + '</b>' +
+        '<span>' + (hz ? hz + ' Hz' : esc(T(x[2] || ''))) + '</span>' +
+        '</div>';
+    }).join('');
+    var d = document.createElement('div');
+    d.id = 'introVoice'; d.className = 'ivmask';
+    d.innerHTML = '<div class="ivbox">' +
+      '<h3>' + T('先挑一个朗读的声音') + '</h3>' +
+      '<p>' + T('从低沉到清亮，{n} 个男女各档都有，男女青年占四成。点 ▷ 听一句，挑一个就能开始。以后随时能在朗读条最左边的下拉里换。', { n: keys.length }) + '</p>' +
+      '<div class="ivgrid">' + cards + '</div>' +
+      '<div class="ivfoot">' +
+      '<button class="pri" id="ivOk">' + T('就用这个') + '</button>' +
+      '<button class="ghost" id="ivSkip">' + T('以后再说') + '</button>' +
+      '</div></div>';
+    document.body.appendChild(d);
+    var chosen = sel, aud = null;
+    d.addEventListener('click', function (e) {
+      var tb = e.target.closest('[data-ivtry]');
+      if (tb) {
+        var k = tb.getAttribute('data-ivtry');
+        if (aud) { try { aud.pause(); } catch (q) {} revokeURL(aud.src); aud = null; }
+        tb.textContent = '…';
+        /* 试听走和朗读同一条合成链路，听到的就是真念书的声音 */
+        withTimeout(localURL(INTRO_TXT, k), 30000).then(function (u) {
+          tb.textContent = '▶';
+          aud = new Audio(); aud.src = u; aud.playbackRate = Number(CFG.rate) || 1;
+          aud.onended = aud.onerror = function () { revokeURL(u); aud = null; };
+          try { var p = aud.play(); if (p && p.catch) p.catch(function () { revokeURL(u); }); }
+          catch (q2) { revokeURL(u); }
+        }).catch(function (er) { tb.textContent = '▶'; toast(T('试听失败：') + er.message, 4200); });
+        return;
+      }
+      var c = e.target.closest('[data-iv]');
+      if (c) {
+        chosen = c.getAttribute('data-iv');
+        Array.prototype.forEach.call(d.querySelectorAll('.ivcard'), function (n) {
+          n.classList.toggle('on', n === c);
+        });
+        return;
+      }
+      if (e.target.id === 'ivOk') {
+        d.remove();
+        pickLocalVoice(chosen, true);
+        var box = $('pinBox'); if (box) box.innerHTML = pinChips();
+        toast(T('已选定 {v}。在朗读条最左边的下拉里随时能换', { v: localVoiceName(chosen) }), 4200);
+        return;
+      }
+      if (e.target.id === 'ivSkip' || e.target === d) {
+        if (aud) { try { aud.pause(); } catch (q3) {} }
+        d.remove();
+      }
+    });
+  }
+
+  /* 设置页的主角下拉：全库同性别都能挑——这里是翻库的地方，不设 12 个上限 */
+  function leadSelOptions(g) {
+    var want = g === 'm' ? 'm' : 'f', cur = (g === 'm' ? CFG.leadM : CFG.leadF);
+    var av = (LOCAL.info && LOCAL.info.voices) || null;
+    var pool = LOCAL.list || LOCAL_VOICES;
+    if (!LOCAL.list) pool = LOCAL_VOICES;                 // 引擎没连上：只列兜底那几条
+    return pool.filter(function (x) {
+      return voiceGender(x[0]) === want && (!av || av[x[0]] !== false);
+    }).map(function (x) {
+      return '<option value="' + esc(x[0]) + '"' + (x[0] === cur ? ' selected' : '') + '>' +
+        esc(T(x[1])) + '</option>';
+    }).join('');
+  }
+  /* 朗读条上的「旁白男 / 女」：整本一键换性别，比在置顶列表里一个个找快。
+     不打 selected——下拉最终要停回「当前旁白」那一项，用 ✔ 标出正在用的性别就够了。 */
+  function narrOptGroup() {
+    var cur = voiceGender(CFG.localVoice);
+    var one = function (g) {
+      var k = g === 'm' ? CFG.narrM : CFG.narrF;
+      if (!k) return '';
+      var nm = T(localVoiceName(k));
+      return '<option value="narr:' + g + '">' +
+        (cur === g ? '✔ ' : '') + (g === 'm' ? T('男声') : T('女声')) + '：' + nm + '</option>';
+    };
+    var body = one('f') + one('m');
+    if (!body) return '';
+    return '<optgroup label="' + esc(T('🎚 旁白用（整本切换）')) + '">' + body + '</optgroup>';
   }
   function fillVoices() {
     var sel = $('spVoice'), vs = SYN ? (SYN.getVoices() || []) : [];
@@ -6410,6 +6764,8 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
         }).join('') + '</optgroup>';
       });
       // 条上只能切声线，增删统一去设置页：入口放一个，别让人在两个下拉里各猜一半
+      html += narrOptGroup();
+      html += leadOptGroup('m') + leadOptGroup('f');
       html += '<optgroup label="' + esc(T('⋯ 更多声线')) + '">' +
         '<option value="__pins">' + esc(T('添加 / 删除置顶声线（去设置）')) + '</option>' +
         (total > shown ? '<option value="__more">' + esc(T('还有 {n} 个声线，去设置里挑', { n: total - shown })) + '</option>' : '') +
@@ -7095,6 +7451,8 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     if (want === 'mix') want = (gender === 'm' ? 'male' : gender === 'f' ? 'female' : 'mix');
     return keys.filter(function (k) {
       if (k === CFG.localVoice) return false;
+      /* 男女主那两条留给他们自己，别的角色不许抢 */
+      if (k === CFG.leadM || k === CFG.leadF) return false;
       var male = String(band[k] || '').indexOf('男声') === 0;
       if (want === 'male') return male;
       if (want === 'female') return !male;
@@ -7131,8 +7489,15 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
         key = '';
       }
     }
-    var pool = rolePool(g), out = key || '';
-    if (!pool.length) out = CFG.localVoice;
+    var pool = rolePool(g), out = key || '', lead = leadFor(who, g);
+    if (!out && lead) {
+      /* 男女主：直接用主角那条声线，不参与角色池的「谁用得最少」竞争。
+         池子里已经排除了这两条，所以别的角色不会跟主角撞声。 */
+      out = lead;
+      SPK.cast[who] = lead;
+      if (who.charAt(0) !== '?') SPK.castName[lead] = who;
+      SPK.used[lead] = (SPK.used[lead] || 0) + 1;
+    } else if (!pool.length) out = CFG.localVoice;
     else if (!out) {
       var pick = pool[0], best = 1e9;
       pool.forEach(function (k) { var c = SPK.used[k] || 0; if (c < best) { best = c; pick = k; } });
@@ -7435,6 +7800,9 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     }
   }
   var TRY_TEXT = '窗外的雨下得很细，字落在纸上，像脚印落在雪里。他合上书，听见声音还留在屋里，没有立刻散去。';
+  /* 精简试验包：包里不带 22 kHz 的小雅 / 超文两份主角模型。
+     帮助页里写着「三份模型」的那些话得跟着改口，否则用户下拉里找不到主角会以为坏了。 */
+  function isLite() { return !!(LOCAL.info && LOCAL.info.lite); }
   /* 模型里到底有多少声音、男女各多少：设置页文案直接用它，别写死数字 */
   function voiceStat() {
     var all = LOCAL.list || LOCAL_VOICES;
@@ -7903,7 +8271,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p class="kv">只想尽快听到自然的中文？看「阅读设置 → 免费神经语音」：一次下载开源语音库，之后完全离线、不花一分钱。</p>' +
       '<p>浏览器朗读用的是系统语音引擎。Windows 自带的「慧慧 / 康康 / 瑶瑶」是老式拼接合成，语调平、断句硬，听起来像机器人；名称里带 <code>Online (Natural)</code> 的是神经网络语音，会自己处理语调、重音与句末降调，接近真人朗读。</p>' +
       '<h3>三条路怎么选</h3><ul>' +
-      '<li><b>⭐ 免费离线神经语音（推荐）</b>：本机跑开源的 sherpa-onnx + 中文神经语音模型，语调接近真人，<b>不联网、不收费、不需要账号、不需要 Key</b>。语音库已随成品装好：默认是 22.05 kHz 的「墨吟 · 女声」，另有一份同规格的「墨吟 · 男声」当男主，再带 187 个配角说话人（148 女 + 39 男），精选 21 个直接可选，还能按人物分角色朗读；听书前双击一下启动器。详见「免费神经语音」。</li>' +
+      '<li><b>⭐ 免费离线神经语音（推荐）</b>：本机跑开源的 sherpa-onnx + 中文神经语音模型，语调接近真人，<b>不联网、不收费、不需要账号、不需要 Key</b>。语音库已随成品装好：默认是 22.05 kHz 的「墨吟 · 女声」，另有一份同规格的「墨吟 · 男声」当男主，再带 187 个配角说话人（148 女 + 39 男），精选 {cur} 个直接可选，还能按人物分角色朗读；听书前双击一下启动器。详见「免费神经语音」。</li>' +
       '<li><b>⭐ 自然语音</b>：名称含 <code>Natural</code> / <code>Neural</code>，由 Microsoft Edge 提供，音质好但<b>需要联网</b>，国内网络常常连不上微软语音服务。</li>' +
       '<li><b>本地语音</b>：完全离线、响应快，但机械感明显。断网或临时凑合时用它。</li></ul>' +
       '<p>语音下拉已按这几类分组，旁边的标签会显示当前是「● 免费神经语音」还是「● 本地语音（较机械）」；点「试听」可直接对比不同声音，不影响阅读进度。</p>' +
@@ -7923,15 +8291,17 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<li>换网络（例如手机热点）或换个时段再试。</li>' +
       '<li>不想折腾网络：直接看「免费神经语音」，一次下载后永久离线可用。</li></ul>'],
     local: ['免费离线神经语音', '<h3>这是什么</h3>' +
-      '<p>一个<b>完全免费、完全离线</b>的中文神经网络语音方案：开源引擎 <code>sherpa-onnx</code>（Apache-2.0）＋ 三份开源中文 VITS 模型：22 kHz 女主「小雅」、22 kHz 男主「超文」、16 kHz 187 人配角库 <code>fanchen-C</code>。语调、停顿、重音接近真人，和 Windows 自带的慧慧 / 康康不是一个量级。</p>' +
+      '<p>一个<b>完全免费、完全离线</b>的中文神经网络语音方案：开源引擎 <code>sherpa-onnx</code>（Apache-2.0）＋ ' + (isLite() ? '一份 16 kHz 187 人的多说话人模型 <code>fanchen-C</code>（这一版没带 22 kHz 的主角模型）' : '三份开源中文 VITS 模型：22 kHz 女主「小雅」、22 kHz 男主「超文」、16 kHz 187 人配角库 <code>fanchen-C</code>') + '。语调、停顿、重音接近真人，和 Windows 自带的慧慧 / 康康不是一个量级。</p>' +
       '<p>语音合成在<b>你自己的电脑</b>上完成：不需要注册账号、不需要 API Key、不联网、不按字数收费，书里的文字一个字节都不会发出去。</p>' +
       '<h3>两步开始听（本机已经装好）</h3><ol>' +
       '<li>打开随成品附带的 <code>VoicePack</code> 文件夹，双击 <code>启动语音引擎.cmd</code>。它会开一个小窗口跑本机服务，并自动用 Edge 打开阅读器。<b>不用下载、不用安装、不用填任何东西。</b>（同目录的 <code>START.cmd</code> 是同一个脚本的英文名，随便点哪个都行。）</li>' +
       '<li>阅读器右下角标签变成绿色「● 免费神经语音」即已连上；点「试听音色」确认出声。关掉那个小窗口即停止服务，之后会自动退回系统语音，不影响看书。</li></ol>' +
       '<p class="kv">换一台电脑时：把整个 <code>VoicePack</code> 文件夹拷过去（含已装好的引擎与模型，约 53 MB）即可直接用；若只想拷脚本，在新电脑双击 <code>安装语音包.cmd</code> 重新下载（约 53 MB，走国内加速源，自动分段并发）。Windows 版语音库，拷到别的系统不能直接用。<br><b>Windows 桌面完整版 EXE 已把语音库打包进 exe 内</b>：只拷一个 exe 过去就能听（整个软件约 47 MB），首次启动自动释放到本机缓存，不需要 VoicePack 文件夹。</p>' +
-      '<h3>内置音色 · 2 个高采样率主角（女 / 男）＋ 187 个配角说话人（148 女 + 39 男）</h3>' +
-      '<p>主角是两份 22.05 kHz 的单说话人模型：「墨吟 · 女声」（小雅）与「墨吟 · 男声」（超文），齿音、气口、句尾收束都在，专门给男女主角用。配角另有 187 个中文说话人（16 kHz），男女各档都有。下拉默认只列人工挑选命名过的 <b>精选 21 个</b>；想听更多，到「阅读设置 → 免费神经语音 → 声线范围」点「全部 187 个」，下拉会按音高分 7 档列出（男声低沉 / 中年 / 偏高，女声低音 / 成年 / 青年 / 高音）。点「试听音色」逐个对比，也可以直接在朗读条最左边的下拉里换（正在朗读时会用新音色重念当前这段），语速用朗读条滑块控制。全部是离线神经语音，普通电脑 CPU 就能实时合成。</p>' +
-      '<p><b>为什么 187 个声音却不占体积</b>：它们全部来自同一份 fanchen-C 中文多说话人模型（打包时把权重压成 8 位整数，从 115 MB 降到 38 MB），切换只是换一个 <code>--sid</code> 编号，所以放开到 187 个也是<b>零体积成本</b>。压缩的代价是合成慢一些（同一句话约慢 10 倍），所以它只当配角用，男女主角和旁白走那两份 22 kHz 模型。官方只给编号没有花名，「男声低沉 / 女声清亮」是按每个说话人实测的中位基频（F0）分档的，描述词只便于分辨，<b>建议点「试听音色」挑自己最喜欢的那一个</b>。</p>' +
+      (isLite() ? '<h3>内置音色 · 187 个普通人的声音（148 女 + 39 男）</h3>' +
+        '<p>这一版是精简试验包：<b>不带 22 kHz 的小雅 / 超文两份主角模型</b>，所有声线都来自 16 kHz 的 <code>fanchen-C</code> 187 人库——就是正式版里那些「配角」的声音。旁白的默认落在了「女声 · 低音 1」，合不合胃口、要不要换个档位，交给耳朵定。想知道这一版到底省了多少：安装包 103 MB，正式版是 128 MB。' :
+        '<h3>内置音色 · 2 个高采样率主角（女 / 男）＋ 187 个配角说话人（148 女 + 39 男）</h3>' +
+        '<p>主角是两份 22.05 kHz 的单说话人模型：「墨吟 · 女声」（小雅）与「墨吟 · 男声」（超文），齿音、气口、句尾收束都在，专门给男女主角用。配角另有 187 个中文说话人（16 kHz），男女各档都有。') + '下拉默认只列人工挑选命名过的 <b>精选 {cur} 个</b>（手机版 30 个）；想听更多，到「阅读设置 → 免费神经语音 → 声线范围」点「全部 {total} 个」，下拉会按音高分 7 档列出（男声低沉 / 中年 / 偏高，女声低音 / 成年 / 青年 / 高音）。点「试听音色」逐个对比，也可以直接在朗读条最左边的下拉里换（正在朗读时会用新音色重念当前这段），语速用朗读条滑块控制。全部是离线神经语音，普通电脑 CPU 就能实时合成。</p>' +
+      '<p><b>为什么 187 个声音却不占体积</b>：它们全部来自同一份 fanchen-C 中文多说话人模型（打包时把权重压成 8 位整数，从 115 MB 降到 38 MB），切换只是换一个 <code>--sid</code> 编号，所以放开到 187 个也是<b>零体积成本</b>。压缩的代价是合成慢一些（同一句话约慢 10 倍）。' + (isLite() ? '这一版手里只有它，没有那两份 22 kHz 主角模型——换来的就是安装包从 128 MB 降到 103 MB。' : '所以它只当配角用，男女主角和旁白走那两份 22 kHz 模型。') + '官方只给编号没有花名，「男声低沉 / 女声清亮」是按每个说话人实测的中位基频（F0）分档的，描述词只便于分辨，<b>建议点「试听音色」挑自己最喜欢的那一个</b>。</p>' +
       '<p class="kv">长篇小说先试默认的「声线 12」（温润偏低），想换亮一点的试「声线 160」或「声线 150」，要男声试「声线 110」。合成很快（一句 4~7 秒音频约 1 秒生成）。下拉只列出本机已装好的音色，缺模型文件会自动隐藏。</p>' +
       '<h3>分角色朗读（多人对话自动换声）</h3>' +
       '<p>点朗读条上的「多角色」按钮，或到「阅读设置 → 分角色朗读」开启：<b>旁白还是用你选的声线，引号里的对白按人物自动换成不同的声音</b>。开始朗读前会先把这一章前后几章里说过话的人扫一遍、一次性把声线定好，同一个人物整本书都是同一个声音（代词「他 / 她」也会绑回那个人，不另起一条声线）；认不出是谁的那句沿用上一位的声音，只有真的换了人才变。</p>' +
@@ -7955,7 +8325,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<h3>清了浏览器缓存，书没了？</h3><p>数据存在浏览器 IndexedDB，清理站点数据会一并删除。重要书籍请先「导出备份」，同时保留原始文件。</p>' +
       '<h3>换电脑 / 手机怎么带过去？</h3><p>导出备份 JSON（勾「含书籍文件」），把 JSON 和这个 HTML 一起拷过去，在新设备点「导入备份」即可。也可只拷 HTML + 原书重新导入。离线语音库是 Windows 版，把 VoicePack 文件夹一起拷过去即可用。</p>' +
       '<h3>书架上的「续听」是什么？</h3><p>听到哪会被单独记住，和「读到哪」互不干扰。听完回到书架，书本卡片下方就有「▶ 续听 · 第 N 章」，点一下从上次听的那一段接着念。想按看书的位置念，点开书再点「朗读」即可。没听过这本书时不会出现这个按钮。</p>' +
-      '<h3>念到一半想换个声音？</h3><p>朗读条最左边的下拉里固定放着主角那套（原版男女声 + 8 个音高变体，删不掉），下面是<b>你自己置顶的声线</b>。想去掉某个，到「阅读设置 → 我的声线」点它右边的 × 就删了——那只影响朗读条这个下拉，设置里 197 个声线一个都不会少，随时能再加回来。想把对话也换成不同声音，点旁边的「多角色」。换完会用新声线把当前这一段重念一遍，不用停也不用回书架。想先试听再决定，去「阅读设置 → 免费神经语音 → 试听音色」。</p>' +
+      '<h3>念到一半想换个声音？</h3><p>朗读条最左边的下拉里固定放着主角那套（原版男女声 + 8 个音高变体，删不掉），下面是<b>你自己置顶的声线</b>——置顶就是当主角用，点哪个名字朗读就换成哪个。想去掉某个，到「阅读设置 → 我的主角声线」点它右边的 × 就删了——那只影响朗读条这个下拉，设置里 {total} 个声线一个都不会少，随时能再加回来。想把对话也换成不同声音，点旁边的「多角色」。换完会用新声线把当前这一段重念一遍，不用停也不用回书架。想先试听再决定，去「阅读设置 → 免费神经语音 → 试听音色」。</p>' +
       '<h3>手机上按钮挤？</h3><p>按钮会按屏幕宽度自动换成多行网格，不用手动切。手机上的正文一律单栏，横屏也不会硬分两栏。</p>' +
       '<h3>怎么弄成两栏？</h3><p>点阅读器顶栏「⋯」里的「排版」→「阅读方式」：切到「翻页」，分栏选「自动分栏」在宽屏上就是左右两栏，选「双栏」可以强制（窗口够宽时）；窗口太窄或手机上会自动退回单栏，不会把字挤成一条。<br>顺带一提，翻页模式翻的是整屏而不是滚动：点屏幕<b>左边三分之一</b>回上一页、<b>右边三分之一</b>翻下一页，滚轮、空格或 ← → 也都行，手机上还能左右滑。点屏幕<b>中间</b>是收 / 放上下工具栏——收起来之后正文占满整屏，再点中间或点最上面那条窄边就能唤回。</p>' +
       '<h3>自动阅读怎么用？</h3><p>点顶栏「⋯」里的「自动」，滚动模式下会匀速往下滚，翻页模式下按你设的秒数自动翻页；再点一次暂停，暂停时会留一个胶囊提示，可以继续或退出。到本章末尾会自动接下一章。朗读和自动阅读不会同时抢滚动。</p>' +
@@ -7990,8 +8360,17 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p>「墨吟」取「以墨为文、吟而出声」：把纸上的字念出来。中文名与英文名均为本项目自用，与任何同名公司、配音平台、有声主播<b>没有关联</b>，也不代表任何商业背书。</p>' +
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p>它的声音理念很简单：<b>用普通人的声音，讲普通人的故事</b>。这里没有修得毫无瑕疵的录音棚嗓音——那种声音属于播音腔，听久了反倒离故事远。187 个人声，男女老少、清亮低沉都有，<b>总有一个让你心动的声音</b>；合耳的留下，不合耳的删掉，选择权在你手上。</p>' +
-      '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + 三份中文 VITS 模型）：不联网、不收费、无需账号，主角是 22.05 kHz 的「墨吟 · 女声」与「墨吟 · 男声」，另带 187 个配角说话人（148 女 + 39 男），精选 21 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
+      '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + 三份中文 VITS 模型）：不联网、不收费、无需账号，主角是 22.05 kHz 的「墨吟 · 女声」与「墨吟 · 男声」，另带 187 个配角说话人（148 女 + 39 男），精选 {cur} 个常用声线，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
       '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<h3>1.14.39 改了什么</h3><ul>' +
+      '<li><b>关于页的版本号终于对了</b>：中间几个测试版的号只改了包名，关于页还写着 1.14.35。现在合成一个号，以后不会再对不上。</li>' +
+      '<li><b>187 个声线全部改成常驻</b>：以前只有两份 22 kHz 主角是常驻的，配角库每念一句都要重起一次进程——实测一句要 12 秒，所以桌面端只敢把 8 个音高变体放进精选。这次把 187 人那套也常驻起来（同一份模型、靠 sid 换人），<b>一句 19 字实测 0.92 秒</b>，跟主角一个速度。省下来的时间直接换成可选的声音。</li>' +
+      '<li><b>桌面端精选 50 条，手机端 30 条</b>：手机屏幕小、一次翻不完，30 条够用；桌面这次补到 50。新加的 18 条不是随便挑的，补的都是各档原来空着的音高位置——男低沉补到 4 条、男偏高补 2 条填住低端、女低音/成年/青年各补几条，女高音第一次有了成年女声（以前只有童声）。<b>原来 30 条一条没动，sid 一个没改</b>，你选中的声音还是同一个。</li>' +
+      '<li><b>「置顶」就是「设为主角」，现在写在明处</b>：设置页那一栏改叫「我的主角声线」，朗读条下拉的两组也标成「置顶＝主角」——点哪个名字，朗读立刻换成哪个，不用再点第二次确认。点 × 只是把它从下拉里拿掉，不会取消正在念的声音。</li>' +
+      '<li><b>所有声音都能当主角</b>：男女主下拉不再只列前 12 个，同性别的<b>一条不漏</b>（男 39 + 女 148，加主角两条共 {total} 个）。以前想把一个冷门声线设成主角，只能先把它挑成当前声线，绕一圈。</li>' +
+      '<li><b>第一次打开会给 20 个推荐</b>：男 9、女 10、童 1，青年占四成，低沉只留一条。以前前八张卡全是低沉和中年男，还没滑到女声就把窗口关了。</li>' +
+      '<li><b>旁白可以分男女两条</b>：同一本书适合女声娓娓道来，另一本可能适合男声沉稳。设置页和朗读条各有一个一键切换，两条各记各的，换书不用重新翻声线表。</li>' +
+      '</ul>' +
       '<h3>1.14.35 改了什么</h3><ul>' +
       '<li><b>压缩包直接导入</b>：拖进来一个 .zip 就行——网上下的一整套 txt、资料包，解开后一本一本进书架，不用先手动解压再挑。只认书（TXT / EPUB / PDF / DOCX / MOBI / AZW3），压缩包里夹的图片、说明文件、Mac 的资源叉会自动跳过；GBK 老编码的 txt 也能正确读出来。解压只发生在内存里，不往你的文件夹写东西。</li>' +
       '<li><b>安卓念英文的节奏问题</b>：这次是「念一行、停很久、跳掉一大段、再念一行」。查出两个原因：① 英文切句沿用了中文标点表，英文句号不在里面，于是整段英文被当成一个巨型句子按字数硬切，<b>每一刀都落在单词中间</b>（This is a senten / ce that goes on），模型遇到半个词吐静音，连续两次就把英文熔断掉，后面的英文全跳过；② 前端判断英文能不能用，只看 /health 里的一个字段，而英文模型是后台加载的，页面启动那一刻必然是 false，之后不再刷新——于是英文块连预取都没做，每句都要播到跟前才现算。现在英文按 <code>. ! ?</code> 分句、按逗号分小句、按空格累加，绝不劈词；预取判据改成「没收到 415 就当可用」。另外开念时如果这一章有英文，会提前把模型建起来，不再等念到英文才发现要等几十秒。</li>' +
@@ -8289,6 +8668,10 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   function showDoc(k) {
     var d = DOCS[k] || DOCS.help;
     var body = (CFG.lang === 'en' && window.MYDOCS_EN && window.MYDOCS_EN[k]) || d[1];
+    /* 文档里写死「精选 21 个」这种数字，改一次表就得跟着改三处，容易漏。
+       现在统一写 {cur} / {total}，开文档时按当前引擎报的数填进去。 */
+    var _st = voiceStat();
+    body = body.replace(/\{cur\}/g, _st.curated).replace(/\{total\}/g, _st.total);
     // 关于页最上面挂一张「当前包能力」卡片：装的是哪个包、离线语音有没有、系统朗读有几个引擎
     if (k === 'about') body = packCard() + body;
     var nav = '<div class="docnav">' + Object.keys(DOCS).map(function (x) {
@@ -8365,9 +8748,24 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<button data-act="probe">' + T('重新检测') + '</button>' +
       '<button data-set="bool" data-v="localOn"' + (CFG.localOn ? ' class="on"' : '') + '>' + (CFG.localOn ? T('自动连接：开') : T('自动连接：关')) + '</button>' +
       '<button data-doc="local">' + T('安装与使用说明') + '</button></div></div>' +
-      '<div class="row"><label>' + T('音色') + '</label><select data-set="localVoice">' + localVoiceOptions() +
+      '<div class="row"><label>' + T('音色') + '</label><select data-set="localVoice">' + localVoiceOptions(true) +
       '</select><button data-act="tryvoice">' + T('试听音色') + '</button></div>' +
-      '<div class="row"><label>' + T('我的声线') + '</label><div class="seg" id="pinBox">' + pinChips() + '</div></div>' +
+      /* 旁白男女声：两条各自记住，换书一键换。文学/情感用女声，武侠/历史用男声，
+         不必每次都在这一百多个声线里重新翻一遍。 */
+      '<div class="row"><label>' + T('旁白男 / 女声') + '</label><div class="seg">' +
+      ['f', 'm'].map(function (g) {
+        var k = g === 'm' ? CFG.narrM : CFG.narrF;
+        var on = voiceGender(CFG.localVoice) === (g === 'm' ? 'm' : 'f');
+        return '<button data-act="narr' + g.toUpperCase() + '"' + (on ? ' class="on"' : '') + '>' +
+          (g === 'm' ? T('男声') : T('女声')) + '：' + esc(k ? T(localVoiceName(k)) : T('未选')) + '</button>';
+      }).join('') + '</div>' +
+      '<span class="kv">' + T('按书换：温情文学可用女声，武侠历史可用男声。点一下整本旁白都换过去，阅读进度不受影响；男女两条各自记住上次选的声线。') + '</span></div>' +
+      '<div class="row"><label>' + T('男主声线') + '</label><select data-set="leadM">' + leadSelOptions('m') + '</select>' +
+      '<span class="kv">' + T('分角色朗读时，书里男角色里的主角用这一条') + '</span></div>' +
+      '<div class="row"><label>' + T('女主声线') + '</label><select data-set="leadF">' + leadSelOptions('f') + '</select>' +
+      '<span class="kv">' + T('分角色朗读时，书里女角色里的主角用这一条') + '</span></div>' +
+      '<div class="row"><label>' + T('我的主角声线') + '</label><div class="seg" id="pinBox">' + pinChips() + '</div></div>' +
+      '<p class="kv">' + T('这一栏就是「主角声线」：点哪个名字，朗读立刻换成那个声音，同时它进朗读条最左边的下拉——所以「置顶」和「设为主角」是同一件事，不用分两步做。点 × 只是把它从朗读条里拿掉，不会取消正在用的声音，声线本身也没丢。') + '</p>' +
       '<p class="kv">' + T('只有「原版」男女主是固定的——删了就没默认声音兜底。其余全部自由：六个音高变体、187 个配角声线、你自己挑的，都能删能加，最多 {max} 个（女声、男声各 {half}）。点 × 只从朗读条移除，声线本身没丢，随时在下面加回来。', { max: PIN_MAX, half: PIN_PER_GENDER }) + '</p>' +
       '<p class="kv">' + T('这套中性音色不合耳朵很正常——187 个人声，总有一个让你心动的声音。合耳的留下，不合耳的删掉，把选择权留给你自己。') + '</p>' +
       '<div class="row"><label>' + T('男声降噪') + '</label>' + seg('dnMode', [
@@ -8375,7 +8773,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       ]) + '</div>' +
       '<p class="kv">' + T('只作用于男声，女声一个采样都不碰。手机喇叭外放多半用不着调——实测手机外放听男声是清楚的，那点「沙沙」要接功放或高解析耳机才明显，而压过之后字会变闷，损失比收益大。所以默认「原声」：觉得干净就别动它；接音箱、耳机听着沙沙的，再往上调一档。「更干净」压得最彻底，代价是个别字略糊、整体偏闷；「更清楚」保字头，字更实但压得稍轻。切换会从当前这句用新档位重念，方便直接对比。') + '</p>' +
       '<div class="row"><label>' + T('声线范围') + '</label>' + seg('voiceSet', [['curated', T('精选 {n} 个', { n: voiceStat().curated })], ['all', T('全部 {n} 个', { n: voiceStat().total })]]) + '</div>' +
-      '<p class="kv">' + T('模型里另有 {n} 个中文说话人（{f} 女 + {m} 男），共用同一份压缩模型，放开多少个都不增加体积；主角的「墨吟 · 女声」与「墨吟 · 男声」是另两份 22.05 kHz 的高采样率模型。「全部」按音高分 7 档列出，男低 → 女高任你挑；「精选」是人工挑过、命名过的 {c} 个，不想挑就用它。上面选中的声线会进「我的声线」，也就能在朗读条最左边下拉里直接换，正在朗读时会从当前这段用新音色重念。缺模型文件的音色会自动隐藏。',
+      '<p class="kv">' + T('模型里另有 {n} 个中文说话人（{f} 女 + {m} 男），共用同一份压缩模型，放开多少个都不增加体积；主角的「墨吟 · 女声」与「墨吟 · 男声」是另两份 22.05 kHz 的高采样率模型。「全部」按音高分 7 档列出，男低 → 女高任你挑；「精选」是人工挑过、命名过的 {c} 个，不想挑就用它。上面选中的声线会进「我的主角声线」（点一下就是设为主角），也就能在朗读条最左边下拉里直接换，正在朗读时会从当前这段用新音色重念。缺模型文件的音色会自动隐藏。',
         { n: voiceStat().lib, f: voiceStat().female, m: voiceStat().male, c: voiceStat().curated }) + '</p>' +
       '<div class="row"><label>' + T('分角色朗读') + '</label><div class="seg">' +
       '<button data-set="bool" data-v="roleOn"' + (CFG.roleOn ? ' class="on"' : '') + '>' + (CFG.roleOn ? T('分角色：开') : T('分角色：关')) + '</button>' +
@@ -8443,6 +8841,10 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
         // 选中即切过去，并自动进朗读条置顶（主角固定那套不占位）
         pickLocalVoice(e.target.value);
       }
+      else if (k === 'leadM' || k === 'leadF') {
+        /* 主角换声线要重排角色表，不能只写配置——所以走 setLead 而不是通用逻辑 */
+        setLead(k === 'leadM' ? 'm' : 'f', e.target.value);
+      }
     };
     $('modalBody').onclick = function (e) {
       var lang = e.target.closest('[data-lang]');
@@ -8459,7 +8861,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
         saveCfg(); applyCfg(); showSettings(); return;
       }
       var b = e.target.closest('button[data-set],button[data-act],button[data-pin]'); if (!b) return;
-      /* 「我的声线」里的芯片：× 是移除置顶，点名字是切过去 */
+      /* 「我的主角声线」里的芯片：× 是移除置顶，点名字是切过去（也就是设为主角） */
       if (b.hasAttribute('data-pin')) {
         var unp = e.target.closest('[data-unpin]');
         if (unp) { unpinVoice(unp.getAttribute('data-unpin')); return; }
@@ -8484,6 +8886,9 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
         toast(T('已跟随主题配色')); return;
       }
       if (act === 'tryvoice') { tryVoice(); return; }
+      if (act === 'narrF' || act === 'narrM') {
+        setNarr(act === 'narrM' ? 'm' : 'f'); showSettings(); return;
+      }
       if (act === 'tryrole') { tryRole(); return; }
       if (act === 'scanCast') {
         if (!BK) { toast(T('先打开一本书')); return; }
@@ -9300,8 +9705,24 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       if (v === '__more' || v === '__pins') {    // 挑更多 / 增删置顶：都去设置页
         this.value = 'local:' + CFG.localVoice; showSettings(); return;
       }
+      /* leadm:s32 / leadf:s13 —— 这一项不是「切声线」，是「把这个声线指给主角」。
+         下拉本身要回弹到当前旁白，不然看着像旁白也跟着换了。 */
+      if (v.indexOf('lead') === 0) {
+        var lg = v.charAt(4), lk = v.slice(6);
+        this.value = 'local:' + CFG.localVoice;
+        setLead(lg === 'm' ? 'm' : 'f', lk);
+        return;
+      }
+      if (v.indexOf('narr:') === 0) {           // 整本换旁白性别
+        this.value = 'local:' + CFG.localVoice;
+        setNarr(v.charAt(5) === 'm' ? 'm' : 'f');
+        return;
+      }
       if (v.indexOf('local:') === 0) {          // 本机声线：换完立刻用新音色重念当前段
-        CFG.localVoice = v.slice(6); CFG.voiceAuto = 0; saveCfg();
+        CFG.localVoice = v.slice(6); CFG.voiceAuto = 0;
+        if (voiceGender(CFG.localVoice) === 'm') CFG.narrM = CFG.localVoice;
+        else CFG.narrF = CFG.localVoice;
+        saveCfg();
         resetCast();                            // 旁白换了，角色池要重新避开新声线
         voiceBadge(null);
         /* 和 pickLocalVoice 保持同一套：配角声线要先把 187 人语音库叫醒。
@@ -9402,6 +9823,9 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     if (I18N) I18N.apply();
     // 自动探测本机免费神经语音引擎；没启动时静默用系统语音，不打扰
     localProbe();
+    /* 第一次打开：主动暖一下引擎，就绪后弹「挑一个声音」（见 maybeIntro）。
+       老用户不暖——没打算听的十几秒不该白等。 */
+    if (!CFG.introRev) setTimeout(function () { if (!CFG.introRev) { warmEngine(); } }, 1500);
     setInterval(function () {
       if (CFG.localOn && !LOCAL.ready && LOCAL.miss < 5 && document.visibilityState === 'visible') localProbe();
     }, 12000);

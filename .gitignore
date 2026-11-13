@@ -119,3 +119,20 @@ _rel0.json
 _assets.json
 promo/_shots7/
 promo/_chk7/
+
+# ---- 一次性实验脚本与取证截图（不参与构建，不进仓库） ----
+_audition*/
+_bench_*.py
+_dn_*.py
+_dn_*.json
+_f0_*.py
+_gen_*.py
+_pick*.py
+_probe_*.py
+_measure_*.py
+_verify_*.py
+_rel_body_*.md
+_rel_upload.py
+_shot*.png
+
+_shot*.py

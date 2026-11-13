@@ -48,7 +48,14 @@ APKSIGNER = os.path.join(BT, 'apksigner.bat')
 
 PKG = 'com.lanlan.moyinreader'
 APP_NAME = '墨吟'
-PORT = 38973
+# --no-lead：只带 16 kHz 187 人配角库，不带 22 kHz 主角（小雅 / 超文）。
+# 目的是让这台手机上「有主角的正式版」和「没主角的试验版」能同时装着对比，
+# 所以连包名也分开，装上去是两个图标，互不覆盖、互不清数据。
+NONLEAD = '--no-lead' in sys.argv
+if NONLEAD:
+    PKG = 'com.lanlan.moyinreader.lite'
+    APP_NAME = '墨吟试验'
+PORT = 38974 if NONLEAD else 38973     # 两个版本同时装着时，别抢同一个本地端口
 HTML = os.path.join(ROOT, 'MoYinReader.html')
 # MOYIN_DIAG=1 打「三色探针包」：窗口底色蓝、WebView 底色品红、页面顶部压一块米黄说明牌，
 # 再配 Toast 报启动步骤。专治「没有 adb、只看得见一片颜色」的机器。正式构建不设这个变量，
@@ -80,6 +87,12 @@ if SHERPA_ABI != 'arm64-v8a':
     # 非真机架构的包不能和正式包同名，否则一次误操作就把发行包覆盖成模拟器版
     FINAL = os.path.join(ROOT, ('MoYinReader-diag' if DIAG else 'MoYinReader')
                          + '-' + SHERPA_ABI.split('_')[0] + '.apk')
+if NONLEAD:
+    # 试验包绝不能和正式包同名：发行包目录里的 MoYinReader.apk 是给用户装的，
+    # 一次手滑覆盖就再也分不清谁是谁。
+    FINAL = os.path.join(ROOT, ('MoYinReader-diag' if DIAG else 'MoYinReader') + '-nolead'
+                         + ('' if SHERPA_ABI == 'arm64-v8a'
+                            else '-' + SHERPA_ABI.split('_')[0]) + '.apk')
 SHERPA_LIBS = ['libonnxruntime.so', 'libsherpa-onnx-c-api.so',
                'libsherpa-onnx-cxx-api.so', 'libsherpa-onnx-jni.so']
 # 三套模型：女主小雅（22.05 kHz）+ 男主超文（22.05 kHz）+ 配角库 fanchen（187 人，16 kHz）
@@ -111,8 +124,8 @@ os.makedirs(STAGE, exist_ok=True)
 MANIFEST = '''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="%s"
-    android:versionCode="11435"
-    android:versionName="1.14.35">
+    android:versionCode="11439"
+    android:versionName="1.14.39">
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
     <!-- 只有两条：WebView 访问本机 127.0.0.1 需要明文 http；
          不申请麦克风、定位、通讯录、存储，读书不需要这些。 -->
@@ -467,12 +480,26 @@ def prepare_sources():
     io.open(os.path.join(src, 'TtsBridge.java'), 'w', encoding='utf-8').write(bridge)
     engine = io.open(os.path.join(PKG_DIR, 'TtsEngine.java'), encoding='utf-8').read()
     engine = engine.replace('{PKG}', PKG)
+    # 这两个文件（还有 Denoise）开头写死了包名，试验包换了 applicationId 就得跟着换，
+    # 否则 dex 里的类名落在旧包下，MainActivity 找不到它。
+    engine = engine.replace('com.lanlan.moyinreader', PKG)
     engine = engine.replace('{DIAG_ON}', 'true' if DIAG else 'false')
     io.open(os.path.join(src, 'TtsEngine.java'), 'w', encoding='utf-8').write(engine)
     # 男声降噪：与桌面 VoicePack/denoise.py 对应的 Java 实现，无占位符，直接拷贝
     denoise = io.open(os.path.join(PKG_DIR, 'Denoise.java'), encoding='utf-8').read()
+    denoise = denoise.replace('com.lanlan.moyinreader', PKG)
     io.open(os.path.join(src, 'Denoise.java'), 'w', encoding='utf-8').write(denoise)
-    io.open(os.path.join(STAGE, 'AndroidManifest.xml'), 'w', encoding='utf-8').write(MANIFEST)
+    man = MANIFEST
+    if NONLEAD:
+        # 试验包用「当前正式号 + -test」。包名已经带 .lite，能和正式版并存；
+        # 这里从 MANIFEST 里现读版本名，不写死 1.14.35 那种字面量——
+        # 以前写死过，版本一升就得回来改这一行，忘了就打成旧号。
+        mv = re.search(r'android:versionName="([\d.]+)"', man)
+        assert mv, 'MANIFEST 里找不到 versionName'
+        man = man.replace('android:versionName="%s"' % mv.group(1),
+                          'android:versionName="%s-test"' % mv.group(1))
+        assert '-test' in man, 'MANIFEST 版本名没换成功'
+    io.open(os.path.join(STAGE, 'AndroidManifest.xml'), 'w', encoding='utf-8').write(man)
     # res
     res = os.path.join(STAGE, 'res')
     for sub, f in [('values/themes.xml', 'themes.xml'), ('values/colors.xml', 'colors.xml')]:
@@ -516,6 +543,10 @@ def stage_voice_model(assets):
         ('fanchen', ((VOICE_LIB, VOICE_LIB_FILES),)),
         ('en', ((VOICE_EN, VOICE_EN_FILES),)),
     )
+    if NONLEAD:
+        # 主角两份 22 kHz 模型 + 共用词表一共 38.6 MB，这一版不要
+        plan = tuple(x for x in plan if x[0] not in ('xiaoya', 'chaowen'))
+        print('  精简试验包：跳过 xiaoya / chaowen / shared', flush=True)
     total = 0
     for sub, groups in plan:
         dst = os.path.join(assets, 'tts', sub)
@@ -662,18 +693,27 @@ def audit(allcls, dexfile, has_neuro):
         ok &= ck(md5(page) == md5(src), '内嵌页面与源文件逐字节一致 md5=' + md5(page))
     ok &= ck('classes.dex' in names, 'dex 已打包')
     if has_neuro:
+        lead_sets = (set() if NONLEAD else
+                     ({'assets/tts/xiaoya/' + f for f in VOICE_GIRL_FILES}
+                      | {'assets/tts/chaowen/' + f for f in VOICE_BOY_FILES}))
         allowed = ({'assets/index.html'}
-                   | {'assets/tts/xiaoya/' + f for f in VOICE_GIRL_FILES}
-                   | {'assets/tts/chaowen/' + f for f in VOICE_BOY_FILES}
                    | {'assets/tts/fanchen/' + f for f in VOICE_LIB_FILES}
                    | {'assets/tts/en/' + f for f in VOICE_EN_FILES}
-)
+                   | lead_sets
+                   )
         extra = sorted(set(n for n in names if n.startswith('assets/')) - allowed)
-        ok &= ck(not extra, 'assets 只有页面与三套语音模型，多余项 %r' % extra[:3])
-        ok &= ck(all('assets/tts/xiaoya/' + f in names for f in VOICE_GIRL_FILES),
-                 '女主（小雅）6 个文件齐全')
-        ok &= ck(all('assets/tts/chaowen/' + f in names for f in VOICE_BOY_FILES),
-                 '男主（超文）模型齐全')
+        ok &= ck(not extra, 'assets 只有页面与该带的语音模型，多余项 %r' % extra[:3])
+        if NONLEAD:
+            # 试验包的关键体检：主角那两份模型一个字节都不许混进来
+            leaked = sorted(n for n in names
+                            if n.startswith('assets/tts/xiaoya/')
+                            or n.startswith('assets/tts/chaowen/'))
+            ok &= ck(not leaked, '主角模型确实没入包（漏了 %r）' % leaked[:3])
+        else:
+            ok &= ck(all('assets/tts/xiaoya/' + f in names for f in VOICE_GIRL_FILES),
+                     '女主（小雅）6 个文件齐全')
+            ok &= ck(all('assets/tts/chaowen/' + f in names for f in VOICE_BOY_FILES),
+                     '男主（超文）模型齐全')
         ok &= ck(all('assets/tts/fanchen/' + f in names for f in VOICE_LIB_FILES),
                  '配角库（fanchen 187 人）8 个文件齐全')
         ok &= ck(all('assets/tts/en/' + f in names for f in VOICE_EN_FILES),
@@ -710,7 +750,17 @@ def audit(allcls, dexfile, has_neuro):
         # 体积换音质是刻意的取舍——压缩过的 int8 版实测字错率翻倍（11% → 25%），
         # 耳朵里就是「每句有几个字囫囵吞枣」，再多省 80 MB 也不值得。
         ok &= ck(20 * 1048576 < size < 175 * 1048576,
-                 'APK 体积 %.1f MB（含 209 MB 语音模型与 sherpa 引擎）' % (size / 1048576))
+                 'APK 体积 %.1f MB（%s）' % (size / 1048576,
+                    '只有 16 kHz 配角库 73 MB' if NONLEAD
+                    else '含 209 MB 语音模型与 sherpa 引擎'))
+        if NONLEAD:
+            # 目标就是「比正式版小得多」。正式版 128 MB，这一版该在 100 MB 以内。
+            ok &= ck(size < 105 * 1048576,
+                     '精简包 %.1f MB，确实比正式版（128 MB）小' % (size / 1048576))
+            ok &= ck('-test' in (bad.split('versionName=')[-1][:40] if 'versionName=' in bad else ''),
+                     '版本名带 -test')
+            ok &= ck('package: name=\'com.lanlan.moyinreader.lite\'' in bad,
+                     '包名带 .lite，可与正式版并存')
     else:
         # 不带模型时 dex 里仍有 sherpa + kotlin 的类，所以下限放宽到 8 MB 以内
         ok &= ck(50 * 1024 < size < 8 * 1024 * 1024, 'APK 体积 %.1f MB' % (size / 1048576))

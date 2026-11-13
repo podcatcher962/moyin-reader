@@ -120,16 +120,18 @@ public final class TtsEngine {
      *  2026-11-11 按实测基频重排命名：「青年男」原来给了 4 个，实测只有 s32 够格，
      *  s110/s52/s102 分别只有 133/144/151 Hz，都是中年男的音高。改成中性名，sid 不动。 */
     static final int[] CURATED_SID = {
-            124, 74, 58, 156, 167, 110, 52, 102, 32,
-            36, 169, 13, 149, 106, 19, 165, 129, 120, 20, 41, 105
+            124, 74, 58, 163, 156, 52, 110, 102, 174, 32, 148, 72, 83,
+            36, 23, 169, 13, 149, 19, 165, 129, 120, 20, 28, 185, 71, 108, 64, 41, 105
     };
     static final String[] CURATED_LABEL = {
             "老生 · 低沉 1", "老生 · 低沉 2",
-            "中年男 1", "中年男 2", "中年男 3", "中年男 4",
-            "男声 · 中音 1", "男声 · 中音 2", "青年男 1",
-            "女声 · 低音 1", "沉稳女 2",
-            "成年女 1", "成年女 2", "成年女 3", "成年女 4", "成年女 5",
-            "青年女 1", "青年女 2", "青年女 3",
+            "中年男 1", "中年男 2", "中年男 3",
+            "男声 · 中音 1", "男声 · 中音 2", "男声 · 中音 3",
+            "青年男 1", "青年男 2", "青年男 3", "青年男 4", "青年男 5",
+            "女声 · 低音 1", "女声 · 低音 2", "沉稳女 1",
+            "成年女 1", "成年女 2", "成年女 3", "成年女 4",
+            "青年女 1", "青年女 2", "青年女 3", "青年女 4",
+            "青年女 5", "青年女 6", "青年女 7", "青年女 8",
             "童声 1", "童声 2"
     };
 
@@ -228,9 +230,11 @@ public final class TtsEngine {
         return EN_ON && en != null && !enBroken && !enUserOff;
     }
 
-    /** /health 的音色表：女主 1 + 男主 1 + 配角库 187。 */
+    /** /health 的音色表：女主 1 + 男主 1 + 配角库 187。
+     *  精简包没有前两项，这里就只报 187 个 s*，页面自然看不到 x0 / c0。 */
     String healthJson(boolean engineOk) {
-        int n = SID_F0.length + 2;
+        boolean lead = leadChecked ? hasLead : true;
+        int n = SID_F0.length + (lead ? 2 : 0);
         StringBuilder sb = new StringBuilder(18432);
         sb.append("{\"ok\":").append(engineOk).append(",");
         sb.append("\"engine\":\"").append(engineOk ? "sherpa-onnx 2.0.1 · 安卓" : "模型加载中").append("\",");
@@ -243,32 +247,47 @@ public final class TtsEngine {
         /* 库正在后台装（不是在报错）。页面据此区分「还没开始」和「正在准备」，
            诊断卡里也能一眼看出是卡在装库还是卡在合成。 */
         sb.append("\"libLoading\":").append(libLoading).append(",");
-        sb.append("\"version\":7,\"curated\":[\"").append(GIRL_VOICE).append("\",\"")
-                .append(BOY_VOICE).append("\"");
+        sb.append("\"lite\":").append(!lead).append(",");
+        /* 默认声线交给引擎说，别让页面自己猜：精简包的精选表第一个是低音男声
+           （老生 · 低沉），拿它当旁白没法听。前端 fixLocalVoice 认这个字段。 */
+        sb.append("\"default\":\"").append(lead ? GIRL_VOICE : ("s" + LITE_DEFAULT_SID)).append("\",");
+        sb.append("\"version\":7,\"curated\":[");
+        java.util.ArrayList<String> cur = new java.util.ArrayList<String>();
+        java.util.ArrayList<String> keys = new java.util.ArrayList<String>();
+        if (lead) {
+            keys.add(GIRL_VOICE); keys.add(BOY_VOICE);
+            cur.add(GIRL_VOICE); cur.add(BOY_VOICE);
+        } else {
+            cur.add("s" + LITE_DEFAULT_SID);
+        }
         for (int i = 0; i < CURATED_SID.length; i++) {
-            sb.append(",\"s").append(CURATED_SID[i]).append("\"");
+            if (!lead && CURATED_SID[i] == LITE_DEFAULT_SID) continue;   // 别重复
+            cur.add("s" + CURATED_SID[i]);
         }
-        sb.append("],\"voices\":{\"").append(GIRL_VOICE).append("\":").append(engineOk)
-                .append(",\"").append(BOY_VOICE).append("\":").append(engineOk);
-        for (int i = 0; i < SID_F0.length; i++) {
-            sb.append(",\"s").append(i).append("\":").append(engineOk);
+        for (int i = 0; i < SID_F0.length; i++) keys.add("s" + i);
+        for (int i = 0; i < cur.size(); i++) {
+            if (i > 0) sb.append(',');
+            sb.append('"').append(cur.get(i)).append('"');
         }
-        sb.append("},\"labels\":{\"").append(GIRL_VOICE).append("\":\"").append(GIRL_LABEL)
-                .append("\",\"").append(BOY_VOICE).append("\":\"").append(BOY_LABEL).append("\"");
-        for (int i = 0; i < SID_F0.length; i++) {
-            sb.append(",\"s").append(i).append("\":\"").append(labelOf(i)).append("\"");
+        sb.append("],\"voices\":{");
+        StringBuilder vLab = new StringBuilder(), vGrp = new StringBuilder(), vF0 = new StringBuilder();
+        for (int i = 0; i < keys.size(); i++) {
+            String k = keys.get(i);
+            int f; String lab, band;
+            if (GIRL_VOICE.equals(k)) { f = GIRL_F0; lab = GIRL_LABEL; band = bandOf(GIRL_F0, -1); }
+            else if (BOY_VOICE.equals(k)) { f = BOY_F0; lab = BOY_LABEL; band = bandOf(BOY_F0, -1); }
+            else {
+                int sid = Integer.parseInt(k.substring(1));
+                f = SID_F0[sid]; lab = labelOf(sid); band = bandOf(f, sid);
+            }
+            if (i > 0) { sb.append(','); vLab.append(','); vGrp.append(','); vF0.append(','); }
+            sb.append('"').append(k).append("\":").append(engineOk);
+            vLab.append('"').append(k).append("\":\"").append(lab).append('"');
+            vGrp.append('"').append(k).append("\":\"").append(band).append('"');
+            vF0.append('"').append(k).append("\":").append(f);
         }
-        sb.append("},\"groups\":{\"").append(GIRL_VOICE).append("\":\"").append(bandOf(GIRL_F0, -1))
-                .append("\",\"").append(BOY_VOICE).append("\":\"").append(bandOf(BOY_F0, -1)).append("\"");
-        for (int i = 0; i < SID_F0.length; i++) {
-            sb.append(",\"s").append(i).append("\":\"").append(bandOf(SID_F0[i], i)).append("\"");
-        }
-        sb.append("},\"f0\":{\"").append(GIRL_VOICE).append("\":").append(GIRL_F0)
-                .append(",\"").append(BOY_VOICE).append("\":").append(BOY_F0);
-        for (int i = 0; i < SID_F0.length; i++) {
-            sb.append(",\"s").append(i).append("\":").append(SID_F0[i]);
-        }
-        sb.append("}}");
+        sb.append("},\"labels\":{").append(vLab).append("},\"groups\":{").append(vGrp)
+          .append("},\"f0\":{").append(vF0).append("}}");
         return sb.toString();
     }
 
@@ -311,12 +330,59 @@ public final class TtsEngine {
      *  页面按「引擎在准备」跳过这一句接着念，不弹窗、不停读。 */
     private static final long LIB_WAIT_MS = 6000;
 
-    /** 女主装好就算就绪——男主和配角库都是按需加载的，缺了不影响默认听书。 */
+    /** 包里有没有 22 kHz 主角模型（小雅 / 超文）。
+     *
+     *  **运行期探测，不是编译期常量**：同一份源码既要出「三套模型」的正式包，
+     *  也要出「只有 16 kHz 187 人配角库」的精简试验包。用常量就得在打第二个包时
+     *  记得改一次、改回来再改一次，迟早会因为忘了改而发出错版；改成看 assets 里
+     *  有没有 xiaoya/model.onnx，两个包用同一份代码，谁也不会打错。
+     *
+     *  没有主角模型时：就绪判定改看配角库，启动时就把库建起来（用户点了朗读
+     *  才现解压 51 MB 会干等半分钟），默认声线落到精选里的第一个女声。 */
+    private boolean hasLead = true;
+    private boolean leadChecked = false;
+
+    /** 精简版默认旁白：s36「女声 · 低音 1」。主角模型不在了，旁白不该落到
+     *  精选表第一个 s124（老生 · 低沉），那是给对白用的低音男声。 */
+    static final int LITE_DEFAULT_SID = 36;
+
+    private boolean probeLead() {
+        if (leadChecked) return hasLead;
+        leadChecked = true;
+        if (appCtx == null) { hasLead = false; return false; }
+        java.io.InputStream in = null;
+        try {
+            in = appCtx.getAssets().open(GIRL_DIR + "/" + GIRL_MODEL);
+            hasLead = true;
+            return true;
+        } catch (Throwable e) {
+            hasLead = false;
+            mark("N2.2 asset 里没有主角模型 → 精简模式（只用 16 kHz 配角库）");
+            return false;
+        } finally {
+            if (in != null) { try { in.close(); } catch (Throwable ignored) { } }
+        }
+    }
+
+    /** 精简模式（没有 x0 / c0）。正式包里恒 false。 */
+    public boolean liteMode() {
+        return leadChecked && !hasLead;
+    }
+
+    /** 配音默认声线：正式包是女主 x0，精简包是精选里的女声。 */
+    public String defaultVoice() {
+        return liteMode() ? ("s" + LITE_DEFAULT_SID) : GIRL_VOICE;
+    }
+
+    /** 女主装好就算就绪——男主和配角库都是按需加载的，缺了不影响默认听书。
+     *  精简包没有女主，就绪与否看配角库（load 里已同步建好）。 */
     public boolean ready() {
+        if (leadChecked && !hasLead) return lib != null;
         return girl != null;
     }
 
     public int sampleRate() {
+        if (leadChecked && !hasLead) return lib != null ? libRate : 16000;
         if (girl != null) return girlRate;
         if (boy != null) return boyRate;
         if (lib != null) return libRate;
@@ -346,6 +412,11 @@ public final class TtsEngine {
         }
         sb.append('\n');
         if (girl == null) {
+            if (leadChecked && !hasLead) {
+                return sb.append("精简模式（无 22 kHz 主角模型）配角库=").append(lib != null)
+                         .append(" 建会话用时=").append(libMs).append("ms 采样率=")
+                         .append(libRate).append(" 错误=").append(libErr).toString();
+            }
             return sb.append("女主引擎没建起来；lastError=").append(lastError).toString();
         }
         try {
@@ -491,6 +562,16 @@ public final class TtsEngine {
         appCtx = ctx.getApplicationContext();
         diagCtx = appCtx;
         mark("N2.0 load 开始");
+        if (!probeLead()) {
+            /* 精简包：配角库就是唯一的中文引擎，必须在这儿一次性建好。
+               这一步（51 MB 解压 + 38 MB 建会话）在 startNeuro 的后台线程里跑，
+               用户看到的是「打开软件时那几秒慢一点」；若改成按需，第一次点朗读
+               反而要干等半分钟，比开机慢更难接受。 */
+            boolean okLib = ensureLib();
+            mark("N2.9b 精简模式 配角库 " + (okLib ? "已就位 " + libMs + "ms sr=" + libRate
+                                              : "失败 " + libErr));
+            return okLib;
+        }
         return ensureGirl();
     }
 
@@ -720,6 +801,9 @@ public final class TtsEngine {
      */
     public byte[] synth(String text, String voice, float speed, int dn) {
         if (text == null) return null;
+        /* 精简包没有主角模型：x0 / c0 / 空字符串 一律换成精选声线，
+           否则会走「建女主」那条路，建不出来就整句没声。 */
+        if (leadChecked && !hasLead && !isFanchen(voice)) voice = "s" + LITE_DEFAULT_SID;
         boolean useLib = isFanchen(voice);
         boolean useBoy = isBoy(voice);
         if (useLib) {
