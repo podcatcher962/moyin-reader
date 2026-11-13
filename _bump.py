@@ -34,7 +34,7 @@ TARGETS = [
     ('_pkg_linux/make_deb_win.py', r"VER = '(?P<v>\d+\.\d+\.\d+)'",            'deb 打包（Windows 端）'),
     ('_push_assets.py',         r"VER = '(?P<v>\d+\.\d+\.\d+)'",               'Release 资产上传'),
     ('_push_release.py',        r"tag = 'v(?P<v>\d+\.\d+\.\d+)'",              'Release 标签'),
-    ('_push_release.py',        r"'墨吟阅读器 (?P<v>\d+\.\d+\.\d+)'",           'Release 标题'),
+    ('_push_release.py',        r"'v(?P<v>\d+\.\d+\.\d+) — ",                 'Release 标题'),
 ]
 APK = ('_pkg_apk/build_apk.py', r'android:versionName="(?P<v>\d+\.\d+\.\d+)"', 'APK 版本名')
 APK_CODE = ('_pkg_apk/build_apk.py', r'android:versionCode="(?P<v>\d+)"', 'APK versionCode')

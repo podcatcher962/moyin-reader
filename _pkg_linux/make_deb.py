@@ -31,7 +31,7 @@ ROOT = os.path.dirname(HERE)
 OUT = os.path.join(ROOT, 'dist')
 ROOTDIR = os.path.join(OUT, 'deb-root')
 
-VER = '1.14.39'
+VER = '1.14.40'
 PKG = 'moyin-reader'
 ARCH = 'amd64'
 

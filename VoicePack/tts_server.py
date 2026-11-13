@@ -360,6 +360,7 @@ CURATED = [
     ('s98',  '中年男 4'),
     ('s143', '中年男 5'),
     ('s107', '中年男 6'),
+    ('s167', '中年男 7'),
     ('s76',  '男声 · 偏高 1'),
     ('s52',  '男声 · 中音 1'),
     ('s110', '男声 · 中音 2'),
@@ -393,6 +394,7 @@ CURATED = [
     ('s71',  '青年女 6'),
     ('s108', '青年女 7'),
     ('s68',  '青年女 14'),
+    ('s85',  '青年女 15'),
     ('s64',  '青年女 8'),
     ('s125', '女声 · 高音 1'),
     ('s139', '女声 · 高音 2'),
@@ -571,16 +573,22 @@ def _probe_resident():
         RES['ok'] = False
         RES['err'] = '%s: %s' % (type(e).__name__, e)
         return False
-    if not (os.path.isfile(os.path.join(MODEL_DIR, XIAOYA_DIR, 'model.onnx'))
-            or os.path.isfile(os.path.join(MODEL_DIR, CHAOWEN_DIR, 'model.onnx'))):
+    # 1.14.40 起成品不再带两份 22 kHz 主角，常驻引擎的判据改成「配角库在不在」。
+    # 但老 VoicePack（Lite 版外挂目录、或用户自己留下的那份）里还有 x0/c0，
+    # 三个模型任意一个在都算可用，别让老包突然退化成子进程方式。
+    has_lib = os.path.isfile(os.path.join(MODEL_DIR, FANCHEN_DIR, 'model.onnx'))
+    has_lead = (os.path.isfile(os.path.join(MODEL_DIR, XIAOYA_DIR, 'model.onnx'))
+                or os.path.isfile(os.path.join(MODEL_DIR, CHAOWEN_DIR, 'model.onnx')))
+    if not (has_lib or has_lead):
         RES['ok'] = False
         RES['err'] = 'model missing'
         return False
-    VOICES.update(_fast_spec())
+    if has_lead:
+        VOICES.update(_fast_spec())
     # 187 个配角也走常驻：多说话人模型的 generate(sid=) 直接换人，不用每条起一个子进程。
     # 2026-11-13 实测一句 19 字 0.92 秒（子进程方式 12 秒上下），从此精选才敢放到 50 条。
     # 每条声线只是模型里的一个说话人向量，多开一条不多占一个字节。
-    if os.path.isfile(os.path.join(MODEL_DIR, FANCHEN_DIR, 'model.onnx')):
+    if has_lib:
         for _k, _s in VOICES.items():
             if _s.get('resbase') == 's':
                 _s['fast'] = True
@@ -894,10 +902,19 @@ def warm_resident(which='fm'):
 # 启动时就探一次：常驻引擎能不能用决定后续走哪条路，也决定 /health 报什么。
 _probe_resident()
 
-# 默认音色：女主优先；没装女主就退男主，再没有就退回配角库第一个。
-DEFAULT_VOICE = ('x0' if 'x0' in VOICES
-                 else 'c0' if 'c0' in VOICES
-                 else 'm0' if 'm0' in VOICES else 's12')
+# 默认音色：1.14.40 起成品不再带 22 kHz 主角，默认落到精选里最适合作旁白的两条
+# 真人声线——女 s13（成年女 1）。名字得在 CURATED 里靠前，不然第一次打开听到的
+# 是「老生 · 低沉 1」，那是男低音，拿来念旁白没法听（安卓那边也是这么处理的：
+# health 里专门报一个 default 字段，页面 fixLocalVoice 认它，不靠猜列表第一个）。
+# 老 VoicePack 还带着 x0/c0 时，仍按老习惯先给「墨吟 · 女声」。
+def _first_present(*keys):
+    for k in keys:
+        if k in VOICES:
+            return k
+    return next(iter(VOICES)) if VOICES else 's12'
+
+
+DEFAULT_VOICE = _first_present('s13', 'x0', 's36', 's149', 'c0', 'm0')
 
 
 _sem = threading.Semaphore(12 if FAST else 6)   # 子进程并行数；常驻模式不受它限制
@@ -990,6 +1007,9 @@ def health():
         'groups': {v: VOICES[v]['band'] for v in VOICES},
         'f0': {v: VOICES[v]['f0'] for v in VOICES},
         'curated': order or list(VOICES),
+        # 默认声线交给引擎说，别让页面猜列表第一个：1.14.40 起没有 x0/c0，
+        # 精选第一条是「老生 · 低沉 1」（男低音），拿它念旁白没法听。
+        'default': DEFAULT_VOICE,
         'count': len([v for v in VOICES if voices.get(v)]),
         'en': en_ready(),
         # 配角库模型在不在。页面用它决定要不要提示「正在准备语音库」，在就一次都别弹。

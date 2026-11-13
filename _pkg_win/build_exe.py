@@ -30,7 +30,10 @@ FINAL_VOICE = os.path.join(VP, 'MoYinVoice.exe')
 
 BUNDLE_MAGIC = b'MOYINVP1'
 BUNDLE_TAIL = 56                       # struct '<8sQQ32s'
-SKIP_DIRS = {'__pycache__', '_download_tmp', '.parts_kokoro-int8-multi-lang-v1_1'}
+# xiaoya / chaowen 是两份 22 kHz 主角模型（各 18.65 MB）。1.14.40 起不进包：
+# 187 人那套常驻后同速，成品省 25 MB（压缩后）。老 VoicePack 目录里有的照样能用。
+SKIP_DIRS = {'__pycache__', '_download_tmp', '.parts_kokoro-int8-multi-lang-v1_1',
+             'xiaoya', 'chaowen'}
 SKIP_EXT = ('.log', '.tmp', '.pyc', '.part')
 
 os.makedirs(DIST, exist_ok=True)

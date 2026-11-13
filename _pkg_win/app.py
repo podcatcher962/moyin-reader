@@ -36,7 +36,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 APP = 'MoYinReader'
 APP_CN = '墨吟阅读器'
-VER = '1.14.39'
+VER = '1.14.40'
 VOICE_PORT = 8177
 PORTS = (38975, 38976, 0)
 CREATE_NO_WINDOW = 0x08000000
@@ -805,14 +805,19 @@ def cache_dir():
     return os.path.join(base, APP, 'VoicePack')
 
 
-# 判断缓存是否完整：引擎 + 三套模型 + 服务脚本
+# 判断缓存是否完整：引擎 + 配角库 + 服务脚本
+#
+# 1.14.40 起成品不再带两份 22 kHz 主角（xiaoya / chaowen，合计 37.3 MB）。
+# 它们本来是「音质最好的一条」，但代价是安装包大 25 MB（压缩后），而 187 人那套
+# 16 kHz 多说话人库常驻之后，一句 19 字 0.92 秒、跟主角同速——主角的优势只剩
+# 采样率本身。用户的选择是「普通人的声音」这条线，于是把两条高清主角拿走，
+# 默认旁白换成精选里的真人声线（女 s13 / 男 s58），老配置里的 x0 / c0 / f1~m3
+# 由页面 fixLocalVoice 落到新的默认，不会哑。shared 那套词表留着：老 VoicePack
+# 或 Lite 版外挂目录里还带着 x0/c0 时，仍要能跑。
 BUNDLE_MUST = (
     'tts_server.py',
     'engine/bin/sherpa-onnx-offline-tts.exe',
-    # 女主：小雅 22.05 kHz（官方 int8）
-    'models/xiaoya/model.onnx',
-    # 男主：超文 22.05 kHz（官方 int8）
-    'models/chaowen/model.onnx',
+    # 旧主角（可选）：带 xiaoya/chaowen 的 VoicePack 依然认，只是不再打进成品
     # 小雅与超文共用的词表与数字规则
     'models/shared/lexicon.txt',
     'models/shared/tokens.txt',

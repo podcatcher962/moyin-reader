@@ -24,7 +24,7 @@ import time
 REPO = 'podcatcher962/moyin-reader'
 TOKEN_FILE = r'D:\Desktop\send-to-mainpc\podcatcher962-token.txt'
 API = 'https://api.github.com'
-VER = '1.14.39'
+VER = '1.14.40'
 
 # --all 时传的全套（改版本号时一起改）
 ALL = [

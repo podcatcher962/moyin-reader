@@ -56,6 +56,12 @@ if NONLEAD:
     PKG = 'com.lanlan.moyinreader.lite'
     APP_NAME = '墨吟试验'
 PORT = 38974 if NONLEAD else 38973     # 两个版本同时装着时，别抢同一个本地端口
+# 1.14.40 起「正式包也不带 22 kHz 主角」（xiaoya + chaowen + shared 共 38.6 MB 原始）。
+# 和上面的 NONLEAD 不是一回事：NONLEAD 是另起一个 .lite 包名、能和正式版并存做对比的
+# 试验包；LEADLESS 是正式包本身的选择——187 人那套常驻之后同速（一句 0.92 秒），
+# 主角就只剩「采样率高一点」这一个优势，用户决定不要它。Java 那边靠「文件在不在」
+# 自己判断（liteMode），所以这里只要不拷进去，运行时会自动退到精选真人声线。
+LEADLESS = True
 HTML = os.path.join(ROOT, 'MoYinReader.html')
 # MOYIN_DIAG=1 打「三色探针包」：窗口底色蓝、WebView 底色品红、页面顶部压一块米黄说明牌，
 # 再配 Toast 报启动步骤。专治「没有 adb、只看得见一片颜色」的机器。正式构建不设这个变量，
@@ -124,8 +130,8 @@ os.makedirs(STAGE, exist_ok=True)
 MANIFEST = '''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="%s"
-    android:versionCode="11439"
-    android:versionName="1.14.39">
+    android:versionCode="11440"
+    android:versionName="1.14.40">
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
     <!-- 只有两条：WebView 访问本机 127.0.0.1 需要明文 http；
          不申请麦克风、定位、通讯录、存储，读书不需要这些。 -->
@@ -543,10 +549,10 @@ def stage_voice_model(assets):
         ('fanchen', ((VOICE_LIB, VOICE_LIB_FILES),)),
         ('en', ((VOICE_EN, VOICE_EN_FILES),)),
     )
-    if NONLEAD:
-        # 主角两份 22 kHz 模型 + 共用词表一共 38.6 MB，这一版不要
+    if LEADLESS:
+        # 主角两份 22 kHz 模型 + 共用词表一共 38.6 MB，1.14.40 起不要了
         plan = tuple(x for x in plan if x[0] not in ('xiaoya', 'chaowen'))
-        print('  精简试验包：跳过 xiaoya / chaowen / shared', flush=True)
+        print('  跳过 xiaoya / chaowen / shared（1.14.40 起成品只带 187 人库）', flush=True)
     total = 0
     for sub, groups in plan:
         dst = os.path.join(assets, 'tts', sub)
@@ -693,7 +699,7 @@ def audit(allcls, dexfile, has_neuro):
         ok &= ck(md5(page) == md5(src), '内嵌页面与源文件逐字节一致 md5=' + md5(page))
     ok &= ck('classes.dex' in names, 'dex 已打包')
     if has_neuro:
-        lead_sets = (set() if NONLEAD else
+        lead_sets = (set() if LEADLESS else
                      ({'assets/tts/xiaoya/' + f for f in VOICE_GIRL_FILES}
                       | {'assets/tts/chaowen/' + f for f in VOICE_BOY_FILES}))
         allowed = ({'assets/index.html'}
@@ -703,8 +709,8 @@ def audit(allcls, dexfile, has_neuro):
                    )
         extra = sorted(set(n for n in names if n.startswith('assets/')) - allowed)
         ok &= ck(not extra, 'assets 只有页面与该带的语音模型，多余项 %r' % extra[:3])
-        if NONLEAD:
-            # 试验包的关键体检：主角那两份模型一个字节都不许混进来
+        if LEADLESS:
+            # 关键体检：主角那两份模型一个字节都不许混进来
             leaked = sorted(n for n in names
                             if n.startswith('assets/tts/xiaoya/')
                             or n.startswith('assets/tts/chaowen/'))
