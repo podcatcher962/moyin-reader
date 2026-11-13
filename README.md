@@ -72,7 +72,7 @@
 | **Windows** | 下载 `MoYinReader.exe` 双击 | 完整版，187 个离线语音与分角色朗读都在这一版 |
 | **安卓** | 打开[下载页](https://podcatcher962.github.io/moyin-reader/download/)选源下载 | 页面内嵌，**187 个离线神经声线随包带走**，断网也能听；下载页会列出官方直链与可选镜像，手机下载见下方说明 |
 | **任意系统** | 双击 `MoYinReader.html` | 单文件网页版，功能与桌面版一致 |
-| **Linux / 信创**（统信 UOS、麒麟、openEuler、Deepin） | `sudo dpkg -i moyin-reader_*.deb` 装进应用菜单；或用 `MoYinReader-Linux-*.tar.gz` 解压后双击「墨吟阅读器.sh」 | **x86_64 是 10 MB 独立程序，不用装 Python**（1.10 版在统信 UOS 20 专业版实测安装与启动；1.11 的包内容只换了内嵌页面，deb 归档结构自检通过，若装不上请直接用 tar.gz）。飞腾 / 鲲鹏 / 龙芯会自动走 Python 或网页方式 |
+| **Linux / 信创**（统信 UOS、麒麟、openEuler、Deepin） | `sudo dpkg -i moyin-reader_*.deb` 装进应用菜单；或用 `MoYinReader-Linux-*.tar.gz` 解压后双击「墨吟阅读器.sh」 | 走**系统自带的 python3** 起原生窗口，没有就用 Chromium 系浏览器的「应用窗口」模式；x86_64 / 飞腾 / 鲲鹏 / 龙芯都一样。**1.14.39 起包里不再附预编译二进制**——旧那个是 1.10 打的、内嵌页面停在 1.10，会盖住新界面（详见下方「Linux 包为什么不再带二进制」）。想要免 Python 就在本机跑一次 `build-linux.sh` |
 | **macOS**（Intel / Apple Silicon） | 解压 `MoYinReader-macOS-*.zip`，双击「墨吟阅读器.command」 | 免安装 Python |
 
 > **手机上装安卓版，下载卡住怎么办**
@@ -141,9 +141,9 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 | `MoYinReader_Lite.exe` | 约 38 MB | Windows 轻量版，需同目录放 `VoicePack` 文件夹（约 171 MB） |
 | `MoYinReader.apk` | 约 128 MB | 安卓完整版（arm64-v8a），页面 + 三套语音模型（男女主角 + 187 声线配角库）+ 英文模型与引擎全在包里。187 人配角库用 fp16 而非 int8，所以比 1.14.2x 那会儿大，换来的是每个字都咬得清 |
 | `MoYinReader.html` | 约 2.1 MB | 单文件网页版，双击即用，任何系统都能跑（1.14.25 起内置 PDF.js，体积从 0.5 MB 涨到 2 MB，换来 PDF 能读） |
-| `moyin-reader_*_amd64.deb` | 约 9.8 MB | 统信 / 麒麟 / openEuler，**双击安装即进应用菜单**，卸载走系统正常流程 |
-| `MoYinReader-Linux-*.tar.gz` | 约 9.8 MB | 免安装版：解压双击「墨吟阅读器.sh」，U 盘带走也能用 |
-| `MoYinReader-macOS-*.zip` | 约 168 KB | macOS 源码 + 打包脚本，在本机跑一次 `build-macos.sh` 出 `.app` |
+| `moyin-reader_*_amd64.deb` | 约 0.7 MB | 统信 / 麒麟 / openEuler，**双击安装即进应用菜单**，卸载走系统正常流程。1.14.39 起不再捆旧二进制，体积从 9.8 MB 降到 0.7 MB，装得更快也更好修 |
+| `MoYinReader-Linux-*.tar.gz` | 约 0.7 MB | 免安装版：解压双击「墨吟阅读器.sh」，U 盘带走也能用 |
+| `MoYinReader-macOS-*.zip` | 约 0.7 MB | macOS 源码 + 打包脚本，在本机跑一次 `build-macos.sh` 出 `.app`（内含的页面就是当前版本，跟 Win 版同一个 md5） |
 
 不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本；或者用 **[在线版](https://podcatcher962.github.io/moyin-reader/)** 什么都不装。
 
@@ -250,6 +250,26 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 会联网的只有三件事，且都要你主动触发：① 检查更新（一个普通 GET 取 `versions.json`，不带书名、不带设备标识）；② 下载安装包与语音模型（GitHub Releases，国内线路不通时走第三方镜像 `gh-proxy.com`——那是第三方服务，其运营方能看到你的 IP 与 UA）；③ 你自己选了名称含 `Online (Natural)` 的在线音色时，当前那句文字会交给浏览器/系统的语音服务合成，这与本软件的书籍存储无关。
 
 安卓包只声明 `INTERNET` 与 `ACCESS_NETWORK_STATE` 两个权限，没有存储、位置、通讯录、相机、麦克风权限，不读 IMEI / Android ID / MAC / 广告 ID。语音引擎只监听 `127.0.0.1`，不对外网开放。局域网共享的登录凭据交给 Windows 凭据管理器，本软件不保存。完整说明见 [PRIVACY.md](PRIVACY.md)。
+
+### Linux 包为什么不再带二进制
+
+1.14.38 之前，`MoYinReader-Linux-*.tar.gz` 和 `.deb` 里都塞着一个 9.75 MB 的 `MoYinReader`（PyInstaller onefile，在统信 UOS 20 上打的）。它看着像「免 Python 独立程序」，实际上是**陷阱**：
+
+- 那个二进制是 1.10 时代打的，页面靠 `--add-data MoYinReader.html:.` **内嵌**在包里。解包实测内嵌的 html 只有 **371 KB**；而 1.14.25 起页面内置了 PDF.js，现在是 **2.1 MB**。
+- 启动脚本第一句就是 `exec ./MoYinReader`，所以 1.11 到 1.14.35 的 Linux 包，双击「墨吟阅读器.sh」跑的一直是 **1.10 的旧界面**——外层那份新页面从来没被读到过。版本号、检查更新、187 声线、PDF 支持全都没有。
+- 这个坑很难被用户说清（「我装的明明是新的」），只有把包解开、把内嵌 html 抽出来量大小才会露馅。
+
+修法不是「再打一个新二进制」，而是**不再用没法验证的二进制**：PyInstaller 打不出跨架构、跨 glibc 的包，Windows 上交叉编译不了（本机 WSL 也被安全策略禁用），而这台机器上没有 UOS 20 环境，打出来的东西自己都没法验。
+
+所以 1.14.39 起 Linux 包只放「页面 + app.py + 启动器」，三条路依次尝试：
+
+| 顺序 | 条件 | 结果 |
+|---|---|---|
+| ① | 同目录有你自己打的 `MoYinReader` | 直接用它 |
+| ② | 系统有 `python3`（信创机器基本都是自带） | 原生窗口；缺 pywebview 自动退回浏览器 |
+| ③ | 没有 python3 | Chromium 系浏览器的 `--app` 模式，没有地址栏，看起来跟独立程序一样 |
+
+包体积从 9.8 MB 降到 **0.7 MB**。想要真正的免 Python 独立程序，在那个包里执行一次 `bash build-linux.sh`（PyInstaller 就地打，天然匹配本机架构与 glibc），产物改名成 `MoYinReader` 放进目录，启动器会自动优先用它。
 
 ### 从源码构建
 

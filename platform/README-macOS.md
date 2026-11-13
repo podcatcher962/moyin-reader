@@ -5,7 +5,7 @@
 ## 最快用法（不需要打包）
 
 ```bash
-bash platform/start-macos.sh
+bash start-macos.sh
 ```
 
 或者直接双击 `MoYinReader.html`，Safari 打开就能用。
@@ -18,7 +18,7 @@ macOS 自带 WKWebView，装个 pywebview 就有原生窗口：
 
 ```bash
 python3 -m pip install --user pywebview
-bash platform/start-macos.sh
+bash start-macos.sh
 ```
 
 没装 pywebview 时脚本会自动用 Safari 打开，不会报错卡住。
@@ -26,14 +26,14 @@ bash platform/start-macos.sh
 ## 自己打包成 .app
 
 ```bash
-bash platform/build-macos.sh
+bash build-macos.sh
 # 产物：dist/墨吟阅读器.app
 ```
 
 只想要单文件（不带 .app 外壳）：
 
 ```bash
-bash platform/build-macos.sh --onefile
+bash build-macos.sh --onefile
 # 产物：dist/MoYinReader
 ```
 

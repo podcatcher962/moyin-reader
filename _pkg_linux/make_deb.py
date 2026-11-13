@@ -8,6 +8,18 @@
     scp dist/deb-root.tar.gz user@host:/tmp/
     ssh user@host 'cd /tmp && tar xzf deb-root.tar.gz && \
         dpkg-deb --build --root-owner-group deb-root moyin-reader_1.1.0_amd64.deb'
+
+1.14.39 起不再往包里塞 dist/MoYinReader-linux-x86_64。那个二进制是 1.10.0
+时代（2026-11-07）在统信 UOS 上打的 PyInstaller onefile，页面是用
+``--add-data MoYinReader.html:.`` **内嵌**进去的，解包实测内嵌 html 只有
+371 KB；而 1.14.25 起页面内置了 PDF.js，现在是 2.1 MB。也就是说 1.11 到
+1.14.35 的 Linux 包，x86_64 用户双击跑的一直是 1.10 的旧界面，外层那个
+新 html 根本没被读到。
+
+PyInstaller 不能交叉编译，Windows 上重打不了（本机 WSL 也被安全策略禁用），
+没验证过的二进制比没有更危险——所以这版只放「app.py + 页面 + 启动器」，
+两条路都能跑：系统 python3（信创机器基本都自带）或系统浏览器。想免 Python
+就在目标机器上跑一次 build-linux.sh，打出来天然匹配本机架构与 glibc。
 """
 import io
 import os
@@ -22,14 +34,13 @@ ROOTDIR = os.path.join(OUT, 'deb-root')
 VER = '1.14.39'
 PKG = 'moyin-reader'
 ARCH = 'amd64'
-BIN = os.path.join(OUT, 'MoYinReader-linux-x86_64')
 
 CONTROL = """Package: moyin-reader
 Version: {ver}
 Section: office
 Priority: optional
 Architecture: {arch}
-Depends: libc6 (>= 2.28)
+Depends: libc6
 Installed-Size: {size}
 Maintainer: Lanlan Eternal <podcatcher962@users.noreply.github.com>
 Homepage: https://github.com/podcatcher962/moyin-reader
@@ -40,17 +51,26 @@ Description: 墨吟阅读器 — TXT / EPUB 阅读与朗读
 """
 
 WRAPPER = """#!/bin/sh
-# 墨吟阅读器启动器。优先跑独立程序，跑不了就退回 Python / 浏览器。
+# 墨吟阅读器启动器。
+#   ① 系统自带 python3 → 起原生窗口（不装任何第三方库也能跑，缺 pywebview 就开浏览器）
+#   ② 没有 python3 → 用 Chromium 系浏览器的 --app 模式，开一个没有地址栏的窗口
+#   ③ 都没有 → 普通浏览器打开
+# 想免 Python：在任意装了 python3 的机器上跑一次 build-linux.sh，把产物改名成
+# MoYinReader 放到 /usr/lib/moyin-reader/ 下，这里会自动优先用它。
 DIR=/usr/lib/moyin-reader
 if [ -x "$DIR/MoYinReader" ]; then
-  ARCH=$(uname -m)
-  if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; then
-    exec "$DIR/MoYinReader" "$@"
-  fi
+  exec "$DIR/MoYinReader" "$@"
 fi
 if command -v python3 >/dev/null 2>&1 && [ -f "$DIR/app.py" ]; then
   exec python3 "$DIR/app.py" "$@"
 fi
+for c in google-chrome google-chrome-stable chromium chromium-browser \\
+         microsoft-edge microsoft-edge-stable org.deepin.browser kylin-browser; do
+  if command -v "$c" >/dev/null 2>&1; then
+    "$c" --app="file://$DIR/MoYinReader.html" >/dev/null 2>&1 &
+    exit 0
+  fi
+done
 exec xdg-open "$DIR/MoYinReader.html"
 """
 
@@ -105,7 +125,7 @@ def main():
     os.makedirs(ROOTDIR)
 
     lib = os.path.join(ROOTDIR, 'usr', 'lib', PKG)
-    cp(BIN, os.path.join(lib, 'MoYinReader'), 0o755)
+    # 不再放 dist/MoYinReader-linux-x86_64（1.10 时代的旧内嵌页面，见文件头说明）
     cp(os.path.join(ROOT, 'MoYinReader.html'), os.path.join(lib, 'MoYinReader.html'))
     cp(os.path.join(ROOT, '_pkg_win', 'app.py'), os.path.join(lib, 'app.py'))
     w(os.path.join(ROOTDIR, 'usr', 'bin', PKG), WRAPPER, 0o755)

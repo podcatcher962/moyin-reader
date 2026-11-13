@@ -56,6 +56,33 @@
 | `MoYinReader_Lite.exe` | 38 MB | 不带语音库，需同目录放 `VoicePack` |
 | `MoYinReader.apk` | 128 MB | 安卓完整版（arm64-v8a，含三套语音模型） |
 | `MoYinReader.html` | 2.1 MB | 单文件网页版，双击即用 |
+| `MoYinReader-Linux-1.14.39.tar.gz` | 0.7 MB | Linux / 信创免安装版，解压双击「墨吟阅读器.sh」 |
+| `moyin-reader_1.14.39_amd64.deb` | 0.7 MB | 统信 / 麒麟 / openEuler，`sudo dpkg -i` 装进应用菜单 |
+| `MoYinReader-macOS-1.14.39.zip` | 0.7 MB | macOS 源码 + 一键打包脚本，内含当前版本页面 |
+
+## Linux / macOS 这次补齐了，顺带修掉一个藏了四个版本的错
+
+前几版 Release 只挂 Windows 和安卓，Linux / macOS 一直停在上一个版本。这次补齐，同时挖出个问题：
+
+**那些包里的「免 Python 独立程序」是 1.10 打的。**
+
+`MoYinReader-Linux-*.tar.gz` 和 `.deb` 里一直塞着一个 9.75 MB 的 `MoYinReader`（PyInstaller onefile）。页面是用 `--add-data MoYinReader.html:.` **内嵌**在里面的。把包解开一量：内嵌的 html 只有 **371 KB**，而 1.14.25 起页面内置了 PDF.js，现在应该是 **2.1 MB**。
+
+也就是说，从 1.11 到 1.14.35，Linux 用户双击「墨吟阅读器.sh」跑的一直是 **1.10 的界面**——启动脚本第一句就是 `exec ./MoYinReader`，外层那份新页面从来没被读到过。版本号、187 声线、PDF、旁白男女，一个都没有。
+
+这次的处置不是「再打一个新二进制」：PyInstaller 打不出跨架构、跨 glibc 的包，Windows 上交叉编译不了，而手上没有 UOS 20 环境，打出来的东西自己都验不了——**没验证过的二进制比没有更危险**，这个坑就是这么来的。
+
+所以 Linux 包改成三条路依次兜底，功能一样：
+
+| 顺序 | 条件 | 结果 |
+|---|---|---|
+| ① | 同目录有你自己打的 `MoYinReader` | 直接用它 |
+| ② | 系统有 `python3`（信创机器基本自带） | 原生窗口，缺 pywebview 自动退回浏览器 |
+| ③ | 没有 python3 | Chromium 系浏览器的「应用窗口」模式，没有地址栏 |
+
+包体积从 9.8 MB 降到 **0.7 MB**。想免 Python，在包内跑一次 `bash build-linux.sh`（就地打，匹配本机架构与 glibc），产物改名 `MoYinReader` 放进目录就会自动优先使用。
+
+macOS 那边一直是「页面 + app.py + 打包脚本」，没有这个问题；这次只是把页面同步到 1.14.39（md5 与 Windows 版逐字节一致）。
 
 ## 还是要说清楚的
 

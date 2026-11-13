@@ -6,7 +6,7 @@
 ## 最快用法（不需要装任何东西）
 
 ```bash
-bash platform/start-linux.sh
+bash start-linux.sh
 ```
 
 或者干脆：**双击 `MoYinReader.html`**，用系统自带浏览器打开。
@@ -25,7 +25,7 @@ bash platform/start-linux.sh
 | openEuler / 欧拉 | `sudo dnf install python3 python3-pip python3-gobject webkit2gtk4.1` 然后 `pip3 install --user pywebview` |
 | Debian / Ubuntu | `sudo apt install python3 python3-pip python3-gi gir1.2-webkit2-4.0` 然后 `pip3 install --user pywebview` |
 
-装完再跑 `bash platform/start-linux.sh`，就是原生窗口。
+装完再跑 `bash start-linux.sh`，就是原生窗口。
 
 > **信创内网 / 离线机器**：把 pywebview 的 wheel 拷进去离线装
 > ```bash
@@ -41,7 +41,7 @@ bash platform/start-linux.sh
 ## 自己打包成可执行文件
 
 ```bash
-bash platform/build-linux.sh
+bash build-linux.sh
 # 产物：dist/MoYinReader-linux-<架构>
 ```
 
@@ -56,13 +56,11 @@ bash platform/build-linux.sh
 
 ## 桌面快捷方式
 
-`platform/moyin.desktop` 是桌面入口文件，按下面的方式装：
+发行包里双击「安装到应用菜单.sh」即可，它会把入口写进
+`~/.local/share/applications/moyin-reader.desktop`，并顺手放到桌面。
+想撤掉就双击「卸载.sh」。
 
-```bash
-mkdir -p ~/.local/share/applications
-cp platform/moyin.desktop ~/.local/share/applications/
-# 把 Exec/Icon 里的 %k/.. 改成你的实际安装目录，例如 /opt/moyin
-```
+用 `.deb` 装的话，安装时自动就有了，不用管这一节。
 
 ## 与 Windows 版的差别
 

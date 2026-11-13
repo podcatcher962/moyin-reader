@@ -3,13 +3,21 @@
     python _pkg_linux/make_pkg.py
 
 产物：
-    dist/MoYinReader-Linux-<ver>.tar.gz     Linux / 统信 / 麒麟 / 欧拉（x86_64 带真二进制）
+    dist/MoYinReader-Linux-<ver>.tar.gz     Linux / 统信 / 麒麟 / 欧拉
     dist/MoYinReader-macOS-<ver>.zip        macOS（Intel / Apple Silicon 通用，用户自行打包）
 
-Linux 包里第一优先是 dist/MoYinReader-linux-x86_64（在统信 UOS 20 上用
-PyInstaller 5.13.2 + Python 3.7 打出来的真 ELF，只依赖 libc/libz/libpthread）。
-其余架构（飞腾/鲲鹏 aarch64、龙芯 loongarch64）目前给「HTML + 启动脚本」，
-并在包里附 build-linux.sh，可在本机打自己的二进制。
+1.14.39 起 Linux 包**不再带** dist/MoYinReader-linux-x86_64。原因不在体积，
+在版本：那个二进制是 2026-11-07 在统信 UOS 上用 PyInstaller 打的 onefile，
+页面靠 ``--add-data MoYinReader.html:.`` 内嵌，解包实测内嵌 html 只有 371 KB，
+而 1.14.25 起页面内置 PDF.js，现在是 2.1 MB。也就是说 1.11~1.14.35 的包里，
+x86_64 用户双击「墨吟阅读器.sh」跑的一直是 **1.10 的旧界面**，外层那个新
+html 根本没被读过——启动脚本第一句就 exec 了旧二进制。
+
+PyInstaller 打不出跨架构跨 glibc 的包，本机 WSL 又被安全策略禁用，没法在这台
+Windows 上重打；发一个没在真机验证过的二进制比不发更糟。所以这版走两条稳的路：
+系统 python3（信创机器基本自带）或系统浏览器，功能与独立程序完全一样
+（墨吟本来就是单文件应用，数据存在浏览器 IndexedDB 里）。真要免 Python，
+在目标机器上跑一次 build-linux.sh，打出来的天然匹配本机架构与 glibc。
 """
 import os
 import sys
@@ -25,37 +33,38 @@ OUT = os.path.join(ROOT, 'dist')
 LINUX_DIR = 'MoYinReader-Linux'
 MAC_DIR = 'MoYinReader-macOS'
 
-# 在统信 UOS 上打出来的 x86_64 二进制
-LINUX_BIN = os.path.join(OUT, 'MoYinReader-linux-x86_64')
-
 LINUX_NOTE = '''墨吟阅读器 {ver} · Linux / 信创版
 =====================================
 
-一、最快的用法（x86_64 机器，含统信 UOS / 麒麟 / openEuler 的常见整机）
+一、怎么用（统信 UOS / 麒麟 / openEuler / Deepin / 龙芯，一个文件都不用装）
 
   1. 把整个文件夹解压出来，别在压缩包里直接点。
-  2. 双击「墨吟阅读器.sh」。
-     · 它会优先运行同目录的 MoYinReader（10 MB 的独立程序，不需要 Python、
-       不需要装任何依赖，双击就走）。
-     · 若系统问「要如何打开」，选「运行」或「在终端中运行」。
+  2. 双击「墨吟阅读器.sh」。它会按这个顺序找路：
+     · 系统里有 python3 → 直接起原生窗口（信创机器的 python3 都是系统自带的，
+       不需要装任何第三方库）；
+     · 没有 python3 → 用 Chromium 系浏览器的「应用窗口」模式打开，没有地址栏，
+       看起来和独立程序一样；
+     · 连浏览器都没有 → 你手动双击 MoYinReader.html 也行，功能一模一样。
   3. 想让它出现在应用菜单 / 桌面：双击一次「安装到应用菜单.sh」。
 
-  这个 MoYinReader 是在统信 UOS 20 专业版上编译的，只依赖 libc / libz /
-  libpthread / libdl（glibc 2.28+）。UOS 20、银河麒麟 V10、openEuler 20.03+
-  都能直接跑。
+  墨吟是单文件应用——界面、样式、脚本全在 MoYinReader.html 里，书籍和笔记
+  存在浏览器本地数据库（IndexedDB）里。所以「用浏览器打开」和「用独立窗口」
+  功能完全一样，只是少个独立窗口。
 
-二、其它架构（飞腾 / 鲲鹏 aarch64、龙芯 loongarch64）
+二、想要「不需要 Python 的独立程序」
 
-  这些机器用不了 x86_64 的二进制，但**照样能用**：
-  · 双击「墨吟阅读器.sh」会自动退回 Python 方式（系统自带 python3 就行）；
-  · 或者直接双击 MoYinReader.html，用浏览器打开，功能一模一样。
-  想打成自己架构的独立程序：在本机执行一次
+  在你这台机器上执行一次（只要一次）：
       bash build-linux.sh
-  会生成 dist/MoYinReader-linux-<架构>，之后替换掉同名文件即可。
+  会生成 dist/MoYinReader-linux-<架构>，把它改名成 MoYinReader 放到本文件夹里，
+  以后双击「墨吟阅读器.sh」就会优先用它。
+
+  为什么包里的不是独立程序：独立程序必须在本机架构 + 本机 glibc 上打，
+  Windows 上打不出来。包内附的这个脚本靠系统 python3 打包，天生适配你的机器，
+  比塞一个别处打好的二进制更可靠。
 
 三、这个版本能做什么
 
-  · TXT / EPUB 阅读，滚动或整屏翻页，双栏 / 单栏，十种字体，六套主题 + 十六色板
+  · TXT / EPUB / PDF 阅读，滚动或整屏翻页，双栏 / 单栏，十种字体，六套主题 + 十六色板
   · 划线批注、笔记、导出 Markdown、阅读总结
   · 自动翻页（3–180 秒可调）、沉浸全屏、阅读时钟、休息提醒
   · 书架分组、收藏、书签、全文搜索、中英双语界面
@@ -66,8 +75,8 @@ LINUX_NOTE = '''墨吟阅读器 {ver} · Linux / 信创版
 
 四、自检
 
-  终端里执行：  ./MoYinReader --selftest
-  会检查内嵌页面、本地服务、导入通道是否正常（27 项）。
+  装过 pywebview 的机器可以先自检：  python3 app.py --selftest
+  会检查内嵌页面、本地服务、导入通道是否正常。
 
 五、卸载
 
@@ -130,21 +139,27 @@ LINUX_LAUNCH = '''#!/bin/bash
 # 墨吟阅读器 · 双击我就能用（Linux / 统信 / 麒麟 / 欧拉 / 龙芯）
 cd "$(dirname "$0")" || exit 1
 
-# ① 优先用同目录的独立程序（x86_64，不需要 Python）
+# ① 你如果自己用 build-linux.sh 打过独立程序，放在这里就叫它
 if [ -x "./MoYinReader" ]; then
-  ARCH=$(uname -m 2>/dev/null)
-  if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; then
-    exec ./MoYinReader "$@"
-  fi
+  exec ./MoYinReader "$@"
 fi
 
-# ② 退回 Python（系统自带 python3 就够，不需要任何第三方库）
+# ② 系统自带 python3 就够（不用装任何第三方库；缺 pywebview 会自动开浏览器）
 if command -v python3 >/dev/null 2>&1 && [ -f app.py ]; then
   exec python3 app.py "$@"
 fi
 
-# ③ 再退：直接用浏览器打开单文件
-for c in xdg-open gio sensible-browser firefox chromium chromium-browser org.deepin.browser kylin-browser; do
+# ③ 没有 python3：用 Chromium 系浏览器的「应用窗口」模式，没有地址栏
+for c in google-chrome google-chrome-stable chromium chromium-browser \\
+         microsoft-edge microsoft-edge-stable org.deepin.browser kylin-browser; do
+  if command -v "$c" >/dev/null 2>&1; then
+    "$c" --app="file://$PWD/MoYinReader.html" >/dev/null 2>&1 &
+    exit 0
+  fi
+done
+
+# ④ 最后退回普通浏览器打开单文件
+for c in xdg-open gio sensible-browser firefox; do
   if command -v "$c" >/dev/null 2>&1; then
     if [ "$c" = "gio" ]; then gio open "file://$PWD/MoYinReader.html"
     else "$c" "file://$PWD/MoYinReader.html" & fi
@@ -233,10 +248,9 @@ def build_linux():
             if os.path.isfile(p):
                 os.remove(p)
 
-    has_bin = os.path.isfile(LINUX_BIN)
-    if has_bin:
-        copy(LINUX_BIN, os.path.join(base, 'MoYinReader'), 0o755)
-
+    # 放 dist/MoYinReader-linux-x86_64 是坑：那是 1.10 时代的 onefile，
+    # 内嵌页面 371 KB，运行时根本读不到外层这份 2.1 MB 的新页面（见文件头）。
+    # 想要独立程序，用户在自己机器上跑 build-linux.sh，别用旧的替。
     copy(os.path.join(ROOT, 'MoYinReader.html'), os.path.join(base, 'MoYinReader.html'))
     copy(os.path.join(ROOT, '_pkg_win', 'app.py'), os.path.join(base, 'app.py'))
     w(os.path.join(base, '墨吟阅读器.sh'), LINUX_LAUNCH, 0o755)
@@ -303,8 +317,6 @@ def build_mac():
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
     t0 = time.time()
-    if not os.path.isfile(LINUX_BIN):
-        print('⚠ 没找到 %s，Linux 包将只有脚本兜底' % LINUX_BIN)
     a = build_linux()
     b = build_mac()
     for f in (a, b):
