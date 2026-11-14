@@ -27,7 +27,7 @@ import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-VER = '1.14.40'
+VER = '1.14.41'
 OUT = os.path.join(ROOT, 'dist')
 
 LINUX_DIR = 'MoYinReader-Linux'
@@ -78,7 +78,23 @@ LINUX_NOTE = '''墨吟阅读器 {ver} · Linux / 信创版
   装过 pywebview 的机器可以先自检：  python3 app.py --selftest
   会检查内嵌页面、本地服务、导入通道是否正常。
 
-五、卸载
+五、许可与声明（重要，请读一下）
+
+  · LICENSE —— 本项目代码与文档以 MIT 许可证发布，版权 © 2026 Lanlan Eternal。
+    MIT 只覆盖作者自己写的东西，**不覆盖任何第三方资产**。
+  · THIRD-PARTY-NOTICES.md —— 逐组件许可状态。有例外：Windows 版随包的
+    fanchen-C 语音模型上游未声明任何许可证，本项目只按原样分发、不作再许可、
+    不声称它开源。任何人对它的使用不能援引本项目的 MIT 声明。
+  · VOICE-POLICY.md —— 声音从哪来、三层权利怎么拆、移除通道在哪。
+  · PRIVACY.md —— 不采集、不上传、不录音、不克隆。
+
+  本 Linux 包**不含任何语音模型**（朗读走系统语音，见第三节），所以上面关于
+  模型的那一条在这里不适用；列出来是为了让整套文档保持一份，别被拆散。
+
+  墨吟永久免费。作者从未授权任何人以本项目名义收费、代充、捆绑销售或做
+  "付费版"。你若花了钱，那是卖方行为，与本项目无关。
+
+六、卸载
 
   如果跑过「安装到应用菜单.sh」，双击「卸载.sh」即可清掉菜单项。
   书籍与阅读记录存在 ~/.local/share/MoYinReader，删掉这个目录即彻底清空。
@@ -114,6 +130,22 @@ macOS 上没法在 Windows 机器上交叉编译，所以这里给的是「源�
   · 自动翻页（3–180 秒可调）、沉浸全屏、阅读时钟、休息提醒
   · 书架分组、收藏、书签、全文搜索、中英双语界面
   · 朗读：走 macOS 系统语音（到「系统设置 → 辅助功能 → 朗读内容」装中文语音）
+
+四、许可与声明（重要，请读一下）
+
+  · LICENSE —— 本项目代码与文档以 MIT 许可证发布，版权 © 2026 Lanlan Eternal。
+    MIT 只覆盖作者自己写的东西，**不覆盖任何第三方资产**。
+  · THIRD-PARTY-NOTICES.md —— 逐组件许可状态。有例外：Windows 版随包的
+    fanchen-C 语音模型上游未声明任何许可证，本项目只按原样分发、不作再许可、
+    不声称它开源。任何人对它的使用不能援引本项目的 MIT 声明。
+  · VOICE-POLICY.md —— 声音从哪来、三层权利怎么拆、移除通道在哪。
+  · PRIVACY.md —— 不采集、不上传、不录音、不克隆。
+
+  本 macOS 包**不含任何语音模型**（朗读走系统语音，见第三节），所以上面关于
+  模型的那一条在这里不适用；列出来是为了让整套文档保持一份，别被拆散。
+
+  墨吟永久免费。作者从未授权任何人以本项目名义收费、代充、捆绑销售或做
+  "付费版"。你若花了钱，那是卖方行为，与本项目无关。
 
 作者 / 版权 © 2026 永远的兰兰（Lanlan Eternal）
 '''
@@ -240,6 +272,20 @@ def mode_for(name):
     return 0o644
 
 
+# 合规四件套：跟着每个包走，别让用户拿到的是被拆散的文档。
+# LICENSE 是 MIT 全文（本体的权利），后三份说清「MIT 不覆盖什么」。
+DOCS = ('LICENSE', 'THIRD-PARTY-NOTICES.md', 'VOICE-POLICY.md', 'PRIVACY.md')
+
+
+def copy_docs(base):
+    """把许可与声明文件拷进包根目录，缺一个就报出来。"""
+    for name in DOCS:
+        src = os.path.join(ROOT, name)
+        if not os.path.isfile(src):
+            raise SystemExit('缺文档：%s' % src)
+        copy(src, os.path.join(base, name))
+
+
 def build_linux():
     base = os.path.join(OUT, LINUX_DIR)
     if os.path.isdir(base):
@@ -262,7 +308,7 @@ def build_linux():
             copy(src, os.path.join(base, extra), 0o755)
     copy(os.path.join(ROOT, 'platform', 'moyin.png'), os.path.join(base, 'icon.png'))
     copy(os.path.join(ROOT, 'platform', 'README-Linux.md'), os.path.join(base, 'README-Linux.md'))
-    copy(os.path.join(ROOT, 'LICENSE'), os.path.join(base, 'LICENSE'))
+    copy_docs(base)
     w(os.path.join(base, '使用说明.txt'), LINUX_NOTE.format(ver=VER))
 
     tgz = os.path.join(OUT, 'MoYinReader-Linux-%s.tar.gz' % VER)
@@ -297,7 +343,7 @@ def build_mac():
         if os.path.isfile(src):
             copy(src, os.path.join(base, extra), 0o755)
     copy(os.path.join(ROOT, 'platform', 'README-macOS.md'), os.path.join(base, 'README-macOS.md'))
-    copy(os.path.join(ROOT, 'LICENSE'), os.path.join(base, 'LICENSE'))
+    copy_docs(base)
     w(os.path.join(base, '使用说明.txt'), MAC_NOTE.format(ver=VER))
 
     z = os.path.join(OUT, 'MoYinReader-macOS-%s.zip' % VER)

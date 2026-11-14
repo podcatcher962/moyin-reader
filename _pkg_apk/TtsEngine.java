@@ -24,11 +24,11 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * 墨吟 · 手机端离线神经语音
  *
- * 三套模型并存，与桌面端 VoicePack/tts_server.py 的编排一致：
- *   · 女主（默认，x0）：小雅，Piper 中文单说话人 VITS，22.05 kHz，官方 int8。
- *   · 男主（c0）：超文，同架构中文男声，22.05 kHz，官方 int8。与女主共用词表。
- *   · 配角库（s0…s186）：fanchen，16 kHz，187 个说话人共用一份 int8 模型（38 MB），
- *     靠 sid 切声线，体积不随音色数量增长。推理慢，只当配角用。
+ * 与桌面端 VoicePack/tts_server.py 的编排一致：
+ *   · 主库（s0…s186，1.14.40 起唯一常驻的一份）：fanchen，16 kHz，187 个说话人共用
+ *     一份模型，靠 sid 切声线，体积不随音色数量增长。主角 / 旁白 / 配角都从这里挑。
+ *   · 老包遗留（x0 / c0，仅 --with-lead 分支）：小雅 / 超文 22.05 kHz 单说话人模型。
+ *     1.14.40 起不再入包，代码仍认——盘里有就注册，没有就不注册，绝不报错。
  *
  * 模型放在 apk 的 assets 里，首次启动解压到应用私有目录，之后直接用绝对路径，
  * onnxruntime 可以正常 mmap，不必每次把几十 MB 读进内存。
@@ -52,14 +52,14 @@ public final class TtsEngine {
 
     /** 主角 · 女主（小雅）：Piper 中文单说话人 VITS，22.05 kHz，官方 int8 版。 */
     static final String GIRL_VOICE = "x0";
-    static final String GIRL_LABEL = "墨吟 · 女声";
+    static final String GIRL_LABEL = "旧版 22k · 女声";
     static final int GIRL_F0 = 266;
     static final String GIRL_DIR = "tts/xiaoya";
     static final String GIRL_MODEL = "model.onnx";
 
     /** 主角 · 男主（超文）：同为 22.05 kHz 单说话人，官方 int8 版。 */
     static final String BOY_VOICE = "c0";
-    static final String BOY_LABEL = "墨吟 · 男声";
+    static final String BOY_LABEL = "旧版 22k · 男声";
     static final int BOY_F0 = 163;
     static final String BOY_DIR = "tts/chaowen";
     static final String BOY_MODEL = "model.onnx";
@@ -330,12 +330,12 @@ public final class TtsEngine {
      *  页面按「引擎在准备」跳过这一句接着念，不弹窗、不停读。 */
     private static final long LIB_WAIT_MS = 6000;
 
-    /** 包里有没有 22 kHz 主角模型（小雅 / 超文）。
+    /** 包里有没有 22 kHz 主角模型（小雅 / 超文，1.14.40 起不再入包）。
      *
-     *  **运行期探测，不是编译期常量**：同一份源码既要出「三套模型」的正式包，
-     *  也要出「只有 16 kHz 187 人配角库」的精简试验包。用常量就得在打第二个包时
-     *  记得改一次、改回来再改一次，迟早会因为忘了改而发出错版；改成看 assets 里
-     *  有没有 xiaoya/model.onnx，两个包用同一份代码，谁也不会打错。
+     *  **运行期探测，不是编译期常量**：同一份源码要出「只有 16 kHz 187 人库」的新包，
+     *  也要能跑带主角模型的 --with-lead 历史包。用常量就得每次打包记得改、改回来再
+     *  改一次，迟早会因为忘了改而发出错版；改成看 assets 里有没有 xiaoya/model.onnx，
+     *  所有包用同一份代码，谁也不会打错。
      *
      *  没有主角模型时：就绪判定改看配角库，启动时就把库建起来（用户点了朗读
      *  才现解压 51 MB 会干等半分钟），默认声线落到精选里的第一个女声。 */
@@ -364,12 +364,12 @@ public final class TtsEngine {
         }
     }
 
-    /** 精简模式（没有 x0 / c0）。正式包里恒 false。 */
+    /** 无主角模式（没有 x0 / c0）。1.14.40 起正式包也不带这两份模型，所以正式包同样是 true。 */
     public boolean liteMode() {
         return leadChecked && !hasLead;
     }
 
-    /** 配音默认声线：正式包是女主 x0，精简包是精选里的女声。 */
+    /** 配音默认声线：有女主 x0 的老包用它，否则用精选里的女声。 */
     public String defaultVoice() {
         return liteMode() ? ("s" + LITE_DEFAULT_SID) : GIRL_VOICE;
     }
@@ -413,7 +413,7 @@ public final class TtsEngine {
         sb.append('\n');
         if (girl == null) {
             if (leadChecked && !hasLead) {
-                return sb.append("精简模式（无 22 kHz 主角模型）配角库=").append(lib != null)
+                return sb.append("无主角模型（1.14.40 起常态）配角库=").append(lib != null)
                          .append(" 建会话用时=").append(libMs).append("ms 采样率=")
                          .append(libRate).append(" 错误=").append(libErr).toString();
             }

@@ -238,12 +238,12 @@
     '我的主角声线': 'My lead voices',
     '这一栏就是「主角声线」：点哪个名字，朗读立刻换成那个声音，同时它进朗读条最左边的下拉——所以「置顶」和「设为主角」是同一件事，不用分两步做。点 × 只是把它从朗读条里拿掉，不会取消正在用的声音，声线本身也没丢。':
       'This row <b>is</b> the lead-voice list: tap a name and reading switches to it immediately, and it also goes into the leftmost dropdown of the reading bar — so “pinning” and “setting as the lead voice” are the same action, not two steps. The × only drops it from the bar; it does not stop the voice you are using, and the voice itself is never removed.',
-    '只有「原版」男女主是固定的——删了就没默认声音兜底。其余全部自由：六个音高变体、187 个配角声线、你自己挑的，都能删能加，最多 {max} 个（女声、男声各 {half}）。点 × 只从朗读条移除，声线本身没丢，随时在下面加回来。':
-      'Only the two original lead voices are fixed — without them there is no fallback voice. Everything else is free: the six pitch variants, the 187 supporting voices and anything you pick, all removable and re-addable, up to {max} ({half} female + {half} male). The × only removes it from the reading bar; the voice itself is still there.',
+    '187 条声线全部自由，都能删能加，最多 {max} 个（女声、男声各 {half}）；删空任何一栏都会自动补一条可用声线兜底。点 × 只从朗读条移除，声线本身没丢，随时在下面加回来。':
+      'All 187 voices are free — add or remove as you like, up to {max} ({half} female + {half} male). Clearing a whole column falls back to a usable voice automatically. The × only removes it from the reading bar; the voice itself is still there.',
     '这套中性音色不合耳朵很正常——187 个人声，总有一个让你心动的声音。合耳的留下，不合耳的删掉，把选择权留给你自己。':
       'Not every neutral voice will suit your ear — with 187 of them, one is bound to. Keep the ones you like, drop the rest; the choice is yours.',
-    '主角那组固定、删不掉；下面是你自己挑的：女声 {a} 个 + 男声 {b} 个。挑中哪个就自动进这里并存进本机，下次打开还在。点 × 只从朗读条移除，声线本身没丢，随时能加回来。':
-      'The lead group is fixed and cannot be removed. Below it are your own picks: {a} female + {b} male. Picking a voice above adds it here and saves it on this device. Tap × to drop it from the bar only — the voice itself stays and can be added back anytime.',
+    '下面是你在朗读条里置顶的声线：女声 {a} 个 + 男声 {b} 个。挑中哪个就自动进这里并存进本机，下次打开还在。点 × 只从朗读条移除，声线本身没丢，随时能加回来。':
+      'These are the voices you pinned to the reading bar: {a} female + {b} male. Picking a voice above adds it here and saves it on this device. Tap × to drop it from the bar only — the voice itself stays and can be added back anytime.',
     '📌 置顶＝主角 · 女声（{n}/{max}）': '📌 Pinned = lead · female ({n}/{max})',
     '📌 置顶＝主角 · 男声（{n}/{max}）': '📌 Pinned = lead · male ({n}/{max})',
     '📌 置顶＝主角 · 女声 {n}/{max}': '📌 Pinned = lead · female {n}/{max}',
@@ -290,8 +290,8 @@
       'This book has {n} characters using {m} voices. Casting draws from the curated set by default; turning on “Roles use full library” opens all {all} — the full library is slower, so crowded books wait noticeably, which is why it stays off.',
 
     /* ---------- 设置页说明段落 ---------- */
-    '本机跑 sherpa-onnx + 三套开源中文模型（小雅 / 超文为 22.05 kHz 男女主角，fanchen-C 为 16 kHz、187 人的配角库）：接近真人的中文语调，不收费、不联网、不用账号、不用 Key。语音库已随成品装好，听书前双击「VoicePack/启动语音引擎.cmd」即可。':
-      'Runs sherpa-onnx plus three open-source Chinese models (XiaoYa / ChaoWen at 22.05 kHz for the two leads, FanChen-C at 16 kHz with 187 supporting voices) on this machine: near-human intonation, no fees, no network, no account, no API key. The voice library ships with the app — double-click “VoicePack/启动语音引擎.cmd” before listening.',
+    '本机跑 sherpa-onnx + 一份社区公开的中文多说话人模型（fanchen-C，16 kHz、187 个说话人，主角 / 旁白 / 配角都从这里挑）：接近真人的中文语调，不收费、不联网、不用账号、不用 Key。语音库已随成品装好，听书前双击「VoicePack/启动语音引擎.cmd」即可。':
+      'Runs sherpa-onnx plus one community-released Chinese multi-speaker model (FanChen-C, 16 kHz, 187 speakers — leads, narration and supporting cast are all picked from it) on this machine: near-human intonation, no fees, no network, no account, no API key. The voice library ships with the app — double-click “VoicePack/启动语音引擎.cmd” before listening.',
     '开启后，旁白用你选的声线，引号里的对白按人物自动换声——「张三说」和「李四道」是两个不同的声音，同一个人物整本书都是同一个声音。认不出人名时按出场顺序轮换，不会和旁白混成一个声音。只在「免费神经语音」下生效；系统语音不支持分角色。':
       'When on, narration keeps your chosen voice while quoted dialogue switches per character — “Zhang said” and “Li replied” sound different, and each character keeps the same voice for the whole book. Unrecognised speakers rotate in order of appearance, so dialogue never collapses into the narration voice. Works only with the free neural voices; system voices cannot do this.',
     '朗读文字只发给本机的 127.0.0.1 合成，不产生对外网络请求；引擎没启动时自动用系统语音，不影响看书。':

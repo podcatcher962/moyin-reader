@@ -31,7 +31,7 @@ ROOT = os.path.dirname(HERE)
 OUT = os.path.join(ROOT, 'dist')
 ROOTDIR = os.path.join(OUT, 'deb-root')
 
-VER = '1.14.40'
+VER = '1.14.41'
 PKG = 'moyin-reader'
 ARCH = 'amd64'
 
@@ -134,8 +134,12 @@ def main():
        os.path.join(ROOTDIR, 'usr', 'share', 'icons', 'hicolor', '256x256', 'apps', PKG + '.png'))
     cp(os.path.join(ROOT, 'README.md'),
        os.path.join(ROOTDIR, 'usr', 'share', 'doc', PKG, 'README.md'))
+    # Debian 惯例：LICENSE 放成 copyright。另外三份合规章程一并装进去，
+    # 否则装完只剩一个 MIT 全文，用户看不到「MIT 不覆盖第三方资产」那句。
     cp(os.path.join(ROOT, 'LICENSE'),
        os.path.join(ROOTDIR, 'usr', 'share', 'doc', PKG, 'copyright'))
+    for name in ('THIRD-PARTY-NOTICES.md', 'VOICE-POLICY.md', 'PRIVACY.md'):
+        cp(os.path.join(ROOT, name), os.path.join(ROOTDIR, 'usr', 'share', 'doc', PKG, name))
 
     size_kb = 0
     for dirpath, _d, files in os.walk(ROOTDIR):

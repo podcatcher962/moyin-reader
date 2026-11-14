@@ -76,9 +76,14 @@ if not HERE.isascii():
             MODEL_DIR = os.path.join(_mirror, 'models')
     except OSError:
         pass
-# ---------------- 三套引擎 ----------------
+# ---------------- 引擎 ----------------
 #
-# xiaoya（女主 · 默认）：Piper 中文单说话人 VITS，22.05 kHz。装的是官方 int8 版：
+# ⚠️ 1.14.40 起成品只带 fanchen 一份。下面 xiaoya / chaowen / matcha 三段是
+#    **向后兼容路径**：盘里还留着这些目录的老 VoicePack 照样认、照样注册成声线，
+#    目录不在就静默跳过（不报错、不影响 187 人库）。安装器已不再下载它们——
+#    xiao_ya 的训练语料 BZNSYP 明写「仅限非商用」。详见仓库根目录 VOICE-POLICY.md。
+#
+# xiaoya（老包女主）：Piper 中文单说话人 VITS，22.05 kHz。装的是官方 int8 版：
 #   17.8 MB，而 fp32 原版 60.3 MB 且几乎压不动（进 APK 就是 60.3 MB）。代价是
 #   合成慢 2.5 倍，谱质心 893→841 Hz、4 kHz 以上 2.9%→2.7%，听不出损失。
 #
@@ -488,9 +493,9 @@ def single_ready(d):
 
 VOICES = {}
 if single_ready(XIAOYA_DIR):
-    VOICES['x0'] = _single(XIAOYA_DIR, XIAOYA_F0, '墨吟 · 女声')
+    VOICES['x0'] = _single(XIAOYA_DIR, XIAOYA_F0, '旧版 22k · 女声')
 if single_ready(CHAOWEN_DIR):
-    VOICES['c0'] = _single(CHAOWEN_DIR, CHAOWEN_F0, '墨吟 · 男声')
+    VOICES['c0'] = _single(CHAOWEN_DIR, CHAOWEN_F0, '旧版 22k · 男声')
 if not VOICES and matcha_ready():
     VOICES['m0'] = _m()
 
@@ -521,15 +526,15 @@ _BASE_DIR = {'f': XIAOYA_DIR, 'm': CHAOWEN_DIR}
 _BASE_F0 = {'f': XIAOYA_F0, 'm': CHAOWEN_F0}
 # 每个基干声线给出 4 个变体的显示名与音高档（band 必须以「男声/女声」开头，
 # 页面那边靠这个前缀判男女，别改）。
-# 第 0 个是基干原声，键名沿用老配置里的 x0 / c0：升级后「墨吟 · 女声」还是同一个声音。
+# 第 0 个是基干原声，键名沿用老配置里的 x0 / c0：升级后「旧版 22k · 女声」还是同一个声音。
 # 1.14.39 起精选是 50 条真人声线（fanchen 也进了常驻），这 6 个变调不再进精选，
 # 只在「全部声线」里留着——同一个人的四种音高，挑不到合适的真人时仍是好用的备选。
 _FAST_META = {
-    'f': [('墨吟 · 女声', '女声 · 清亮', 266),
+    'f': [('旧版 22k · 女声', '女声 · 清亮', 266),
           ('女声 2 · 沉稳', '女声 · 低音', 250),
           ('女声 3 · 低沉', '女声 · 低音', 237),
           ('女声 4 · 明亮', '女声 · 青年', 282)],
-    'm': [('墨吟 · 男声', '男声 · 中音', 163),
+    'm': [('旧版 22k · 男声', '男声 · 中音', 163),
           ('男声 2 · 沉稳', '男声 · 中年', 153),
           ('男声 3 · 低沉', '男声 · 低沉', 145),
           ('男声 4 · 清亮', '男声 · 偏高', 173)],
@@ -543,7 +548,7 @@ FAST = False          # 常驻引擎可用时置 True，_synth_one 据此分派
 def _fast_spec():
     """把 x0/f1..f3、c0/m1..m3 塞进 VOICES。base=基干模型，pitch=音高倍率。
 
-    0 号就是基干原声，键名沿用老配置里的 x0 / c0，用户选中的「墨吟 · 女声」
+    0 号就是基干原声，键名沿用老配置里的 x0 / c0，用户选中的「旧版 22k · 女声」
     升级后还是同一个声音。f0 / m0 这两个旧键名不再单独建——老配置指到它们时
     由页面的 fixLocalVoice 落到默认 x0 / c0，听到的是同一个声音。
     """
@@ -906,7 +911,7 @@ _probe_resident()
 # 真人声线——女 s13（成年女 1）。名字得在 CURATED 里靠前，不然第一次打开听到的
 # 是「老生 · 低沉 1」，那是男低音，拿来念旁白没法听（安卓那边也是这么处理的：
 # health 里专门报一个 default 字段，页面 fixLocalVoice 认它，不靠猜列表第一个）。
-# 老 VoicePack 还带着 x0/c0 时，仍按老习惯先给「墨吟 · 女声」。
+# 老 VoicePack 还带着 x0/c0 时，仍按老习惯先给「旧版 22k · 女声」。
 def _first_present(*keys):
     for k in keys:
         if k in VOICES:

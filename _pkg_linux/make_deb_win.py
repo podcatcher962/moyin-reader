@@ -21,7 +21,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 DIST = os.path.join(ROOT, 'dist')
 DEB_ROOT = os.path.join(DIST, 'deb-root')
-VER = '1.14.40'
+VER = '1.14.41'
 OUT = os.path.join(DIST, 'moyin-reader_%s_amd64.deb' % VER)
 
 
@@ -67,6 +67,9 @@ def sync_payload():
         (os.path.join('_pkg_win', 'app.py'), 'usr/lib/moyin-reader/app.py'),
         ('README.md', 'usr/share/doc/moyin-reader/README.md'),
         ('LICENSE', 'usr/share/doc/moyin-reader/copyright'),
+        ('THIRD-PARTY-NOTICES.md', 'usr/share/doc/moyin-reader/THIRD-PARTY-NOTICES.md'),
+        ('VOICE-POLICY.md', 'usr/share/doc/moyin-reader/VOICE-POLICY.md'),
+        ('PRIVACY.md', 'usr/share/doc/moyin-reader/PRIVACY.md'),
     ]
     done = []
     for src_rel, dst_rel in pairs:

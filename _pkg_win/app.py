@@ -36,7 +36,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 APP = 'MoYinReader'
 APP_CN = '墨吟阅读器'
-VER = '1.14.40'
+VER = '1.14.41'
 VOICE_PORT = 8177
 PORTS = (38975, 38976, 0)
 CREATE_NO_WINDOW = 0x08000000
@@ -817,8 +817,8 @@ def cache_dir():
 BUNDLE_MUST = (
     'tts_server.py',
     'engine/bin/sherpa-onnx-offline-tts.exe',
-    # 旧主角（可选）：带 xiaoya/chaowen 的 VoicePack 依然认，只是不再打进成品
-    # 小雅与超文共用的词表与数字规则
+    # 旧主角（可选）：带 xiaoya/chaowen 的老 VoicePack 依然认，只是不再打进成品
+    # 词表与数字规则：老主角模型需要它；新包虽不再带主角，缓存完整性仍按它校验
     'models/shared/lexicon.txt',
     'models/shared/tokens.txt',
     'models/shared/date.fst',

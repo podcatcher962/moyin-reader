@@ -1846,12 +1846,12 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     '我的主角声线': 'My lead voices',
     '这一栏就是「主角声线」：点哪个名字，朗读立刻换成那个声音，同时它进朗读条最左边的下拉——所以「置顶」和「设为主角」是同一件事，不用分两步做。点 × 只是把它从朗读条里拿掉，不会取消正在用的声音，声线本身也没丢。':
       'This row <b>is</b> the lead-voice list: tap a name and reading switches to it immediately, and it also goes into the leftmost dropdown of the reading bar — so “pinning” and “setting as the lead voice” are the same action, not two steps. The × only drops it from the bar; it does not stop the voice you are using, and the voice itself is never removed.',
-    '只有「原版」男女主是固定的——删了就没默认声音兜底。其余全部自由：六个音高变体、187 个配角声线、你自己挑的，都能删能加，最多 {max} 个（女声、男声各 {half}）。点 × 只从朗读条移除，声线本身没丢，随时在下面加回来。':
-      'Only the two original lead voices are fixed — without them there is no fallback voice. Everything else is free: the six pitch variants, the 187 supporting voices and anything you pick, all removable and re-addable, up to {max} ({half} female + {half} male). The × only removes it from the reading bar; the voice itself is still there.',
+    '187 条声线全部自由，都能删能加，最多 {max} 个（女声、男声各 {half}）；删空任何一栏都会自动补一条可用声线兜底。点 × 只从朗读条移除，声线本身没丢，随时在下面加回来。':
+      'All 187 voices are free — add or remove as you like, up to {max} ({half} female + {half} male). Clearing a whole column falls back to a usable voice automatically. The × only removes it from the reading bar; the voice itself is still there.',
     '这套中性音色不合耳朵很正常——187 个人声，总有一个让你心动的声音。合耳的留下，不合耳的删掉，把选择权留给你自己。':
       'Not every neutral voice will suit your ear — with 187 of them, one is bound to. Keep the ones you like, drop the rest; the choice is yours.',
-    '主角那组固定、删不掉；下面是你自己挑的：女声 {a} 个 + 男声 {b} 个。挑中哪个就自动进这里并存进本机，下次打开还在。点 × 只从朗读条移除，声线本身没丢，随时能加回来。':
-      'The lead group is fixed and cannot be removed. Below it are your own picks: {a} female + {b} male. Picking a voice above adds it here and saves it on this device. Tap × to drop it from the bar only — the voice itself stays and can be added back anytime.',
+    '下面是你在朗读条里置顶的声线：女声 {a} 个 + 男声 {b} 个。挑中哪个就自动进这里并存进本机，下次打开还在。点 × 只从朗读条移除，声线本身没丢，随时能加回来。':
+      'These are the voices you pinned to the reading bar: {a} female + {b} male. Picking a voice above adds it here and saves it on this device. Tap × to drop it from the bar only — the voice itself stays and can be added back anytime.',
     '📌 置顶＝主角 · 女声（{n}/{max}）': '📌 Pinned = lead · female ({n}/{max})',
     '📌 置顶＝主角 · 男声（{n}/{max}）': '📌 Pinned = lead · male ({n}/{max})',
     '📌 置顶＝主角 · 女声 {n}/{max}': '📌 Pinned = lead · female {n}/{max}',
@@ -1898,8 +1898,8 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       'This book has {n} characters using {m} voices. Casting draws from the curated set by default; turning on “Roles use full library” opens all {all} — the full library is slower, so crowded books wait noticeably, which is why it stays off.',
 
     /* ---------- 设置页说明段落 ---------- */
-    '本机跑 sherpa-onnx + 三套开源中文模型（小雅 / 超文为 22.05 kHz 男女主角，fanchen-C 为 16 kHz、187 人的配角库）：接近真人的中文语调，不收费、不联网、不用账号、不用 Key。语音库已随成品装好，听书前双击「VoicePack/启动语音引擎.cmd」即可。':
-      'Runs sherpa-onnx plus three open-source Chinese models (XiaoYa / ChaoWen at 22.05 kHz for the two leads, FanChen-C at 16 kHz with 187 supporting voices) on this machine: near-human intonation, no fees, no network, no account, no API key. The voice library ships with the app — double-click “VoicePack/启动语音引擎.cmd” before listening.',
+    '本机跑 sherpa-onnx + 一份社区公开的中文多说话人模型（fanchen-C，16 kHz、187 个说话人，主角 / 旁白 / 配角都从这里挑）：接近真人的中文语调，不收费、不联网、不用账号、不用 Key。语音库已随成品装好，听书前双击「VoicePack/启动语音引擎.cmd」即可。':
+      'Runs sherpa-onnx plus one community-released Chinese multi-speaker model (FanChen-C, 16 kHz, 187 speakers — leads, narration and supporting cast are all picked from it) on this machine: near-human intonation, no fees, no network, no account, no API key. The voice library ships with the app — double-click “VoicePack/启动语音引擎.cmd” before listening.',
     '开启后，旁白用你选的声线，引号里的对白按人物自动换声——「张三说」和「李四道」是两个不同的声音，同一个人物整本书都是同一个声音。认不出人名时按出场顺序轮换，不会和旁白混成一个声音。只在「免费神经语音」下生效；系统语音不支持分角色。':
       'When on, narration keeps your chosen voice while quoted dialogue switches per character — “Zhang said” and “Li replied” sound different, and each character keeps the same voice for the whole book. Unrecognised speakers rotate in order of appearance, so dialogue never collapses into the narration voice. Works only with the free neural voices; system voices cannot do this.',
     '朗读文字只发给本机的 127.0.0.1 合成，不产生对外网络请求；引擎没启动时自动用系统语音，不影响看书。':
@@ -2563,14 +2563,14 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<h3>Reading aloud</h3>' +
       '<p><b>Read aloud</b> starts from the paragraph at the top of the screen. The bar lets you change voice, speed, skip paragraphs and set a sleep timer; the current paragraph is highlighted and scrolls into view, and the next chapter continues automatically.</p>' +
       '<p><b>Resume listening</b>: listening position is remembered separately from reading position. Back on the shelf, the card shows “▶ Resume · ch. N” — tap it to continue from the exact paragraph. Switching voices mid-sentence restarts the current paragraph with the new voice.</p>' +
-      '<p>Reading works out of the box with system voices. For near-human Chinese, see <b>Settings → Free neural voices</b>: an open-source engine and model ship with the app (187 Chinese speakers), completely offline, free, no account. Otherwise the voice list is grouped as natural / online / local and picks the best available.</p>' +
+      '<p>Reading works out of the box with system voices. For near-human Chinese, see <b>Settings → Free neural voices</b>: an open-source engine (Apache-2.0) plus a community-released model ship with the app (187 Chinese speakers), completely offline, free, no account. Otherwise the voice list is grouped as natural / online / local and picks the best available.</p>' +
       '<h3>Backup</h3><p><b>Back up</b> writes progress, bookmarks, highlights, notes and settings to a JSON file; tick “include book files” to carry the books themselves. Restore on another device with <b>Restore</b>.</p>',
 
     voice: '<h3>Why voices can sound robotic</h3>' +
       '<p class="kv">Want natural Chinese quickly? See <b>Settings → Free neural voices</b>: install the open-source voice library once and it works offline forever, free of charge.</p>' +
       '<p>Browser speech uses the operating system engine. The built-in Windows voices (Huihui / Kangkang / Yaoyao) are old concatenative synthesis — flat pitch, hard pauses, robot-like. Voices named <code>Online (Natural)</code> are neural: they handle intonation, stress and sentence-final falls, and sound close to a human.</p>' +
       '<h3>Three options</h3><ul>' +
-      '<li><b>⭐ Free offline neural voices (recommended)</b>: sherpa-onnx plus three open-source Chinese VITS models — XiaoYa and ChaoWen at 22.05 kHz for the two leads, FanChen-C at 16 kHz for the supporting cast — running on your own CPU. Near-human intonation, <b>no network, no fees, no account, no API key</b>. The supporting library holds 187 Chinese speakers (39 male + 148 female); {cur} curated voices are listed by default and role-based reading is supported. Double-click the launcher before listening.</li>' +
+      '<li><b>⭐ Free offline neural voices (recommended)</b>: sherpa-onnx plus a community-released Chinese multi-speaker VITS model — FanChen-C, 16 kHz, 187 speakers — running on your own CPU. Near-human intonation, <b>no network, no fees, no account, no API key</b>. Any of its 187 Chinese speakers (39 male + 148 female) can be set as a lead; {cur} curated voices are listed by default and role-based reading is supported. Double-click the launcher before listening.</li>' +
       '<li><b>⭐ Natural voices</b>: names containing <code>Natural</code> / <code>Neural</code>, provided by Microsoft Edge. Good quality but <b>needs a connection</b>, and the service is often unreachable from mainland China.</li>' +
       '<li><b>Local voices</b>: fully offline and instant, but clearly mechanical. Use as a fallback.</li></ul>' +
       '<p>The voice list is grouped accordingly and the badge next to it shows “● Free neural voices” or “● Local voice (robotic)”. <b>Preview</b> compares voices without touching your reading position.</p>' +
@@ -2591,7 +2591,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<li>Or stop fighting the network and use <b>Free neural voices</b>, which work offline forever.</li></ul>',
 
     local: '<h3>What this is</h3>' +
-      '<p>A <b>completely free, completely offline</b> Chinese neural speech option: the open-source <code>sherpa-onnx</code> engine (Apache-2.0) plus three open-source Chinese VITS models, <code>XiaoYa</code>, <code>ChaoWen</code> and <code>FanChen-C</code>. Intonation, pauses and stress are close to a human — a different league from the built-in Windows voices.</p>' +
+      '<p>A <b>completely free, completely offline</b> Chinese neural speech option: the open-source <code>sherpa-onnx</code> engine (Apache-2.0) plus a community-released Chinese multi-speaker VITS model, <code>FanChen-C</code> (16 kHz, 187 speakers). Intonation, pauses and stress are close to a human — a different league from the built-in Windows voices.</p>' +
       '<p>Synthesis runs <b>on your own computer</b>: no sign-up, no API key, no network, no per-character billing, not one byte of the book is sent anywhere.</p>' +
       '<h3>Two steps to listen</h3><ol>' +
       '<li>Open the bundled <code>VoicePack</code> folder and double-click <code>启动语音引擎.cmd</code> (the launcher). It starts a small local service and opens the reader in Edge. <b>Nothing to download, install or fill in.</b> The English-named <code>START.cmd</code> in the same folder runs the same script.</li>' +
@@ -2614,10 +2614,10 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<li>Missing model: run <code>安装语音包.cmd</code> again and wait for it to finish.</li>' +
       '<li>A 1–2 second delay on the first sentence is the model loading; later sentences are much faster. On older machines, reduce the pause between sentences.</li>' +
       '<li>Any failure falls back to system voices automatically — nothing hangs, no progress is lost.</li></ul>' +
-      '<h3>License</h3><p><code>sherpa-onnx</code> (Apache-2.0) and the three Chinese VITS models <code>XiaoYa</code>, <code>ChaoWen</code> and <code>FanChen-C</code> are open-source projects used under their own licenses. They are bundled only to be called locally; this reader does not modify them, install system components or redistribute them over the network.</p>',
+      '<h3>License</h3><p><code>sherpa-onnx</code> (Apache-2.0) and the Chinese multi-speaker VITS model <code>FanChen-C</code> are used under their own terms — the model is a community contribution whose upstream authors stated no separate licence. They are bundled only to be called locally; this reader does not modify them, install system components or redistribute them over the network.</p>',
 
     faq: '<h3>Reading sounds robotic?</h3><p>Use the free offline voice library that ships with the app: double-click <code>VoicePack/启动语音引擎.cmd</code> — nothing to download, fully offline, free, no account. See <b>Free neural voices</b>. You can also open the file in Microsoft Edge and pick a voice from the “⭐ Natural voices” group.</p>' +
-      '<h3>Does it cost money? Do I need an account?</h3><p>No and no. The reader, the offline engine and the Chinese model are all free and open source — no account, no key, no metering, and no text is uploaded. Only the Windows / Edge online voices are a Microsoft service: free of charge, but often unreachable in mainland China.</p>' +
+      '<h3>Does it cost money? Do I need an account?</h3><p>No and no. The reader and the offline engine are free and open source; the Chinese model is a community release distributed as-is — no account, no key, no metering, and no text is uploaded. Only the Windows / Edge online voices are a Microsoft service: free of charge, but often unreachable in mainland China.</p>' +
       '<h3>TXT opens as garbage characters?</h3><p>UTF-8 / GB18030 / UTF-16 are detected automatically. If it still looks wrong, set <b>Settings → TXT encoding</b> manually (GB18030 / Big5 / UTF-16LE) and reopen the book.</p>' +
       '<h3>No sound, or Chinese read as English?</h3><p>Windows: Settings → Time &amp; language → Speech → add a Chinese (Simplified) voice pack, then restart the browser. In the voice dropdown pick an entry starting with <code>zh-CN</code>. Some Android WebViews ship without a speech engine and need a system TTS installed.</p>' +
       '<h3>EPUB fails to open?</h3><p>Standard EPUB 2 / EPUB 3 (ZIP + OPF + spine) is supported. DRM-protected files and Amazon AZW3 / MOBI are out of scope. For very old books with non-standard internal paths, the parser is tolerant about case and encoding.</p>' +
@@ -2630,15 +2630,17 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<h3>How do I get two columns?</h3><p>Tap <b>⋯</b> in the reader bar, then <b>Type</b> and look at <b>Reading mode</b>: switch to <b>Pages</b>, and Columns set to <b>Auto</b> gives you two columns on a wide window; <b>Two</b> forces it when the window is wide enough. Narrow windows and phones fall back to a single column rather than squeezing the text.<br>Paged mode turns whole screens, not pixels: tap the <b>left third</b> for the previous page, the <b>right third</b> for the next, use the wheel, space or ← →, or swipe on a phone. Tapping the <b>middle</b> hides or shows both toolbars — hidden, the body fills the screen; tap the middle again or the thin strip at the very top to bring them back.</p>' +
       '<h3>How does auto reading work?</h3><p>Tap <b>Auto</b> under <b>⋯</b>: it scrolls at a steady pace, or turns a page every N seconds in paged mode. Tap again to pause — a small pill lets you resume or quit. The next chapter starts by itself at the end. Speech and auto reading never fight over the scroll position.</p>' +
       '<h3>Can I get more immersion?</h3><p>Tap the <b>middle</b> of a page: both bars slide away and the body takes the full screen; tap the middle again or the thin strip at the very top to bring them back. <b>Full</b> under <b>⋯</b> (or F11) also hides the window chrome. For a darker page, lower <b>Brightness</b> under Type → Colours.</p>' +
-      '<p class="kv">Still stuck? Read the implementation notes under <b>About</b>, or find the feedback link in the bundled README.</p>',
+      '<p class="kv">Still stuck? Read the implementation notes under <b>About</b>, or ask at <code>github.com/podcatcher962/moyin-reader/issues</code>.</p>',
 
     open: '<h3>License</h3>' +
-      '<p><b>MoYin Reader (墨吟)</b> is released under the <b>MIT License</b>, copyright © 2026 Lanlan Eternal (永远的兰兰).</p>' +
-      '<p>You may use, copy, modify, merge, publish, sublicense and even sell copies; the only obligation is to keep the copyright notice and this license. The software is provided “as is”, without warranty of any kind.</p>' +
+      '<p><b>MoYin Reader (墨吟)</b> is released under the <b>MIT License</b>, copyright © 2026 Lanlan Eternal (永远的兰兰). It is <b>free forever</b> — no paid tier, no “pro” edition.</p>' +
+      '<p><b>MIT covers what this project wrote itself</b>: the page, styles, <code>zipcore.js</code>, EPUB parsing, speech scheduling, build scripts and documentation. For those you may use, copy, modify, merge, publish, sublicense and even sell copies; the only obligation is to keep the copyright notice and this licence.</p>' +
+      '<p><b>MIT does not cover third-party assets</b>: the speech model weights (<code>fanchen-C</code>, and the optional English model) and the <code>sherpa-onnx</code> engine binaries. They were not created here; this project only redistributes them unmodified and <b>has no right to license them, and does not</b>. To use those models for anything beyond running this app — commercial use in particular — obtain permission from the upstream authors yourself. <b>You cannot rely on this project’s MIT grant for them; it does not apply.</b></p>' +
+      '<p class="kv">This distinction is not boilerplate: re-licensing someone else’s weights under MIT is something this project has no right to do and does not do. If you redistribute, note that the contents of <code>VoicePack</code> (appended inside the full exe) are not the same kind of thing as the code — do not label them MIT.</p>' +
       '<p class="kv">The full English text ships as the <code>LICENSE</code> file (standard MIT) and is also kept at the repository root — please keep it when redistributing.</p>' +
       '<h3>Third-party components</h3><ul>' +
       '<li><code>sherpa-onnx</code> speech engine — Apache-2.0, by the k2-fsa community; called as a local process only.</li>' +
-      '<li><code>XiaoYa</code>, <code>ChaoWen</code> and <code>FanChen-C</code> Chinese VITS models — from the sherpa-onnx model zoo, used under their publishers’ Apache-2.0 terms.</li>' +
+      '<li><code>FanChen-C</code> Chinese multi-speaker VITS model (187 speakers, 16 kHz) — a community-contributed model in the sherpa-onnx zoo; upstream states no separate licence, so it is redistributed as-is with a removal path. The 22.05 kHz <code>XiaoYa</code> / <code>ChaoWen</code> models have not been bundled since 1.14.40 (their training data is licensed for non-commercial use only).</li>' +
       '<li><code>pywebview</code> + <code>pythonnet</code> — BSD-3-Clause / MIT; used only by the Windows desktop shell to host the built-in page.</li>' +
       '<li><code>PyInstaller</code> — GPL-2.0 with the bootloader exception; used only to build the single-file exe and does not affect this project’s MIT licensing.</li>' +
       '<li>Microsoft Edge WebView2 runtime — distributed by Microsoft with the OS; not bundled or modified here, only the installed version is used.</li></ul>' +
@@ -2650,20 +2652,24 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
 
     disclaimer: '<p>This tool is for reading e-books you lawfully own. It provides, fetches and cracks no copyrighted content and circumvents no digital rights management (DRM). You are responsible for ensuring you have the right to use any file you import, and for any copyright dispute arising from that use.</p>' +
       '<p>Imported books, bookmarks, highlights, notes and progress are stored in this device’s browser database and are never uploaded; neither the author nor this page can access your files. <b>One exception</b>: if you deliberately choose an online voice whose name contains <code>Online (Natural)</code>, the browser sends the text being spoken to that speech service for synthesis. That is the browser speech engine’s behaviour and unrelated to how this tool stores books. Keep your original files and backups safe; the author is not liable for data loss caused by clearing browser data, device failure or file corruption.</p>' +
-      '<p>The <code>sherpa-onnx</code> engine and the XiaoYa / ChaoWen / FanChen-C Chinese VITS models used by <b>Free neural voices</b> are third-party open-source software, downloaded and run at your own discretion under their own licenses. This tool only calls them locally; it does not distribute, modify or warrant them. Their services listen on 127.0.0.1 only and expose nothing to the network; use them on a network you trust.</p>' +
+      '<p>The <code>sherpa-onnx</code> engine and the FanChen-C Chinese VITS model used by <b>Free neural voices</b> are third-party components with <b>different</b> licence status: the engine is Apache-2.0, while the model is a community release whose upstream authors stated no separate licence. The desktop build downloads them at your own initiative; the Android build ships them verbatim, unmodified. Both are used under their own terms, and this tool neither modifies nor warrants them. Their services listen on 127.0.0.1 only and expose nothing to the network; use them on a network you trust.</p>' +
       '<p>Speech depends on engines provided by the operating system or browser. Voices, availability and phrasing vary by device and are not guaranteed to match a human reading. Do not listen while driving or operating machinery.</p>' +
       '<p>The software is provided “as is”, without any express or implied warranty. To the maximum extent permitted by law, the author is not liable for any direct or indirect loss (including data loss, device damage, or loss of time or income) arising from use of or inability to use this software.</p>' +
       '<p>The name “MoYin / 墨吟”, its interface and documentation are copyright the author. Other product, company and speech-service names mentioned here may be trademarks of their owners and are used for identification only, implying no affiliation, sponsorship or endorsement.</p>' +
       '<p><b>Network and permissions.</b> Apart from the update check (a plain GET returning version numbers — no book titles, no device identifiers) and downloading the installer or models, the app makes no network requests: no analytics, no tracking, no ad SDK, no crash reporting. Downloads go straight to GitHub by default, with no other server in between; a request only passes through a third-party mirror such as <code>gh-proxy.com</code> if <b>you yourself</b> click that link on the download page, and that operator can then see your IP and User-Agent. The Android build requests only <code>INTERNET</code> and <code>ACCESS_NETWORK_STATE</code> — no storage, location, contacts, camera or microphone, and no IMEI / Android ID / MAC. The full policy ships as <code>PRIVACY.md</code>.</p>' +
-      '<p><b>About the voices.</b> The 187 supporting voices come from an open multi-speaker model trained on public data; the two lead voices come from open Piper Chinese models. They are synthetic timbres, not used for speaker verification and not representing any real person. The app does not clone voices and never records or uploads audio. Voice names in the UI are product labels, not references to or endorsements by anyone.</p>' +
-      '<p>If you are a rights holder and believe this tool or its bundled content infringes your rights, contact the author through the address in the bundled README; verified issues will be handled promptly.</p>',
+      '<p><b>About the voices.</b> Every Chinese voice in the app — leads, narration and supporting cast — comes from one community-released multi-speaker model, <code>fanchen-C</code> (16 kHz, 187 speakers). They are <b>synthetic timbres, not recordings of real people</b>, and they do not correspond to any identifiable individual. The app performs no speaker verification and makes no identity inference; voice names in the UI (“Adult female 1” etc.) are pitch-band labels measured from each speaker, not references to, or endorsements by, anyone.</p>' +
+      '<p>The app does <b>not</b> offer voice cloning: it requests no microphone permission, never records or uploads your audio, and has no “train a model on my voice” feature. Natural voice is protected by law in a manner analogous to portrait rights (Civil Code of the PRC, Art. 1023), and this project deliberately gives up any capability that would touch a real person’s vocal identity.</p>' +
+      '<p>The model is redistributed unmodified. Its upstream authors stated no separate licence, which we disclose rather than describe as “open source”, and a <b>removal channel</b> stays open: speakers or rights holders who object to a timbre being included can say so at <code>github.com/podcatcher962/moyin-reader/issues</code> — name the voice (id or UI label) and the reason, and it will be removed on a “when in doubt, remove” basis; the whole model is taken down if necessary. As of 1.14.40 the two 22.05 kHz models (<code>xiao_ya</code>, <code>chaowen</code>, trained on a non-commercial corpus) are no longer bundled or downloaded. Full process in <code>VOICE-POLICY.md</code>.</p>' +
+      '<p>Synthesis happens locally and plays only on your device. <b>If you publish synthesised audio, label it as AI-generated content</b> as required by applicable law, and do not use it to impersonate anyone.</p>' +
+      '<p><b>On commercial use and redistribution</b>: MoYin Reader is <b>free forever</b>. The author has never authorised anyone to charge for it, bundle it into a paid product, or offer a “paid / in-app-purchase / premium” version under this project’s name. If you paid someone for a copy, that was the seller’s doing, unconnected to this project — which accepts no liability, offers no support for it, and endorses no modified build. Note also that <b>this project’s MIT grant covers its own code and documentation only, not the bundled third-party model weights or engine</b>; anyone using those models commercially cannot cite this project’s grant, and how others use this software or its bundled assets is their own act.</p>' +
+      '<p>If you are a rights holder and believe this tool or its bundled content infringes your rights, raise it at <code>github.com/podcatcher962/moyin-reader/issues</code>. Verified issues are handled promptly: what can be removed from the package is removed, what can be changed is changed.</p>',
 
     about: '<p style="font-size:1.2em"><b>MoYin Reader · 墨吟</b></p>' +
       '<p>A single-file, offline-first TXT / EPUB reader with text-to-speech. Double-click the HTML and read; works in any modern browser on Windows, Linux, Android and iOS.</p>' +
       '<p>The Chinese name “墨吟” (“ink, and reading aloud”) and the English name are used by this project only. They are <b>not affiliated with</b> any company, voice platform or streamer of a similar name, and imply no commercial endorsement.</p>' +
       '<p>The shelf + reader layout and the speech scheduling were informed by Koodo Reader on this machine, with all code rewritten from zero and no dependencies: EPUB unzipping, OPF / NCX / Nav contents, body and illustration parsing are all built in, with no external scripts or CDN.</p>' +
-      '<p class="kv">Speech can use the free open-source offline neural voices (sherpa-onnx + XiaoYa / ChaoWen / FanChen-C VITS): no network, no fees, no account. The supporting library contains 187 Chinese speakers (39 male + 148 female), {cur} curated by default, and supports role-based reading. The library ships in <code>VoicePack</code>; the full Windows EXE has it appended inside, so one file is enough.</p>' +
-      '<p>Released under the <b>MIT License</b>: use, modify and redistribute freely, including commercially, keeping the copyright and license notice. Full terms under <b>Open source &amp; license</b>.</p>' +
+      '<p class="kv">Speech can use the free open-source offline neural voices (sherpa-onnx + FanChen-C VITS): no network, no fees, no account. The supporting library contains 187 Chinese speakers (39 male + 148 female), {cur} curated by default, and supports role-based reading. The library ships in <code>VoicePack</code>; the full Windows EXE has it appended inside, so one file is enough.</p>' +
+      '<p>Released under the <b>MIT License</b> and <b>free forever</b>: <b>this project’s own code and documentation</b> may be used, modified and redistributed freely, including commercially, keeping the copyright and licence notice. <b>The speech-model weights are not covered</b> — they belong to a third party, so obtain permission upstream for any commercial use; this project’s grant cannot serve as the basis. Full terms under <b>Open source &amp; license</b>.</p>' +
       '<h3>What changed in 1.10.2</h3><ul>' +
       '<li><b>Traditional to Simplified</b>: Settings has a Chinese switch — Original or Simplified. Turn it on for books from Taiwan or old texts; body and contents both convert, and <b>the file itself is never touched</b> — switch back to restore. Built on OpenCC\'s table (2965 one-to-one characters) and a same-length substitution, so highlights, notes and speech positions never drift.</li>' +
       '<li><b>Tap an illustration to enlarge it</b>: maps, character charts and plate pages in EPUB were previously thumbnails only. Tap for full screen, tap anywhere or press Esc to close.</li>' +
@@ -2738,7 +2744,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   /* 所有界面文案过一遍 T()：中文原样返回，英文查 i18n.js 的词典 */
   function T(s, a) { return I18N ? I18N.t(s, a) : s; }
   var DBNAME = 'MoYinReader', CFGKEY = 'MOYIN_CFG', GEN = 1;
-  var VER = '1.14.40';
+  var VER = '1.14.41';
   var HL_COLORS = ['y', 'g', 'b', 'p'];
   var FONTS = {
     serif: '"Noto Serif CJK SC","Songti SC","SimSun",Georgia,serif',
@@ -2847,7 +2853,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
        范围只管下拉里列什么，这里才决定合成走哪套库。 */
     roleWide: 0,
     roleOn: 1, rolePool: 'mix', roleTouched: 0,
-    voiceRev: 0,           // 音色体系迁移标记：1.13 起默认换成 x0（小雅 22 kHz）
+    voiceRev: 0,           // 音色体系迁移标记：1.13 起改默认；1.14.40 起旧 x0 由 fixLocalVoice 兜底到 s13
     /* 启动时自动查新版本：1.11.1 起才有。默认 0，守「默认零联网」这条 */
     updChk: 0,
     lang: 'zh', noteFilter: 'all'
@@ -3089,8 +3095,9 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       if (CFG.voiceSet === 'curated') CFG.voiceSet = 'all';
       saveCfg();
     }
-    // 1.13 起默认音色换成小雅（x0，22.05 kHz）。老配置如果还停在旧的默认 s12，
-    // 跟着换一次；自己挑过别的声线就不动，后面 voiceRev=1 也不再打扰。
+    // 1.13 起默认音色从小雅（x0，22.05 kHz）开始。1.14.40 把主角模型去掉了，
+    // 老配置若还停在旧的默认 s12 / x0，fixLocalVoice 会兜底到精选女声 s13；
+    // 自己挑过别的声线就不动，后面 voiceRev=1 也不再打扰。
     if (!CFG.voiceRev) {
       CFG.voiceRev = 1;
       if (CFG.localVoice === 's12') CFG.localVoice = 'x0';
@@ -5711,7 +5718,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   }
 
   /* ---------------- 男女主角的声线 ----------------
-     完整版有 22 kHz 的两份主角模型，主角就用它们；精简版没有，从 187 人库里挑。
+     1.14.40 起任何版本都不带单独的 22 kHz 主角模型了，男女主角一律从 187 人库里挑。
      为什么不能留给角色池自己发：池子按精选表顺序取，头一个是 s124（118 Hz
      「老生 · 低沉 1」），于是全书男主一开口就是最沉的那嗓子——「男声太低」
      其实是这个顺序造成的，不是缺候选。 */
@@ -5738,9 +5745,9 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       CFG.leadM = core[1] || firstOk(LEAD_FALLBACK_M, CFG.localVoice); ch++;
     }
     if (!voiceUsable(CFG.leadF)) {
-      /* 完整版就用 22 kHz 的主角女声，哪怕和旁白是同一个——那本来就是书里的女主。
-         只有精简版（没有主角模型）才要避开旁白，换一条别的女声，不然女主和旁白
-         一模一样，分角色等于白开。 */
+      /* 1.14.40 起没有固定的「原版主角」了（22 kHz 那两份已随包移除），core 恒为空，
+         所以一律从 187 人库里挑，并避开旁白——不然女主和旁白同一个声音，
+         分角色等于白开。 */
       var f = core[0];
       if (!f) f = firstOk(LEAD_FALLBACK_F, CFG.localVoice);
       CFG.leadF = f; ch++;
@@ -6134,10 +6141,10 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       .catch(function () {});
   }
   /* 预取队列：按段号存「已请求 / 已备好」的合成结果。
-     深度 2 而不是 1 —— 分角色时相邻两句往往换模型（旁白是小雅 22 kHz、对白是
-     fanchen 16 kHz），深度 1 恰好卡在换声那一下：上一句都快播完了才轮到合成角色
-     那句，听感就是「角色开口前干等」。提前两段排队，换声那句通常在上上句还在播
-     时就已经备好。 */
+     深度 2 而不是 1 —— 分角色时相邻两句往往换声线（旁白一条、对白另一条，同一份
+     fanchen 模型换 sid），深度 1 恰好卡在换声那一下：上一句都快播完了才轮到合成
+     角色那句，听感就是「角色开口前干等」。提前两段排队，换声那句通常在上上句还在
+     播时就已经备好。 */
   function localPrefetch(at) {
     if (!localReady()) return;
     var i0 = (at === undefined) ? SPK.ci + 1 : at;
@@ -6370,7 +6377,8 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       : (on ? T('在线合成，需联网。点击看说明') : T('系统本地语音，离线可用但音质较机械。点击看说明'));
   }
   /* 朗读条放什么：
-     ① 原版男女主（x0 / c0）固定在上面，不能删——它是默认音色，删了没兜底；
+     ① 1.14.40 起 core 恒为空（老包盘里还留着 f0 / m0 / x0 / c0 时才会固定在上面）——
+        以前那是默认音色、删了没兜底，现在兜底由 fixLocalVoice 负责，所有声线都能删；
      ② 其余全自由：在设置里挑中的声线自动进「我置顶的」，点 × 就删，存在本机配置里。
         置顶就是设为主角，点哪个名字朗读立刻换成哪个——下拉里的组名也照着这么写。
      ③ 自选位男女各半：20 个 = 10 女 + 10 男。听书时换声线，男女都够用，
@@ -6379,10 +6387,10 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
   var PIN_MAX = 20;
   var PIN_PER_GENDER = 10;               // 女声 10 + 男声 10
   var CORE_ALIAS = { x0: 'f0', c0: 'm0' };
-  /* 朗读条上只有「原版」男女主不可删——它们是默认兜底，删了朗读就没声。
-     音高变体（f1~f3 / m1~m3）、187 个配角库、自己挑的音色，一律自由增删。 */
+  /* 老包上「原版」男女主不可删；新包没有它们，187 条声线与自选声线一律自由增删，
+     删空了 fixLocalVoice 会补一条可用声线兜底。 */
   function keyNorm(k) { return CORE_ALIAS[k] || k; }
-  /* 原版男女主：基干索引 0 的那两个（新引擎 f0 / m0，老引擎 x0 / c0）。 */
+  /* 老包的原版男女主：基干索引 0 的那两个（新引擎 f0 / m0，老引擎 x0 / c0）。新包返回空数组。 */
   function fixedVoiceKeys() {
     var pool = LOCAL.list || LOCAL_VOICES, has = {}, out = [];
     pool.forEach(function (x) { has[x[0]] = 1; });
@@ -6652,10 +6660,10 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     /* 用户已经进设置页（多半就在挑声音）就别盖他一层：算走过，不再弹 */
     var mb = $('modal');
     if (mb && mb.classList.contains('on')) { CFG.introRev = 1; saveCfg(); return false; }
-    /* 完整版有 22 kHz 的主角模型，先把它们摆在最前面——那是这套方案的招牌；
-       精简版没有，就只列库里的（按音高从低到高，10 个）。 */
+    /* core 只在「盘里还留着 x0 / c0 的老 VoicePack」上非空（向后兼容），新包的
+       成品里恒为空，于是候选全部从 187 人库里出（按音高从低到高）。 */
     var core = fixedVoiceKeys(), lib = INTRO_KEYS.filter(voiceUsable);
-    /* 完整版把两份 22 kHz 主角摆在最前，再从库里补到 20；精简版 20 个全从库里出 */
+    /* core 非空时先摆老主角，再从库里补到 20；core 为空（新包常态）就 20 个全从库里出 */
     var have = core.length ? core.concat(lib.slice(0, 20 - core.length)) : lib.slice(0, 20);
     if (have.length < 4) return false;
     CFG.introRev = 1; saveCfg();
@@ -6869,8 +6877,8 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     return true;
   }
   /* ---------------- 数字读法 ----------------
-     中文神经语音的词典里一个阿拉伯数字都没有。小雅 / 超文这两份 22 kHz 模型靠
-     引擎自带的三条数字规则（date / number / phone.fst）挡住，但 187 人那套配角库
+     中文神经语音的词典里一个阿拉伯数字都没有。老包里那两份 22 kHz 主角模型靠
+     引擎自带的三条数字规则（date / number / phone.fst）挡住，但 187 人那套库
      没有 fst——一遇到数字就整段吞掉，「1934年4月13日」听出来只剩「年月日」。
      号段、时间、金额、百分比在小说里到处都是，与其指望每套模型都配规则，
      不如在页面侧先换成汉字再送进引擎：读出来是什么，跟用哪套声线、
@@ -7802,8 +7810,8 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
     }
   }
   var TRY_TEXT = '窗外的雨下得很细，字落在纸上，像脚印落在雪里。他合上书，听见声音还留在屋里，没有立刻散去。';
-  /* 精简试验包：包里不带 22 kHz 的小雅 / 超文两份主角模型。
-     帮助页里写着「三份模型」的那些话得跟着改口，否则用户下拉里找不到主角会以为坏了。 */
+  /* 「精简包」标记：1.14.40 起正式包与精简包都不带 22 kHz 主角模型了，这个标记
+     只剩兼容旧包的用处（老的精简包 / 外挂 VoicePack 会置 true）。文案不再分叉。 */
   function isLite() { return !!(LOCAL.info && LOCAL.info.lite); }
   /* 模型里到底有多少声音、男女各多少：设置页文案直接用它，别写死数字 */
   function voiceStat() {
@@ -8267,13 +8275,13 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<p><b>网络位置</b>（桌面版）：书架上的「网络位置」可以填局域网共享路径，比如 <code>\\\\192.168.1.10\\Books</code>、映射到网络的盘符 <code>Z:\\书</code>，或本机任意绝对路径。走的是系统自己的网络访问，账号密码由 Windows 记着——只要在资源管理器里能打开，这里就能直接扫、直接读，不用先把书拷过来。手机上不显示这个按钮。</p>' +
       '<h3>朗读</h3><p>点「朗读」从当前屏幕位置开始念。底部条可选语音、语速、上一段 / 下一段、定时停止；正在念的段落会高亮并自动跟随滚动，念完一章自动接下一章。</p>' +
       '<p><b>续听</b>：听到哪会单独记住（与「读到哪」分开记，互不干扰）。回到书架，书本卡片下方会出现「▶ 续听 · 第 N 章」，点一下就从上次听的那一段接着念；想按看书的位置念，点开书再点「朗读」即可。朗读条最左边的下拉可随时换声线，正在念时会用新声线把当前这段重念一遍。</p>' +
-      '<p>不装任何东西也能直接朗读（用系统自带语音）。想要接近真人的中文，可看「阅读设置 → 免费神经语音」：随成品附带的开源语音库已经装好（桌面约 90 MB：22 kHz 女主 18 MB ＋ 22 kHz 男主 18 MB ＋ 187 人配角库 38 MB），之后<b>永久离线、免费、无需账号</b>。不用它时，语音下拉按「自然语音 / 在线 / 本地」分组，默认优先选最好的那个。</p>' +
+      '<p>不装任何东西也能直接朗读（用系统自带语音）。想要接近真人的中文，可看「阅读设置 → 免费神经语音」：随成品附带的开源语音库已经装好（桌面约 60 MB：16 kHz 187 人库 58.6 MB），之后<b>永久离线、免费、无需账号</b>。不用它时，语音下拉按「自然语音 / 在线 / 本地」分组，默认优先选最好的那个。</p>' +
       '<h3>备份</h3><p>书架底部「导出备份」保存进度、书签、设置；勾选「含书籍文件」可把原书一起带走。换设备时用「导入备份」还原。</p>'],
     voice: ['语音与朗读', '<h3>为什么会觉得「机械」</h3>' +
       '<p class="kv">只想尽快听到自然的中文？看「阅读设置 → 免费神经语音」：一次下载开源语音库，之后完全离线、不花一分钱。</p>' +
       '<p>浏览器朗读用的是系统语音引擎。Windows 自带的「慧慧 / 康康 / 瑶瑶」是老式拼接合成，语调平、断句硬，听起来像机器人；名称里带 <code>Online (Natural)</code> 的是神经网络语音，会自己处理语调、重音与句末降调，接近真人朗读。</p>' +
       '<h3>三条路怎么选</h3><ul>' +
-      '<li><b>⭐ 免费离线神经语音（推荐）</b>：本机跑开源的 sherpa-onnx + 中文神经语音模型，语调接近真人，<b>不联网、不收费、不需要账号、不需要 Key</b>。语音库已随成品装好：一份 16 kHz 的 187 人库（148 女 + 39 男），精选 {cur} 个直接可选、<b>任何一条都能设成主角</b>，还能按人物分角色朗读；听书前双击一下启动器。详见「免费神经语音」。</li>' +
+      '<li><b>⭐ 免费离线神经语音（推荐）</b>：本机跑开源的 <code>sherpa-onnx</code>（Apache-2.0）＋ 一份社区公开的中文语音模型，语调接近真人，<b>不联网、不收费、不需要账号、不需要 Key</b>。语音库已随成品装好：一份 16 kHz 的 187 人库（148 女 + 39 男），精选 {cur} 个直接可选、<b>任何一条都能设成主角</b>，还能按人物分角色朗读；听书前双击一下启动器。详见「免费神经语音」。</li>' +
       '<li><b>⭐ 自然语音</b>：名称含 <code>Natural</code> / <code>Neural</code>，由 Microsoft Edge 提供，音质好但<b>需要联网</b>，国内网络常常连不上微软语音服务。</li>' +
       '<li><b>本地语音</b>：完全离线、响应快，但机械感明显。断网或临时凑合时用它。</li></ul>' +
       '<p>语音下拉已按这几类分组，旁边的标签会显示当前是「● 免费神经语音」还是「● 本地语音（较机械）」；点「试听」可直接对比不同声音，不影响阅读进度。</p>' +
@@ -8293,18 +8301,23 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<li>换网络（例如手机热点）或换个时段再试。</li>' +
       '<li>不想折腾网络：直接看「免费神经语音」，一次下载后永久离线可用。</li></ul>'],
     local: ['免费离线神经语音', '<h3>这是什么</h3>' +
-      '<p>一个<b>完全免费、完全离线</b>的中文神经网络语音方案：开源引擎 <code>sherpa-onnx</code>（Apache-2.0）＋ ' + (isLite() ? '一份 16 kHz 187 人的多说话人模型 <code>fanchen-C</code>（这一版没带 22 kHz 的主角模型）' : '三份开源中文 VITS 模型：22 kHz 女主「小雅」、22 kHz 男主「超文」、16 kHz 187 人配角库 <code>fanchen-C</code>') + '。语调、停顿、重音接近真人，和 Windows 自带的慧慧 / 康康不是一个量级。</p>' +
+      '<p>一个<b>完全免费、完全离线</b>的中文神经网络语音方案：开源引擎 <code>sherpa-onnx</code>（Apache-2.0）＋ ' + '一份 16 kHz、187 人的多说话人模型 <code>fanchen-C</code>' + '。语调、停顿、重音接近真人，和 Windows 自带的慧慧 / 康康不是一个量级。</p>' +
       '<p>语音合成在<b>你自己的电脑</b>上完成：不需要注册账号、不需要 API Key、不联网、不按字数收费，书里的文字一个字节都不会发出去。</p>' +
       '<h3>两步开始听（本机已经装好）</h3><ol>' +
       '<li>打开随成品附带的 <code>VoicePack</code> 文件夹，双击 <code>启动语音引擎.cmd</code>。它会开一个小窗口跑本机服务，并自动用 Edge 打开阅读器。<b>不用下载、不用安装、不用填任何东西。</b>（同目录的 <code>START.cmd</code> 是同一个脚本的英文名，随便点哪个都行。）</li>' +
       '<li>阅读器右下角标签变成绿色「● 免费神经语音」即已连上；点「试听音色」确认出声。关掉那个小窗口即停止服务，之后会自动退回系统语音，不影响看书。</li></ol>' +
       '<p class="kv">换一台电脑时：把整个 <code>VoicePack</code> 文件夹拷过去（含已装好的引擎与模型，约 53 MB）即可直接用；若只想拷脚本，在新电脑双击 <code>安装语音包.cmd</code> 重新下载（约 53 MB，走国内加速源，自动分段并发）。Windows 版语音库，拷到别的系统不能直接用。<br><b>Windows 桌面完整版 EXE 已把语音库打包进 exe 内</b>：只拷一个 exe 过去就能听（整个软件约 47 MB），首次启动自动释放到本机缓存，不需要 VoicePack 文件夹。</p>' +
-      (isLite() ? '<h3>内置音色 · 187 个普通人的声音（148 女 + 39 男）</h3>' +
-        '<p><b>1.14.40 起成品只带这一份 16 kHz 的 <code>fanchen-C</code> 187 人库</b>：那两份 22 kHz 的小雅 / 超文主角模型不再随包，安装包因此小了 25 MB。187 条声线全部常驻、任意一条都能设成主角，旁白默认落在「成年女 1」，不合胃口换一条就好。' :
-        '<h3>内置音色 · 2 个高采样率主角（女 / 男）＋ 187 个配角说话人（148 女 + 39 男）</h3>' +
-        '<p>主角是两份 22.05 kHz 的单说话人模型：「墨吟 · 女声」（小雅）与「墨吟 · 男声」（超文），齿音、气口、句尾收束都在，专门给男女主角用。配角另有 187 个中文说话人（16 kHz），男女各档都有。') + '下拉默认只列人工挑选命名过的 <b>精选 {cur} 个</b>（手机版 30 个）；想听更多，到「阅读设置 → 免费神经语音 → 声线范围」点「全部 {total} 个」，下拉会按音高分 7 档列出（男声低沉 / 中年 / 偏高，女声低音 / 成年 / 青年 / 高音）。点「试听音色」逐个对比，也可以直接在朗读条最左边的下拉里换（正在朗读时会用新音色重念当前这段），语速用朗读条滑块控制。全部是离线神经语音，普通电脑 CPU 就能实时合成。</p>' +
-      '<p><b>为什么 187 个声音却不占体积</b>：它们全部来自同一份 fanchen-C 中文多说话人模型（打包时把权重压成 8 位整数，从 115 MB 降到 38 MB），切换只是换一个 <code>--sid</code> 编号，所以放开到 187 个也是<b>零体积成本</b>。压缩的代价是合成慢一些（同一句话约慢 10 倍）。' + (isLite() ? '不随包附带那两份 22 kHz 主角模型，换来的就是安装包小 25 MB。' : '所以它只当配角用，男女主角和旁白走那两份 22 kHz 模型。') + '官方只给编号没有花名，「男声低沉 / 女声清亮」是按每个说话人实测的中位基频（F0）分档的，描述词只便于分辨，<b>建议点「试听音色」挑自己最喜欢的那一个</b>。</p>' +
+      '<h3>内置音色 · 187 个普通人的声音（148 女 + 39 男）</h3>' +
+      '<p><b>1.14.40 起成品只带这一份 16 kHz 的 <code>fanchen-C</code> 187 人库</b>：原来那两份 22 kHz 的小雅 / 超文主角模型不再随包，安装包因此小了 25 MB。187 条声线全部常驻、<b>任意一条都能设成主角</b>，旁白默认落在「成年女 1」，不合胃口换一条就好。' + '下拉默认只列人工挑选命名过的 <b>精选 {cur} 个</b>（手机版 30 个）；想听更多，到「阅读设置 → 免费神经语音 → 声线范围」点「全部 {total} 个」，下拉会按音高分 7 档列出（男声低沉 / 中年 / 偏高，女声低音 / 成年 / 青年 / 高音）。点「试听音色」逐个对比，也可以直接在朗读条最左边的下拉里换（正在朗读时会用新音色重念当前这段），语速用朗读条滑块控制。全部是离线神经语音，普通电脑 CPU 就能实时合成。</p>' +
+      '<p><b>为什么 187 个声音却不占体积</b>：它们全部来自同一份 fanchen-C 中文多说话人模型（打包时把权重压成 8 位整数，从 115 MB 降到 38 MB），切换只是换一个 <code>--sid</code> 编号，所以放开到 187 个也是<b>零体积成本</b>。压缩的代价是合成慢一些（同一句话约慢 10 倍）。' + '男女主角、旁白、配角全部走这一份模型，换人只是换一个 <code>sid</code>，不多占一个字节。' + '官方只给编号没有花名，「男声低沉 / 女声清亮」是按每个说话人实测的中位基频（F0）分档的，描述词只便于分辨，<b>建议点「试听音色」挑自己最喜欢的那一个</b>。</p>' +
       '<p class="kv">长篇小说先试默认的「声线 12」（温润偏低），想换亮一点的试「声线 160」或「声线 150」，要男声试「声线 110」。合成很快（一句 4~7 秒音频约 1 秒生成）。下拉只列出本机已装好的音色，缺模型文件会自动隐藏。</p>' +
+      '<h3>这 187 个声音的来路与边界</h3>' +
+      '<p>先把三件事说清楚，这比音质重要。</p>' +
+      '<p><b>一、它们是合成音色，不是真人录音。</b>这 187 个声音全部来自同一份公开的多说话人中文语音模型 <code>fanchen-C</code>：一份权重里存着 187 组说话人向量，朗读时按编号（<code>sid</code>）取其中一组、当场合成。安装包里<b>没有任何一段真人录音</b>，也没有可供导出的音频样本。</p>' +
+      '<p><b>二、它们不对应任何可识别的人。</b>软件只按编号和实测基频叫它们「成年女 1」「老生 · 低沉 1」，不标姓名、职业、地区，也不声称哪一条属于谁。软件<b>不做声纹识别、不做身份判断</b>，没有「这是谁」这类功能——一组说话人向量认不出任何人，也验证不了身份。</p>' +
+      '<p><b>三、你的声音不会被用在这里。</b>软件不申请麦克风权限，不录音、不上传任何音频，也<b>没有「用我的声音读书」</b>这类功能。想把听感调成自己喜欢的样子，走的是语速、音高、停顿、句间留白这些参数，不动音色本身。</p>' +
+      '<p><b>许可状况照实说。</b>这一模型由社区贡献者公开发布，上游未单独声明许可证。本项目按原样随包分发，并在仓库里留了<b>移除通道</b>：如果你是其中的说话人或权利人，认为某条音色的使用不妥，请按发行包 README 所示方式联系，核实后会从声线列表里移除该条，必要时整个模型下线。</p>' +
+      '<p class="kv">为什么不「克隆我的声音」：那要把真人录音收进来训练，属于敏感个人信息处理与深度合成，需要单独授权、单独标识，还得防着被拿去伪造别人。换来的只是「听起来是我」，付出去的是一整套法律责任。这个软件选择不碰这条路。</p>' +
       '<h3>分角色朗读（多人对话自动换声）</h3>' +
       '<p>点朗读条上的「多角色」按钮，或到「阅读设置 → 分角色朗读」开启：<b>旁白还是用你选的声线，引号里的对白按人物自动换成不同的声音</b>。开始朗读前会先把这一章前后几章里说过话的人扫一遍、一次性把声线定好，同一个人物整本书都是同一个声音（代词「他 / 她」也会绑回那个人，不另起一条声线）；认不出是谁的那句沿用上一位的声音，只有真的换了人才变。</p>' +
       '<p>角色音色池可选「男女混合 / 全女声 / 全男声」。设置里的「试听效果」会念一小段带对白的示例，直接听差别。正在念的时候开或关都立刻生效，并从当前这一段重新开始念。</p>' +
@@ -8318,28 +8331,30 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<li>提示模型缺失：重跑一次 <code>安装语音包.cmd</code>，等它显示下载完成。</li>' +
       '<li>第一次点朗读有 1~2 秒延迟是引擎在加载模型，之后会快很多；老机器可把「句间停顿」调小一点。</li>' +
       '<li>任何失败都会自动切回系统语音，不会卡住，也不会丢阅读进度。</li></ul>' +
-      '<h3>许可</h3><p>引擎 <code>sherpa-onnx</code>（Apache-2.0）与 <code>fanchen-C</code>、<code>xiao_ya</code>、<code>chaowen</code> 三个中文 VITS 模型均为开源项目，按各自许可证使用；这些开源文件随成品一起放在 VoicePack 文件夹里，只为方便本机调用，可随时整个删除；本阅读器不修改它们、不写系统组件、不联网分发。</p>'],
+      '<h3>许可</h3><p>引擎 <code>sherpa-onnx</code>（Apache-2.0）与中文多说话人模型 <code>fanchen-C</code>（社区公开模型，上游未单独声明许可证）按各自条款使用。<b>引擎是开源的，模型不是</b>——模型由社区公开、上游未单独声明许可证，我们按原样分发，不修改、不声称开源。这些第三方文件随成品放在 VoicePack 文件夹里，只为方便本机调用，可随时整个删除；本阅读器不写系统组件、不联网分发。声线的来源、边界与移除通道见上一节，发行包里另有一份 <code>VOICE-POLICY.md</code>。</p>'],
     faq: ['常见问题', '<h3>朗读声音像机器人？</h3><p>直接用随成品装好的免费离线语音包：双击 <code>VoicePack/启动语音引擎.cmd</code> 即可，不用下载任何东西。完全离线、免费、无需账号，详见「免费神经语音」。不想下载也可以用 Microsoft Edge 打开本文件，在语音下拉选「⭐ 自然语音」分组里的晓晓或云扬。</p>' +
-      '<h3>要钱吗？要注册吗？</h3><p>都不要。阅读器本身、离线语音引擎与中文模型全部免费开源，没有账号、没有 Key、没有按量计费，也不上传任何文字。只有 Windows / Edge 自带的在线语音是微软的服务，与收费无关但国内常常连不上。</p>' +
+      '<h3>要钱吗？要注册吗？</h3><p>都不要。阅读器本身、离线语音引擎与中文语音模型全部免费使用，没有账号、没有 Key、没有按量计费，也不上传任何文字。只有 Windows / Edge 自带的在线语音是微软的服务，与收费无关但国内常常连不上。</p>' +
       '<h3>TXT 打开是乱码？</h3><p>默认自动识别 UTF-8 / GB18030 / UTF-16。若仍乱码，到「阅读设置 → TXT 编码」手动指定（GB18030 / Big5 / UTF-16LE），再重新打开这本书。</p>' +
       '<h3>朗读没声音 / 中文念得像英文？</h3><p>Windows：设置 → 时间和语言 → 语音 → 添加中文（简体）语音包；然后重启浏览器。朗读条里的语音下拉要选 <code>zh-CN</code> 开头的项。部分安卓 WebView 没有语音引擎，需装系统 TTS。</p>' +
       '<h3>EPUB 打开失败？</h3><p>支持标准 EPUB2 / EPUB3（ZIP + OPF + spine）。带 DRM 加密、或 Amazon 专用 AZW3 / MOBI 不在支持范围。极端老书的内部路径不规范时，解析器会做大小写与编码容错。</p>' +
       '<h3>清了浏览器缓存，书没了？</h3><p>数据存在浏览器 IndexedDB，清理站点数据会一并删除。重要书籍请先「导出备份」，同时保留原始文件。</p>' +
       '<h3>换电脑 / 手机怎么带过去？</h3><p>导出备份 JSON（勾「含书籍文件」），把 JSON 和这个 HTML 一起拷过去，在新设备点「导入备份」即可。也可只拷 HTML + 原书重新导入。离线语音库是 Windows 版，把 VoicePack 文件夹一起拷过去即可用。</p>' +
       '<h3>书架上的「续听」是什么？</h3><p>听到哪会被单独记住，和「读到哪」互不干扰。听完回到书架，书本卡片下方就有「▶ 续听 · 第 N 章」，点一下从上次听的那一段接着念。想按看书的位置念，点开书再点「朗读」即可。没听过这本书时不会出现这个按钮。</p>' +
-      '<h3>念到一半想换个声音？</h3><p>朗读条最左边的下拉里固定放着主角那套（原版男女声 + 8 个音高变体，删不掉），下面是<b>你自己置顶的声线</b>——置顶就是当主角用，点哪个名字朗读就换成哪个。想去掉某个，到「阅读设置 → 我的主角声线」点它右边的 × 就删了——那只影响朗读条这个下拉，设置里 {total} 个声线一个都不会少，随时能再加回来。想把对话也换成不同声音，点旁边的「多角色」。换完会用新声线把当前这一段重念一遍，不用停也不用回书架。想先试听再决定，去「阅读设置 → 免费神经语音 → 试听音色」。</p>' +
+      '<h3>念到一半想换个声音？</h3><p>朗读条最左边的下拉里放着你置顶的声线（默认是精选里的六条真人声线），下面是<b>你自己置顶的声线</b>——置顶就是当主角用，点哪个名字朗读就换成哪个。想去掉某个，到「阅读设置 → 我的主角声线」点它右边的 × 就删了——那只影响朗读条这个下拉，设置里 {total} 个声线一个都不会少，随时能再加回来。想把对话也换成不同声音，点旁边的「多角色」。换完会用新声线把当前这一段重念一遍，不用停也不用回书架。想先试听再决定，去「阅读设置 → 免费神经语音 → 试听音色」。</p>' +
       '<h3>手机上按钮挤？</h3><p>按钮会按屏幕宽度自动换成多行网格，不用手动切。手机上的正文一律单栏，横屏也不会硬分两栏。</p>' +
       '<h3>怎么弄成两栏？</h3><p>点阅读器顶栏「⋯」里的「排版」→「阅读方式」：切到「翻页」，分栏选「自动分栏」在宽屏上就是左右两栏，选「双栏」可以强制（窗口够宽时）；窗口太窄或手机上会自动退回单栏，不会把字挤成一条。<br>顺带一提，翻页模式翻的是整屏而不是滚动：点屏幕<b>左边三分之一</b>回上一页、<b>右边三分之一</b>翻下一页，滚轮、空格或 ← → 也都行，手机上还能左右滑。点屏幕<b>中间</b>是收 / 放上下工具栏——收起来之后正文占满整屏，再点中间或点最上面那条窄边就能唤回。</p>' +
       '<h3>自动阅读怎么用？</h3><p>点顶栏「⋯」里的「自动」，滚动模式下会匀速往下滚，翻页模式下按你设的秒数自动翻页；再点一次暂停，暂停时会留一个胶囊提示，可以继续或退出。到本章末尾会自动接下一章。朗读和自动阅读不会同时抢滚动。</p>' +
       '<h3>想看得更沉浸？</h3><p>点屏幕<b>中间</b>就能把上下工具栏收起来（最省事）；想连窗口边框一起收，点「⋯」里的「全屏」或按 F11。收起后点屏幕中间或最上面那条窄边就能唤回，鼠标移到屏幕上边或下边也行。想更暗一点，在「排版 → 配色 → 亮度」往下拉，正文会压暗一层夜里不刺眼。</p>' +
-      '<p class="kv">还有问题？读一下「关于」里的实现说明，或到发行包 README 里找反馈入口。</p>'],
+      '<p class="kv">还有问题？读一下「关于」里的实现说明，或到 <code>github.com/podcatcher962/moyin-reader/issues</code> 留言。</p>'],
     open: ['开源与许可', '<h3>许可证</h3>' +
-      '<p><b>墨吟 · MoYin Reader</b> 以 <b>MIT 许可证</b>发布，版权归 <b>© 2026 永远的兰兰（Lanlan Eternal）</b>所有。</p>' +
-      '<p>你被允许：自由使用、复制、修改、合并、发布、再授权、甚至商业使用；唯一义务是保留上述版权声明与本许可声明。软件按「现状」提供，不含任何担保。</p>' +
+      '<p><b>墨吟 · MoYin Reader</b> 以 <b>MIT 许可证</b>发布，版权归 <b>© 2026 永远的兰兰（Lanlan Eternal）</b>所有。<b>永久免费</b>，不设付费版本，也没有「高级版」「会员版」。</p>' +
+      '<p><b>MIT 覆盖的是本项目自己写的东西</b>：页面、样式、<code>zipcore.js</code>、EPUB 解析、朗读调度、打包脚本与文档。对这些，你被允许自由使用、复制、修改、合并、发布、再授权，甚至商业使用；唯一义务是保留版权声明与本许可声明。</p>' +
+      '<p><b>MIT 不覆盖第三方资产</b>：语音模型权重（<code>fanchen-C</code>，以及可选的英文模型）与 <code>sherpa-onnx</code> 引擎二进制。它们不是本项目创作的，本项目只按原样随包分发，<b>无权也不会替它们授权</b>。想把模型用于本项目之外的目的——尤其是商业用途——请自行向上游取得许可；<b>不能援引本项目的 MIT 声明作为依据，那份声明对它们无效</b>。</p>' +
+      '<p class="kv">这条区分不是免责话术，是事实：把别人的东西按 MIT 再授权出去，本项目没有这个权利，也不会这么做。若你打算二次分发，请注意 <code>VoicePack</code> 目录里的东西（完整版内嵌在 exe 尾部）与代码不是同一类，别一并打上 MIT 标签。</p>' +
       '<p class="kv">完整英文条款随发行包以 <code>LICENSE</code> 文件提供（MIT，标准全文）。仓库根目录同放一份，转载或二次分发时请一并保留。</p>' +
       '<h3>第三方组件</h3><ul>' +
       '<li><code>sherpa-onnx</code> 语音引擎 —— Apache-2.0，作者 k2-fsa 社区，本项目仅在本机以子进程方式调用。</li>' +
-      '<li><code>fanchen-C</code> 中文 187 人 VITS 模型 —— 按其在 HuggingFace 发布页的条款使用；主角用的 <code>xiao_ya</code>、<code>chaowen</code> 为 Piper 中文模型，同按其发布页条款使用。</li>' +
+      '<li><code>fanchen-C</code> 中文 187 人多说话人 VITS 模型 —— 社区公开模型，<b>上游未单独声明任何许可证</b>，本项目不主张其权利、不代为授权，仅按原样分发并保留移除通道；商业用途请自行向上游取得许可。1.14.40 起不再包含 <code>xiao_ya</code>、<code>chaowen</code> 两份 22.05 kHz 模型（其训练数据授权为「仅限非商用」）。</li>' +
       '<li><code>pywebview</code> + <code>pythonnet</code> —— BSD-3-Clause / MIT，仅 Windows 桌面壳使用，用于把内置页面装进系统窗口。</li>' +
       '<li><code>PyInstaller</code> —— GPL-2.0 附 bootloader 例外条款，只用于把脚本打成单文件 exe，不影响本项目的 MIT 授权。</li>' +
       '<li>Microsoft Edge WebView2 运行时 —— 微软随系统分发的运行环境，本项目不打包、不修改，仅调用系统已安装的版本。</li></ul>' +
@@ -8347,23 +8362,36 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<h3>本项目自有的部分</h3>' +
       '<p>页面、样式、<code>zipcore.js</code>（自行实现的 ZIP / DEFLATE / 字符编码解码内核）、EPUB 解析、朗读调度、单文件打包与自检脚本均为原创实现，同样以 MIT 授权。其中 DEFLATE 解码按 RFC 1951 规范独立编写，未抄录 zlib 源码。</p>' +
       '<h3>再分发时请注意</h3>' +
-      '<p>本软件不附带任何书籍内容。把软件连同语音模型一起转发时，请一并保留 <code>LICENSE</code> 与本文档；不要移除界面里的作者署名，也不要暗示原作者为你的修改版背书。</p>'],
+      '<p>本软件不附带任何书籍内容。把软件连同语音模型一起转发时，请一并保留 <code>LICENSE</code> 与本文档；不要移除界面里的作者署名，也不要暗示原作者为你的修改版背书。</p>' +
+      '<p><b>不要把模型标成 MIT。</b> <code>LICENSE</code> 只对代码有效。若你把 <code>VoicePack</code> 里的模型单独提取出来再分发，那属于你在处置第三方资产，请自行承担对应的许可义务——本项目既未授权、也不为你这一步背书。</p>' +
+      '<p><b>本项目不认任何「代收费」。</b> 墨吟永久免费，作者从未授权任何人以本项目的名义收费、代充、捆绑销售或提供「付费版 / 内购版」。你若是花钱买到的，那是卖方的行为，与本项目无关，本项目不承担任何责任、也不提供售后。</p>'],
     disclaimer: ['免责声明', '<p>本工具仅供个人阅读自己合法持有的电子书使用，不提供、不获取、不破解任何受版权保护的内容，不绕过任何数字版权管理（DRM）。使用者需自行确保对所导入文件拥有合法使用权，因使用本工具产生的版权纠纷由使用者自行承担。</p>' +
       '<p>导入的书籍、书签与阅读进度全部保存在本机浏览器数据库中，不会上传到任何服务器；作者与本页面均无法访问你的文件内容。<b>唯一例外</b>：当用户主动选择名称含 <code>Online (Natural)</code> 的在线语音时，浏览器会把当前朗读的文字发送给其语音服务进行合成，该行为由浏览器语音引擎发起，与本工具的书籍存储无关。请自行做好原始文件与备份的保管，因浏览器清理、设备故障、文件损坏造成的数据丢失，本工具不承担责任。</p>' +
-      '<p>「免费神经语音」用到的 sherpa-onnx 引擎与三个中文语音模型是第三方开源软件，由用户自行下载、自行决定是否运行，各自遵守其原始许可证；本工具只是本机调用，不分发、不修改、不为其可用性或安全性作担保。相关脚本只在本机 127.0.0.1 监听，不对外提供服务，请在可信网络环境下使用。</p>' +
+      '<p>「免费神经语音」用到的 <code>sherpa-onnx</code> 引擎与中文多说话人模型都是第三方组件，且许可状态不同：<b>引擎以 Apache-2.0 发布，模型由社区公开、上游未单独声明许可证</b>。桌面版由用户自行下载、自行决定是否运行；安卓版随包附带、按原样分发、不做任何修改。两者各自遵守其原始条款；本工具不为其可用性或安全性作担保。相关脚本只在本机 127.0.0.1 监听，不对外提供服务，请在可信网络环境下使用。</p>' +
       '<p>朗读依赖操作系统 / 浏览器提供的语音引擎，音色、可用性、断句效果因设备而异，不保证与人工朗读一致。驾车、操作机械等需要注意力的场合请勿收听。</p>' +
       '<p>本软件按「现状」提供，不附带任何明示或默示担保。在法律允许的最大范围内，作者不对使用或无法使用本软件造成的任何直接或间接损失（含数据丢失、设备损坏、时间或收入损失）承担责任。</p>' +
       '<p>「墨吟」的名称、界面与文档著作权归作者所有；文中提及的其他产品、公司、语音服务名称可能是其各自所有者的商标，仅用于说明用途，不表示任何关联、赞助或背书。</p>' +
       '<p><b>关于联网与权限</b>：除了上面说的检查更新（一个普通 GET 取版本号，不带书名也不带设备标识）和下载安装包 / 语音模型之外，软件不发起任何网络请求——没有统计、没有埋点、没有广告 SDK、没有崩溃上报。下载默认直连 GitHub 官方地址，中间没有别的服务器；只有在下载页上<b>由你本人点了</b>镜像链接时，请求才会经过 <code>gh-proxy.com</code> 这类第三方反代，对方能看到你的 IP 与浏览器标识。安卓包只申请 <code>INTERNET</code> 与 <code>ACCESS_NETWORK_STATE</code> 两个权限，不读存储、位置、通讯录、相机、麦克风，也不读 IMEI / Android ID / MAC。完整隐私说明随发行包以 <code>PRIVACY.md</code> 提供。</p>' +
-      '<p><b>关于声音</b>：187 个配角声线来自公开多说话人数据集训练的开源模型，主角两份来自公开 Piper 中文模型。它们只是合成音色，不用于声纹识别，也不代表任何真实人物；软件不提供声音克隆，不采集、不上传你本人的录音。界面里的声线名字是产品内的档位名，不是对任何人的称呼或代言。</p>' +
-      '<p>若你是权利人，认为本工具或其随附内容侵犯了你的权益，请通过发行包内 README 所示方式联系作者，核实后会及时处理。</p>'],
+      '<p><b>关于声音</b>：软件里的全部中文声线（主角、旁白、配角）都来自同一份社区公开的中文多说话人语音模型 <code>fanchen-C</code>（187 个说话人，16 kHz）。它们是<b>合成音色，不是真人录音</b>，不对应任何可识别的人；软件不做声纹识别、不做身份推断，也不声称某条声线属于某位具体的人。界面里的声线名称（如「成年女 1」）是按实测基频分档的产品标签，不是对任何人的称呼、代言或背书。</p>' +
+      '<p>本软件<b>不提供声音克隆</b>：不申请麦克风权限，不采集、不上传用户本人的录音，也不存在「用你的声音训练模型」这类功能。自然人声音参照肖像权受法律保护（《中华人民共和国民法典》第一千零二十三条），本项目据此主动放弃任何涉及真人声纹的能力。</p>' +
+      '<p>该模型由社区贡献者公开发布，上游未单独声明许可证，本项目按原样分发并<b>保留移除通道</b>：若你是其中的说话人或权利人、认为某条音色的使用不妥，请到 <code>github.com/podcatcher962/moyin-reader/issues</code> 说明「哪一条声线（编号或界面名称）＋为什么」，我们按<b>「疑则移除」</b>处理——187 条里少一条不影响软件可用；若涉及范围较广，整个模型下线。1.14.40 起已不再包含两份 22.05 kHz 模型（其训练数据授权为「仅限非商用」）。完整流程见 <code>VOICE-POLICY.md</code>。</p>' +
+      '<p>合成语音由本机生成、只在你的设备上播放。<b>把合成音频对外发布时，请按《人工智能生成合成内容标识办法》自行添加标识</b>，不要用它冒充他人声音，也不要用它制造、传播误导性内容。</p>' +
+      '<p><b>关于商用与二次分发</b>：墨吟<b>永久免费</b>，作者从未授权任何人以本项目的名义收费、代充、捆绑销售，或提供「付费版 / 内购版 / 会员版」。你若是花钱买到的，那是卖方的行为，与本项目无关——本项目不承担任何责任、不提供售后，也不为任何修改版背书。另外，<b>本项目的 MIT 声明只覆盖自己写的代码与文档，不覆盖随包的第三方语音模型与引擎</b>；任何人把这些模型用于商业用途，都不能援引本项目的声明作为依据，他人如何使用本软件或其随附资产属于其自身行为。</p>' +
+      '<p>若你是权利人，认为本工具或其随附内容侵犯了你的权益，请到 <code>github.com/podcatcher962/moyin-reader/issues</code> 提出。核实后会及时处理：能从包里去掉的就去掉，能改的就改，不拖延。</p>'],
     about: ['关于', '<p style="font-size:1.2em"><b>墨吟 · MoYin Reader</b></p>' +
       '<p>一个单文件、默认离线的 TXT / EPUB / PDF 阅读器，带朗读。双击 HTML 就能用，Windows / Linux / 安卓 / iOS 浏览器均可。</p>' +
       '<p>「墨吟」取「以墨为文、吟而出声」：把纸上的字念出来。中文名与英文名均为本项目自用，与任何同名公司、配音平台、有声主播<b>没有关联</b>，也不代表任何商业背书。</p>' +
       '<p>书架 + 阅读器的布局与朗读机制参考了本机 Koodo Reader 的交互思路，代码为零依赖重写：EPUB 的 ZIP 解压、OPF / NCX / Nav 目录、正文与插图解析全部内置，不加载任何外部脚本或 CDN。</p>' +
       '<p>它的声音理念很简单：<b>用普通人的声音，讲普通人的故事</b>。这里没有修得毫无瑕疵的录音棚嗓音——那种声音属于播音腔，听久了反倒离故事远。187 个人声，男女老少、清亮低沉都有，<b>总有一个让你心动的声音</b>；合耳的留下，不合耳的删掉，选择权在你手上。</p>' +
-      '<p class="kv">朗读可接免费的开源离线神经语音（sherpa-onnx + 三份中文 VITS 模型）：不联网、不收费、无需账号，带 187 个中文说话人（148 女 + 39 男），精选 {cur} 个常用声线、任何一条都能设成主角，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
-      '<p>本软件以 <b>MIT 许可证</b>开源：可自由使用、修改、再分发（含商用），保留版权与许可声明即可。完整条款见「开源与许可」。</p>' +
+      '<p class="kv">朗读可接免费的离线神经语音（开源引擎 sherpa-onnx ＋ 一份社区公开的中文多说话人 VITS 模型）：不联网、不收费、无需账号，带 187 个中文说话人（148 女 + 39 男），精选 {cur} 个常用声线、任何一条都能设成主角，还支持按人物分角色朗读；语音库随成品放在 VoicePack 文件夹里，Windows 桌面完整版 EXE 已把它打包进 exe 内，只拷一个 exe 就能听。</p>' +
+      '<p>本软件以 <b>MIT 许可证</b>开源、<b>永久免费</b>：<b>本项目自有的代码与文档</b>可自由使用、修改、再分发（含商用），保留版权与许可声明即可。<b>语音模型权重不在 MIT 范围内</b>——那是第三方资产，商用请自行向上游取得授权，不能拿本项目的声明当依据。完整条款见「开源与许可」。</p>' +
+      '<h3>1.14.41 改了什么</h3><ul>' +
+      '<li><b>只改文字，没改功能</b>：这一版把许可与免责说明写细了。朗读、排版、导入、进度与 1.14.40 完全一致，不用重新适应。</li>' +
+      '<li><b>把「MIT 覆盖到哪」写清楚了</b>：MIT 只覆盖本项目自己写的代码与文档，<b>不覆盖随包的语音模型与引擎</b>。它们属于上游，本项目只按原样分发，无权授权。想拿模型做商业用途，得自己去找上游取得许可，不能拿本软件的声明当依据——本软件也不替别人的商用行为兜底。</li>' +
+      '<li><b>加了一句「不认代收费」</b>：墨吟永久免费，作者没有授权任何人拿它的名字收费、代充、捆绑销售或做「付费版」。你要是花钱买到的，那是卖方的事，与本项目无关。</li>' +
+      '<li><b>异议入口给了具体地址</b>：以前写「见 README」，现在直接给出 Issues 地址，说话人或权利人不用再绕一圈去找。</li>' +
+      '<li><b>22 kHz 旧模型改名叫「旧版 22k · 女声 / 男声」</b>：老 VoicePack 目录里还留着它们的话照样能选，但名字里不再挂「墨吟」，免得被当成软件自带的声音。</li>' +
+      '</ul>' +
       '<h3>1.14.40 改了什么</h3><ul>' +
       '<li><b>把两份 22 kHz 主角模型从安装包里拿掉了</b>：小雅（女）与超文（男）各 18.65 MB，压缩后合起来 25.2 MB。它们的优势只剩「采样率高一点」——187 人那套 1.14.39 常驻之后一句 0.92 秒，跟主角同速。桌面 exe 150 → <b>125 MB</b>，安卓包 128 → <b>102 MB</b>，内存基线从 390 MB 降到 250 MB。</li>' +
       '<li><b>默认旁白换成真人声线</b>：以前默认是「墨吟 · 女声」，现在落在精选里的「成年女 1」（s13）；男声默认「中年男 1」（s58）。选过别的声线的不受影响。</li>' +
@@ -8750,7 +8778,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<div class="row"><label>' + T('语音') + '</label><button data-doc="voice">' + T('语音与朗读说明') + '</button><span class="kv">' + T('当前：') +
       esc(voiceLabel(curVoice() || { name: T('系统默认'), lang: 'zh-CN', localService: true })) + '</span></div>' +
       '<h3>' + T('免费神经语音 · 离线开源') + '</h3>' +
-      '<p class="kv">' + T('本机跑 sherpa-onnx + 开源中文神经语音模型（默认 22 kHz 女主与男主，另带 187 个配角说话人）：接近真人的中文语调，不收费、不联网、不用账号、不用 Key。语音库已随成品装好，听书前双击「VoicePack/启动语音引擎.cmd」即可。') + '</p>' +
+      '<p class="kv">' + T('本机跑 sherpa-onnx + 一份社区公开的中文神经语音模型（16 kHz、187 个说话人，主角与配角都从这里挑）：接近真人的中文语调，不收费、不联网、不用账号、不用 Key。语音库已随成品装好，听书前双击「VoicePack/启动语音引擎.cmd」即可。') + '</p>' +
       '<div class="row"><label>' + T('引擎状态') + '</label><div class="seg">' +
       '<span class="kv" style="align-self:center">' + (localReady() ? T('● 已连接（免费神经语音）') : T('○ 未检测到（当前用系统语音）')) + '</span>' +
       '<button data-act="probe">' + T('重新检测') + '</button>' +
@@ -8774,7 +8802,7 @@ if (typeof window !== 'undefined') window.MYZip = MYZip;
       '<span class="kv">' + T('分角色朗读时，书里女角色里的主角用这一条') + '</span></div>' +
       '<div class="row"><label>' + T('我的主角声线') + '</label><div class="seg" id="pinBox">' + pinChips() + '</div></div>' +
       '<p class="kv">' + T('这一栏就是「主角声线」：点哪个名字，朗读立刻换成那个声音，同时它进朗读条最左边的下拉——所以「置顶」和「设为主角」是同一件事，不用分两步做。点 × 只是把它从朗读条里拿掉，不会取消正在用的声音，声线本身也没丢。') + '</p>' +
-      '<p class="kv">' + T('只有「原版」男女主是固定的——删了就没默认声音兜底。其余全部自由：六个音高变体、187 个配角声线、你自己挑的，都能删能加，最多 {max} 个（女声、男声各 {half}）。点 × 只从朗读条移除，声线本身没丢，随时在下面加回来。', { max: PIN_MAX, half: PIN_PER_GENDER }) + '</p>' +
+      '<p class="kv">' + T('187 条声线全部自由，都能删能加，最多 {max} 个（女声、男声各 {half}）；删空任何一栏都会自动补一条可用声线兜底。点 × 只从朗读条移除，声线本身没丢，随时在下面加回来。', { max: PIN_MAX, half: PIN_PER_GENDER }) + '</p>' +
       '<p class="kv">' + T('这套中性音色不合耳朵很正常——187 个人声，总有一个让你心动的声音。合耳的留下，不合耳的删掉，把选择权留给你自己。') + '</p>' +
       '<div class="row"><label>' + T('男声降噪') + '</label>' + seg('dnMode', [
         [0, T('原声')], [1, T('更干净')], [2, T('更清楚')]

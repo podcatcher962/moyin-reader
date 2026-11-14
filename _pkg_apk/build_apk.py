@@ -70,7 +70,7 @@ DIAG = os.environ.get('MOYIN_DIAG') == '1'
 FINAL = os.path.join(ROOT, 'MoYinReader-diag.apk' if DIAG else 'MoYinReader.apk')
 STAGE = os.path.join(PKG_DIR, 'stage_' + time.strftime('%H%M%S'))
 
-# ── 手机端离线神经语音：sherpa-onnx Android AAR + 小雅/超文/fanchen 三套中文模型 ──
+# ── 手机端离线神经语音：sherpa-onnx Android AAR + fanchen 一套中文模型（1.14.40 起）──
 # 引擎与模型只在打包时用，不进仓库。缺了也能打，只是 APK 里没有神经语音。
 SHERPA = os.environ.get('MOYIN_SHERPA') or ''
 if not SHERPA:
@@ -101,7 +101,8 @@ if NONLEAD:
                             else '-' + SHERPA_ABI.split('_')[0]) + '.apk')
 SHERPA_LIBS = ['libonnxruntime.so', 'libsherpa-onnx-c-api.so',
                'libsherpa-onnx-cxx-api.so', 'libsherpa-onnx-jni.so']
-# 三套模型：女主小雅（22.05 kHz）+ 男主超文（22.05 kHz）+ 配角库 fanchen（187 人，16 kHz）
+# 模型：fanchen 多说话人库（187 人，16 kHz）。1.14.40 起不再带 22.05 kHz 的小雅 / 超文，
+# 下面的 xiaoya / chaowen 计划表只服务 --with-lead 的历史分支与 LEADLESS 断言。
 VOICE_GIRL = os.path.join(ROOT, 'VoicePack', 'models', 'xiaoya')
 VOICE_GIRL_FILES = ['model.onnx', 'lexicon.txt', 'tokens.txt',
                     'date.fst', 'number.fst', 'phone.fst']
@@ -130,8 +131,8 @@ os.makedirs(STAGE, exist_ok=True)
 MANIFEST = '''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="%s"
-    android:versionCode="11440"
-    android:versionName="1.14.40">
+    android:versionCode="11441"
+    android:versionName="1.14.41">
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
     <!-- 只有两条：WebView 访问本机 127.0.0.1 需要明文 http；
          不申请麦克风、定位、通讯录、存储，读书不需要这些。 -->
@@ -539,7 +540,7 @@ def stage_diag_page(path):
 
 
 def stage_voice_model(assets):
-    """三套模型分别拷进 assets/tts/xiaoya、/chaowen、/fanchen，
+    """模型分别拷进 assets/tts/xiaoya、/chaowen、/fanchen（前两个仅 --with-lead 分支），
     首次启动由 TtsEngine 解压到私有目录（男主和配角库等真正选中时才解压）。
     小雅的词表在 models/shared，入包时与 model.onnx 并进同一个目录。"""
     plan = (

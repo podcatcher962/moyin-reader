@@ -5,11 +5,13 @@
 从 sherpa-onnx 官方 GitHub Release 下载开源引擎与中文神经语音模型，
 解压到本目录的 engine/ 与 models/。全程免费、无需账号、无需 Key。
 
-三套模型：
-  models/xiaoya/model.onnx    女主「墨吟 · 女声」22.05 kHz（小雅，官方 int8）
-  models/chaowen/model.onnx   男主「墨吟 · 男声」22.05 kHz（超文，官方 int8）
-  models/fanchen/…            配角库 16 kHz，187 个说话人（fanchen-C）
-  models/shared/…             两份 piper 模型共用的词表与数字规则
+一套模型（1.14.40 起不再安装 22.05 kHz 的小雅 / 超文）：
+  models/fanchen/…            16 kHz 多说话人库，187 个说话人（fanchen-C）
+                              主角、旁白、配角全部从这里挑，靠 sid 切人
+
+小雅（xiaoya）的训练数据授权是「仅限非商用」，超文同源，所以两者都不再
+进入安装清单，也不再随包分发。已有用户目录里若还留着这两份文件，语音服务
+会照旧识别（向后兼容），但安装器不会主动下载它们。
 
 可选件（加 --en 才装，约 40 MB）：
   models/en-ljs/…             英文朗读模型（icefall vits-ljs，Apache-2.0）
@@ -55,21 +57,8 @@ PKGS = [
     ('engine.tar.bz2',
      'v2.0.1/sherpa-onnx-v2.0.1-win-x64-shared-MD-Release.tar.bz2',
      None, []),
-    # 女主小雅：官方 int8（13.4 MB 压缩包）。词表与数字规则两个 piper 模型通用，取一份进 shared。
-    ('v_xiaoya.tar.bz2',
-     'tts-models/vits-piper-zh_CN-xiao_ya-medium-int8.tar.bz2',
-     'vits-piper-zh_CN-xiao_ya-medium-int8',
-     [('zh_CN-xiao_ya-medium.onnx', 'xiaoya/model.onnx'),
-      ('lexicon.txt', 'shared/lexicon.txt'),
-      ('tokens.txt', 'shared/tokens.txt'),
-      ('date.fst', 'shared/date.fst'),
-      ('number.fst', 'shared/number.fst'),
-      ('phone.fst', 'shared/phone.fst')]),
-    # 男主超文：同规格 22.05 kHz，只取模型本体。
-    ('v_chaowen.tar.bz2',
-     'tts-models/vits-piper-zh_CN-chaowen-medium-int8.tar.bz2',
-     'vits-piper-zh_CN-chaowen-medium-int8',
-     [('zh_CN-chaowen-medium.onnx', 'chaowen/model.onnx')]),
+    # 小雅 / 超文（22.05 kHz，vits-piper-zh_CN-xiao_ya / chaowen）已从清单移除：
+    # 训练数据的授权是「仅限非商用」，不宜继续作为默认下载项。
     # 配角库：187 个说话人共用一份模型，自带词表与 jieba 词典（多音字靠它）。
     ('v_fanchen.tar.bz2',
      'tts-models/vits-zh-hf-fanchen-C.tar.bz2',
@@ -416,7 +405,7 @@ def install():
     say('=' * 60)
     say('  墨吟 · 免费离线中文神经语音包')
     say('  引擎 sherpa-onnx (Apache-2.0)')
-    say('  女主小雅 22.05 kHz ＋ 男主超文 22.05 kHz ＋ 187 人配角库 16 kHz')
+    say('  187 人配角库 16 kHz（主角 / 旁白 / 配角都从这里挑）')
     say('  全部开源免费，不注册、不联网听书、不按字数收费')
     say('=' * 60)
     if not need():

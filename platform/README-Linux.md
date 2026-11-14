@@ -75,3 +75,22 @@ bash build-linux.sh
 
 分角色朗读依赖随 Windows 版打包的 sherpa-onnx 语音引擎（Windows 二进制）。
 Linux 上如果装了 `espeak-ng` 或系统中文 TTS，朗读能出声，但只能一个声音。
+
+## 许可与声明
+
+包根目录有四份文件，请连着看，别拆散：
+
+| 文件 | 说什么 |
+|---|---|
+| `LICENSE` | MIT 全文。覆盖**本项目自己写的代码与文档**，版权 © 2026 Lanlan Eternal |
+| `THIRD-PARTY-NOTICES.md` | 逐组件许可状态。有例外：Windows 版随包的 fanchen-C 语音模型上游未声明许可 |
+| `VOICE-POLICY.md` | 声音从哪来、三层权利怎么拆、移除通道在哪 |
+| `PRIVACY.md` | 不采集、不上传、不录音、不克隆 |
+
+**MIT 不覆盖任何第三方资产。** 谁要拿随包的语音模型去用（尤其商用），不能援引本项目的 MIT 声明——那份声明对模型无效，本项目也没有权利替上游授权。
+
+本 Linux 包不含任何语音模型：朗读走系统语音（见上表），装机清单里只有 `app.py`、`MoYinReader.html` 和几个脚本。
+
+用 `.deb` 装的，这四份在 `/usr/share/doc/moyin-reader/`（`LICENSE` 按 Debian 惯例叫 `copyright`）。
+
+墨吟永久免费。作者从未授权任何人以本项目名义收费、代充、捆绑销售或做「付费版」；你若花了钱，那是卖方行为，与本项目无关。

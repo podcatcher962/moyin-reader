@@ -94,7 +94,7 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 
 其余架构（aarch64 / loongarch64）仍走 Python 或网页方式；包里附 `build-linux.sh`，可在本机打自己架构的二进制。macOS 同理附 `build-macos.sh`，打 `.app`。
 
-朗读：Windows 完整版与安卓版都自带神经语音（sherpa-onnx + 小雅 / 超文 / fanchen-C，187 个中文声线，完全离线）；网页版 / Linux / macOS 走系统语音，也可以把同一份 `VoicePack` 放在旁边连本机引擎（`127.0.0.1:8177`）。
+朗读：Windows 完整版与安卓版都自带神经语音（sherpa-onnx + fanchen-C，187 个中文声线，完全离线）；网页版 / Linux / macOS 走系统语音，也可以把同一份 `VoicePack` 放在旁边连本机引擎（`127.0.0.1:8177`）。
 
 ### 功能
 
@@ -160,13 +160,23 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 
 **1.14.40 之前的 150 MB 是怎么来的**：那时候还带两份 22 kHz 主角模型（小雅 18.65 MB + 超文 18.65 MB），压缩后合计 25.2 MB。187 人那套常驻之后一句 0.92 秒、跟主角同速，那两份的优势只剩「采样率高一点」，于是被拿掉了——**这是省体积的唯一一处，其余一个字节都没动**。想再小就只能砍英文模型（-26 MB），代价是中英混排里的英文词只能跳过或走系统语音。
 
-那两份模型没有删，留在仓库的 `VoicePack/models/` 里（`xiaoya` / `chaowen`）。哪天想听回去：把它们拷进 `VoicePack/models/`，语音服务会自动认出来，x0 / c0 会重新出现在声线表里——**不用改一行代码**。
+那两份模型也**不再进仓库**（`VoicePack/models/` 整个目录都在 `.gitignore` 里），安装器从 1.14.40 起也不再下载它们——小雅的训练数据明写「**仅限非商用**」，留在默认下载链上有合规风险，超文与之同源。老用户的 `VoicePack/models/` 里若还留着 `xiaoya` / `chaowen`，语音服务仍会认出来（向后兼容，不用改一行代码）；想彻底清掉，删掉这两个目录即可，187 条声线一条不少。
 
 不想自己构建的话，直接到 **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** 下载编译好的版本；或者用 **[在线版](https://podcatcher962.github.io/moyin-reader/)** 什么都不装。
 
-### 最近改动（1.14.8 → 1.14.39）
+### 最近改动（1.14.8 → 1.14.41）
 
-从 1.14.8「不再等十秒」到 1.14.39「187 个声音全部能当主角」，一共三十多个版本。按批次写在下面，新的在前。
+从 1.14.8「不再等十秒」到 1.14.41「把许可说清楚」，一共三十多个版本。按批次写在下面，新的在前。
+
+**1.14.41 · 只改文字：把 MIT 覆盖到哪、谁在用模型商用、怎么提异议，都写明白**
+
+功能一行没动，朗读、排版、导入、进度与 1.14.40 完全一致。改的全是「出事时能拿出来的那部分」：
+
+- **划清 MIT 的边界**：MIT 只覆盖本项目自己写的代码与文档，**不覆盖随包的语音模型与引擎**。它们属于上游，本项目只做原样再分发，**无权授权、不作再许可**。任何人拿模型去商用，都不能援引本项目的 MIT 声明——那份声明对它们无效。这条同时写进 `README`、`THIRD-PARTY-NOTICES`、`VOICE-POLICY` 与软件内「开源与许可」页，四处同口径。
+- **加一句「不认代收费」**：墨吟永久免费，作者没有授权任何人以本项目的名义收费、代充、捆绑销售或做「付费版」。花钱买到的属于卖方行为，与本项目无关。
+- **异议入口从「见 README」改成具体地址**：`github.com/podcatcher962/moyin-reader/issues`。原来那句在 APK 里根本落不了地——手机用户手上没有 README。
+- **22 kHz 旧模型改名**：「墨吟 · 女声 / 男声」→「旧版 22k · 女声 / 男声」。老 `VoicePack` 目录里还留着它们照样能选，但名字里不再挂「墨吟」，免得被当成软件自带的声音。
+- **声线命名复核**：精选 50 条是「档位 + 序号」，其余 137 条显示为「音色 N」，全部无名无姓、不指向任何具体的人。
 
 **1.14.40 · 把两份 22 kHz 主角模型拿掉，包小 25 MB**
 
@@ -176,7 +186,7 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 - **默认旁白换成真人声线**：以前是「墨吟 · 女声」，现在落在精选里的「成年女 1」；男声默认「中年男 1」。选过别的声线的不受影响。
 - **老配置不会哑**：配置里还存着 `x0` / `c0` / `f1~m3` 的，升级后自动落到新的默认，不用重新挑。
 - **精选补两条**：拿走两条主角后补位成 50 条——「中年男 7」（162 Hz，填 140~165 的中段）与「青年女 15」（263 Hz，接原来 x0 的位置）。原来 48 条 sid 一个没动。
-- **想听回去随时可以**：两份模型留在仓库 `VoicePack/models/`（`xiaoya` / `chaowen`），拷回目录就会自动被认出来，`x0` / `c0` 重新出现在声线表里，不用改代码。
+- **安装器也不再下载这两份**：`VoicePack/install.py` 的下载清单去掉了 `v_xiaoya` / `v_chaowen`（小雅训练数据授权为「仅限非商用」，超文同源）。老用户目录里若还留着，语音服务照旧识别——向后兼容，不改一行代码。
 
 为什么敢拿掉：音质上它们确实更细腻（22.05 kHz，齿音与气口都在），但 187 人那套常驻之后一句 0.92 秒、跟它们同速，差的只有采样率本身。这个软件从第一天起写的是「**用普通人的声音，讲普通人的故事**」——187 个人就是这句话的实体，那两份「受过训练的嗓子」反而是异类。省下来的 25 MB 换一个更小的包。
 
@@ -379,7 +389,23 @@ _unit_zip.js                       ZIP 解压内核单测（482 项）
 
 ### 许可与致谢
 
-本项目以 **MIT 许可证**发布，版权 © 2026 永远的兰兰（Lanlan Eternal）。第三方组件（sherpa-onnx、小雅 / 超文 / fanchen-C 模型、pywebview、pythonnet、PyInstaller）各自遵循其原始许可证，详见 [LICENSE](LICENSE) 与 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)（也写在软件内「开源与许可」）。
+本项目**以 MIT 许可证发布，永久免费、不设付费版本**，版权 © 2026 永远的兰兰（Lanlan Eternal）。详见 [LICENSE](LICENSE) 与 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)（也写在软件内「开源与许可」）。**声线的来源、三层权利分析、七条自我约束与移除流程**单独写在 [VOICE-POLICY.md](VOICE-POLICY.md) 里——想确认「这 187 个声音到底干不干净」，看那一份就够。
+
+#### MIT 许可的适用范围（重要）
+
+**MIT 许可只覆盖本项目的源代码与文档**——也就是本仓库里的 `app.js`、`build.py`、`platform/`、`VoicePack/*.py`、各 `.md` 等由本项目创作的成果。
+
+**它不覆盖第三方资产**：`VoicePack/models/` 下的模型权重（含 `fanchen/`、`en-ljs/`）与 `VoicePack/engine/` 下的引擎二进制，其权利属于各自的上游作者。本项目对它们**只做原样再分发，不作任何授权、不再许可、不声称可以商用**——因为本项目没有这个权利。
+
+换句话说：**MIT 只管代码，不管模型。** 想用模型做别的事，请自行向上游取得许可；本项目的 MIT 声明不能作为你使用这些权重的依据。这条区分写在这里而不是塞进 `LICENSE` 正文，是为了让 `LICENSE` 保持标准 MIT 全文（便于自动识别），两处口径一致。
+
+#### 声线异议与移除入口
+
+如果你是上述数据集中的说话人，或你认为某条声线不宜被使用，**不需要走法律途径**，直接开一个 Issue 说明「哪一条（编号或界面名称）+ 为什么」即可：
+
+<https://github.com/podcatcher962/moyin-reader/issues>
+
+我们会先按「疑则移除」处理（187 条里少一条不影响软件可用），核实后在下个版本从声线列表、下载链与安装包中一并摘掉，并在发行说明里写清从哪一版起不再包含。已在用户机器上的旧版本无法远程撤回——软件不联网、没有遥测——这一点也如实说明。完整流程见 [VOICE-POLICY.md](VOICE-POLICY.md) 第四节。
 
 软件内的「关于」「开源与许可」「免责声明」三页与这里同口径：署名保留 `© 2026 永远的兰兰（Lanlan Eternal）`，MIT 全文随发行包与仓库各放一份，界面里的作者署名请勿移除。可选的英文语音模型（icefall `vits-ljs`，Apache-2.0）不随包分发，用户自行放置。
 
@@ -391,7 +417,7 @@ _unit_zip.js                       ZIP 解压内核单测（482 项）
 
 ## English
 
-**MoYin Reader** (Chinese: 墨吟, pinyin *mó yín* — "ink" + "to chant") is a single-file, offline-first Chinese reader for TXT / EPUB / PDF / DOCX / MOBI / AZW3 (drop a `.zip` of books and the whole bundle imports at once; scanned PDFs page through as page images) with text-to-speech, highlights, notes and reading summaries — and typography that can hold its own: scroll or turn whole pages, two columns on wide screens and one on phones, six themes, auto reading and immersive full screen. Speech uses a single 16 kHz Chinese multi-speaker model: 187 offline speakers (39 male, 148 female; 50 curated on desktop, 30 on phones, **any of which can be set as a lead**), resident in memory and switched by speaker id — about 0.9 s for a 20-character line. The two 22.05 kHz lead models shipped up to 1.14.39 are no longer bundled (saves 25 MB); the files stay in the repo and are picked up automatically if you copy them back. The whole interface toggles between Chinese and English. One portable exe on Windows, one apk on Android, or just double-click the HTML.
+**MoYin Reader** (Chinese: 墨吟, pinyin *mó yín* — "ink" + "to chant") is a single-file, offline-first Chinese reader for TXT / EPUB / PDF / DOCX / MOBI / AZW3 (drop a `.zip` of books and the whole bundle imports at once; scanned PDFs page through as page images) with text-to-speech, highlights, notes and reading summaries — and typography that can hold its own: scroll or turn whole pages, two columns on wide screens and one on phones, six themes, auto reading and immersive full screen. Speech uses a single 16 kHz Chinese multi-speaker model: 187 offline speakers (39 male, 148 female; 50 curated on desktop, 30 on phones, **any of which can be set as a lead**), resident in memory and switched by speaker id — about 0.9 s for a 20-character line. The two 22.05 kHz lead models shipped up to 1.14.39 are no longer bundled or downloaded (saves 25 MB; XiaoYa's training data is licensed for non-commercial use only). Existing installs that still have them on disk keep working — the service picks them up automatically. The whole interface toggles between Chinese and English. One portable exe on Windows, one apk on Android, or just double-click the HTML.
 
 Try it in the browser: **<https://podcatcher962.github.io/moyin-reader/>**
 
