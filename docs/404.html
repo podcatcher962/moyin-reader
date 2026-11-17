@@ -22,26 +22,31 @@
     margin:0; background:var(--bg); color:var(--tx);
     font:16px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB",
          "Microsoft YaHei","Source Han Sans SC",sans-serif;
-    display:flex; align-items:center; justify-content:center; padding:28px;
+    display:flex; align-items:center; justify-content:center; padding:26px;
   }
-  .box{width:100%; max-width:520px; text-align:center}
-  .mark{font-size:44px; line-height:1; margin-bottom:18px}
-  h1{font-size:22px; margin:0 0 10px; font-weight:600; letter-spacing:.02em}
-  p{margin:0 0 8px; color:var(--dim); font-size:15px}
-  .tip{margin-top:22px; padding:16px 18px; background:var(--card);
-       border:1px solid var(--line); border-radius:14px; text-align:left}
-  .tip b{color:var(--tx); font-weight:600}
-  .tip .path{display:block; margin-top:8px; font-size:12.5px; color:var(--dim);
-             word-break:break-all; font-family:ui-monospace,Consolas,monospace}
-  .btns{margin-top:22px; display:flex; gap:12px; flex-wrap:wrap; justify-content:center}
+  .box{width:100%; max-width:520px}
+  .head{text-align:center}
+  .mark{font-size:40px; line-height:1; margin-bottom:14px}
+  h1{font-size:21px; margin:0 0 8px; font-weight:600; letter-spacing:.02em}
+  p{margin:0; color:var(--dim); font-size:14.5px}
+  .tip{margin-top:20px; padding:16px 18px; background:var(--card);
+       border:1px solid var(--line); border-radius:14px}
+  .tip b{color:var(--tx); font-weight:600; font-size:14.5px}
+  .tip p{margin-top:6px; font-size:14px}
   a.btn{
-    display:inline-block; padding:12px 22px; border-radius:999px; text-decoration:none;
-    font-size:15px; font-weight:600; border:1px solid var(--line); color:var(--tx);
-    background:var(--card); transition:.16s;
+    display:inline-block; padding:11px 20px; border-radius:999px; text-decoration:none;
+    font-size:14.5px; font-weight:600; border:1px solid var(--line); color:var(--tx);
+    background:var(--card); transition:.16s; text-align:center;
   }
   a.btn:hover{border-color:var(--acc)}
-  a.btn.pri{background:linear-gradient(180deg,var(--acc2),var(--acc)); color:#1B1C1F; border-color:transparent}
+  a.btn.pri{background:linear-gradient(180deg,var(--acc2),var(--acc));
+            color:#1B1C1F; border-color:transparent; display:block; width:100%; padding:13px 20px}
   a.btn.pri:hover{filter:brightness(1.06)}
+  .mirrors{margin-top:10px; display:flex; gap:8px}
+  .mirrors a{flex:1; font-size:13px; padding:9px 6px; color:var(--dim)}
+  .btns{margin-top:18px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap}
+  .path{margin-top:14px; font-size:12px; color:var(--dim); word-break:break-all;
+        font-family:ui-monospace,Consolas,monospace; text-align:center; opacity:.7}
   .spin{display:inline-block; width:14px; height:14px; margin-right:7px; vertical-align:-2px;
         border:2px solid var(--line); border-top-color:var(--acc); border-radius:50%;
         animation:sp .8s linear infinite}
@@ -51,27 +56,42 @@
 </head>
 <body>
 <div class="box">
-  <div class="mark" id="mark"><span class="spin"></span></div>
-  <h1 id="h1">正在带你去下载</h1>
-  <p id="msg">这个地址没有文件，正在转到官方下载源。</p>
+  <div class="head">
+    <div class="mark" id="mark"><span class="spin"></span></div>
+    <h1 id="h1">正在带你去下载</h1>
+    <p id="msg">这个地址没有文件，正在转到官方下载源。</p>
+  </div>
 
   <div class="tip" id="tip">
-    <b>如果几秒后没有开始下载</b>
-    <p style="margin-top:6px">点下面的按钮就行，文件是一样的（GitHub 官方 Release）。</p>
-    <span class="path" id="path"></span>
+    <b>没开始下载？点一下就行</b>
+    <p>文件是一样的（GitHub 官方 Release）。国内网络如果卡在 0%，换下面任一镜像。</p>
+    <div style="margin-top:12px">
+      <a class="btn pri" id="go" href="#" rel="noreferrer">开始下载</a>
+      <div class="mirrors" id="mirrors">
+        <a class="btn" id="m1" href="#" rel="noreferrer">镜像一</a>
+        <a class="btn" id="m2" href="#" rel="noreferrer">镜像二</a>
+        <a class="btn" id="m3" href="#" rel="noreferrer">镜像三</a>
+      </div>
+    </div>
   </div>
 
   <div class="btns">
-    <a class="btn pri" id="go" href="https://podcatcher962.github.io/moyin-reader/download/">去下载页</a>
+    <a class="btn" href="https://podcatcher962.github.io/moyin-reader/download/">下载页（含校验值）</a>
     <a class="btn" href="https://podcatcher962.github.io/moyin-reader/">打开阅读器</a>
   </div>
+  <div class="path" id="path"></div>
 </div>
 
 <script>
 (function () {
-  var BASE = 'https://github.com/podcatcher962/moyin-reader/releases/latest/download/';
-  /* 只对「资产名稳定」的三类做精确跳转；带版本号的名字（-1.14.41.zip / .deb）
-     在不同版本间会变，直接拼 latest 容易又 404，统一送到下载页选。 */
+  var OFFICIAL = 'https://github.com/podcatcher962/moyin-reader/releases/latest/download/';
+  var MIRROR = [
+    'https://gh-proxy.com/' + OFFICIAL,
+    'https://ghfast.top/' + OFFICIAL,
+    'https://ghproxy.net/' + OFFICIAL
+  ];
+  /* 只对「资产名稳定」的四类做跳转；带版本号的名字（-1.14.41.zip / .deb）
+     版本间会变，拼 latest 又造一条死链，统一送去下载页选。 */
   var STABLE = {
     'moyinreader.apk': 'MoYinReader.apk',
     'moyinreader.exe': 'MoYinReader.exe',
@@ -79,44 +99,36 @@
     'moyinreader.html': 'MoYinReader.html'
   };
 
-  var elH1 = document.getElementById('h1');
-  var elMsg = document.getElementById('msg');
-  var elTip = document.getElementById('tip');
-  var elPath = document.getElementById('path');
-  var elGo = document.getElementById('go');
-  var elMark = document.getElementById('mark');
-
+  var $ = function (id) { return document.getElementById(id); };
   var seg = document.location.pathname.split('/').filter(Boolean);
   var last = seg.length ? decodeURIComponent(seg[seg.length - 1]) : '';
-
-  elPath.textContent = document.location.href;
+  $('path').textContent = document.location.href;
 
   var target = STABLE[last.toLowerCase()];
-  if (target) {
-    var url = BASE + target;
-    elMsg.textContent = '正在转到官方下载源：' + target + '（约 100 MB，慢一点也正常）。';
-    elGo.href = url;
-    elGo.textContent = '手动开始下载';
-    elGo.setAttribute('download', '');
-    /* 用 assign 而不是 replace：用户点返回时还能回到原来的页面 */
-    window.setTimeout(function () {
-      document.location.assign(url);
-    }, 350);
-    /* 15 秒后还没走（被拦或超时），把「手动」按钮突出来 */
-    window.setTimeout(function () {
-      if (!document.hidden) {
-        elH1.textContent = '还没开始？点下面这个按钮';
-        elMsg.textContent = '有些浏览器（微信、QQ 内置）会拦住自动跳转，手动点一下即可。';
-        elMark.textContent = '📥';
-      }
-    }, 15000);
-  } else {
-    /* 不是已知文件名的 404 —— 老实说清楚，别假装在跳转 */
-    elMark.textContent = '·';
-    elH1.textContent = '这个地址没有内容';
-    elMsg.textContent = '链接可能来自旧版本，或者拼错了一小截。';
-    elTip.classList.add('hide');
+  if (!target) {
+    $('mark').textContent = '·';
+    $('h1').textContent = '这个地址没有内容';
+    $('msg').textContent = '链接可能来自旧版本，或者拼错了一小截。';
+    $('tip').classList.add('hide');
+    return;
   }
+
+  var url = OFFICIAL + target;
+  $('go').href = url;
+  $('go').textContent = '开始下载 ' + target;
+  $('msg').textContent = '正在转官方源：' + target + '（约 103 MB，慢一点也正常）。';
+  $('m1').href = MIRROR[0] + target;
+  $('m2').href = MIRROR[1] + target;
+  $('m3').href = MIRROR[2] + target;
+
+  /* 手机上别死等：自动跳一次，15 秒后把标题换成「点这个按钮」 */
+  window.setTimeout(function () { document.location.assign(url); }, 400);
+  window.setTimeout(function () {
+    if (document.hidden) return;
+    $('h1').textContent = '还没开始？点下面的按钮';
+    $('msg').textContent = '有些浏览器（微信、QQ 内置）会拦住自动跳转，手动点一下即可。';
+    $('mark').textContent = '📥';
+  }, 15000);
 })();
 </script>
 </body>
