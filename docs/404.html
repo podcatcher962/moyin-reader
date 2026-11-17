@@ -121,12 +121,21 @@
   $('m2').href = MIRROR[1] + target;
   $('m3').href = MIRROR[2] + target;
 
+  /* 微信 / QQ 内置浏览器一律拦 apk 下载：先把话说清楚，别让人以为链接坏了 */
+  var ua = navigator.userAgent || '';
+  if (/MicroMessenger|QQ\/|Weibo|XHS|xiaohongshu/i.test(ua)) {
+    $('h1').textContent = '请用浏览器打开';
+    $('msg').textContent = '点右上角「…」→「在浏览器打开」，再点下面的按钮下载。';
+    $('mark').textContent = '🧭';
+    return;
+  }
+
   /* 手机上别死等：自动跳一次，15 秒后把标题换成「点这个按钮」 */
   window.setTimeout(function () { document.location.assign(url); }, 400);
   window.setTimeout(function () {
     if (document.hidden) return;
     $('h1').textContent = '还没开始？点下面的按钮';
-    $('msg').textContent = '有些浏览器（微信、QQ 内置）会拦住自动跳转，手动点一下即可。';
+    $('msg').textContent = '有些浏览器会拦住自动跳转，手动点一下即可。';
     $('mark').textContent = '📥';
   }, 15000);
 })();
