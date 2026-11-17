@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>正在带你去下载 · 墨吟阅读器</title>
+<meta name="robots" content="noindex">
+<meta http-equiv="refresh" content="1;url=https://github.com/podcatcher962/moyin-reader/releases/latest/download/MoYinReader_Lite.exe">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<style>
+  :root{
+    --bg:#1B1C1F; --card:#24262A; --line:#3A3D43;
+    --tx:#E6E4E1; --dim:#9A9C9F; --acc:#C9A227; --acc2:#E0BC4A;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#F6F4EF; --card:#FFFFFF; --line:#E2DED4;
+           --tx:#26241F; --dim:#6E6A61; --acc:#A8801A; --acc2:#8A6812; }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--tx);
+    font:16px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB",
+         "Microsoft YaHei","Source Han Sans SC",sans-serif;
+    display:flex; align-items:center; justify-content:center; padding:26px;
+  }
+  .box{width:100%; max-width:520px}
+  .head{text-align:center}
+  .mark{font-size:40px; line-height:1; margin-bottom:14px}
+  h1{font-size:21px; margin:0 0 8px; font-weight:600; letter-spacing:.02em}
+  p{margin:0; color:var(--dim); font-size:14.5px}
+  .tip{margin-top:20px; padding:16px 18px; background:var(--card);
+       border:1px solid var(--line); border-radius:14px}
+  .tip b{color:var(--tx); font-weight:600; font-size:14.5px}
+  .tip p{margin-top:6px; font-size:14px}
+  a.btn{
+    display:inline-block; padding:11px 20px; border-radius:999px; text-decoration:none;
+    font-size:14.5px; font-weight:600; border:1px solid var(--line); color:var(--tx);
+    background:var(--card); transition:.16s; text-align:center;
+  }
+  a.btn:hover{border-color:var(--acc)}
+  a.btn.pri{background:linear-gradient(180deg,var(--acc2),var(--acc));
+            color:#1B1C1F; border-color:transparent; display:block; width:100%; padding:13px 20px}
+  a.btn.pri:hover{filter:brightness(1.06)}
+  .mirrors{margin-top:10px; display:flex; gap:8px}
+  .mirrors a{flex:1; font-size:13px; padding:9px 6px; color:var(--dim)}
+  .btns{margin-top:18px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap}
+  .path{margin-top:14px; font-size:12px; color:var(--dim); word-break:break-all;
+        font-family:ui-monospace,Consolas,monospace; text-align:center; opacity:.7}
+  .spin{display:inline-block; width:14px; height:14px; margin-right:7px; vertical-align:-2px;
+        border:2px solid var(--line); border-top-color:var(--acc); border-radius:50%;
+        animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .hide{display:none !important}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="head">
+    <div class="mark" id="mark"><span class="spin"></span></div>
+    <h1 id="h1">正在带你去下载</h1>
+    <p id="msg">这个地址没有文件，正在转到官方下载源。</p>
+  </div>
+
+  <div class="tip" id="tip">
+    <b>没开始下载？点一下就行</b>
+    <p>文件是一样的（GitHub 官方 Release）。国内网络如果卡在 0%，换下面任一镜像。</p>
+    <div style="margin-top:12px">
+      <a class="btn pri" id="go" href="#" rel="noreferrer">开始下载</a>
+      <div class="mirrors" id="mirrors">
+        <a class="btn" id="m1" href="#" rel="noreferrer">镜像一</a>
+        <a class="btn" id="m2" href="#" rel="noreferrer">镜像二</a>
+        <a class="btn" id="m3" href="#" rel="noreferrer">镜像三</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="btns">
+    <a class="btn" href="https://podcatcher962.github.io/moyin-reader/download/">下载页（含校验值）</a>
+    <a class="btn" href="https://podcatcher962.github.io/moyin-reader/">打开阅读器</a>
+  </div>
+  <div class="path" id="path"></div>
+</div>
+
+<script>
+(function () {
+  var OFFICIAL = 'https://github.com/podcatcher962/moyin-reader/releases/latest/download/';
+  var MIRROR = [
+    'https://gh-proxy.com/' + OFFICIAL,
+    'https://ghfast.top/' + OFFICIAL,
+    'https://ghproxy.net/' + OFFICIAL
+  ];
+  /* 只对「资产名稳定」的四类做跳转；带版本号的名字（-1.14.41.zip / .deb）
+     版本间会变，拼 latest 又造一条死链，统一送去下载页选。 */
+  var STABLE = {
+    'moyinreader.apk': 'MoYinReader.apk',
+    'moyinreader.exe': 'MoYinReader.exe',
+    'moyinreader_lite.exe': 'MoYinReader_Lite.exe',
+    'moyinreader.html': 'MoYinReader.html'
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var seg = document.location.pathname.split('/').filter(Boolean);
+  var last = seg.length ? decodeURIComponent(seg[seg.length - 1]) : '';
+  $('path').textContent = document.location.href;
+
+  var target = STABLE[last.toLowerCase()];
+  if (!target) {
+    $('mark').textContent = '·';
+    $('h1').textContent = '这个地址没有内容';
+    $('msg').textContent = '链接可能来自旧版本，或者拼错了一小截。';
+    $('tip').classList.add('hide');
+    return;
+  }
+
+  var url = OFFICIAL + target;
+  $('go').href = url;
+  $('go').textContent = '开始下载 ' + target;
+  $('msg').textContent = '正在转官方源：' + target + '（约 103 MB，慢一点也正常）。';
+  $('m1').href = MIRROR[0] + target;
+  $('m2').href = MIRROR[1] + target;
+  $('m3').href = MIRROR[2] + target;
+
+  /* 微信 / QQ 内置浏览器一律拦 apk 下载：先把话说清楚，别让人以为链接坏了 */
+  var ua = navigator.userAgent || '';
+  if (/MicroMessenger|QQ\/|Weibo|XHS|xiaohongshu/i.test(ua)) {
+    $('h1').textContent = '请用浏览器打开';
+    $('msg').textContent = '点右上角「…」→「在浏览器打开」，再点下面的按钮下载。';
+    $('mark').textContent = '🧭';
+    return;
+  }
+
+  /* 手机上别死等：自动跳一次，15 秒后把标题换成「点这个按钮」 */
+  window.setTimeout(function () { document.location.assign(url); }, 400);
+  window.setTimeout(function () {
+    if (document.hidden) return;
+    $('h1').textContent = '还没开始？点下面的按钮';
+    $('msg').textContent = '有些浏览器会拦住自动跳转，手动点一下即可。';
+    $('mark').textContent = '📥';
+  }, 15000);
+})();
+</script>
+</body>
+</html>
