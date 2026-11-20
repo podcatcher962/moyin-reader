@@ -108,6 +108,16 @@ jobs:
           codesign --force --deep --sign - "$APP"
           codesign -dv --verbose=2 "$APP" 2>&1 | head -12
 
+      - name: 确认 pywebview 真的进了包（结构检查）
+        if: env.WV == 'yes'
+        run: |
+          # --selftest 不碰 GUI，所以它绿了≠窗口能开。这里只做结构核对：
+          # pyobjc 是函数内延迟 import 的，PyInstaller 静态分析看不见，最容易「打包成功但一开就崩」。
+          n=$(find "dist/MoYinReader.app" -iname '*webview*' -o -iname '*objc*' -o -iname '*WebKit*' | wc -l | tr -d ' ')
+          find "dist/MoYinReader.app" -iname '*webview*' -o -iname '*objc*' -o -iname '*WebKit*' | head -15
+          echo "命中 $n 项"
+          [ "$n" -gt 0 ] || { echo "::error::pywebview/pyobjc 没打进去"; exit 1; }
+
       - name: 真机自检（无头，不开窗口）
         run: |
           APP="dist/MoYinReader.app"
