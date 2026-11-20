@@ -73,7 +73,7 @@
 | **安卓** | 打开[下载页](https://podcatcher962.github.io/moyin-reader/download/)选源下载 | 页面内嵌，**187 个离线神经声线随包带走**，断网也能听；下载页会列出官方直链与可选镜像，手机下载见下方说明 |
 | **任意系统** | 双击 `MoYinReader.html` | 单文件网页版，功能与桌面版一致 |
 | **Linux / 信创**（统信 UOS、麒麟、openEuler、Deepin） | `sudo dpkg -i moyin-reader_*.deb` 装进应用菜单；或用 `MoYinReader-Linux-*.tar.gz` 解压后双击「墨吟阅读器.sh」 | 走**系统自带的 python3** 起原生窗口，没有就用 Chromium 系浏览器的「应用窗口」模式；x86_64 / 飞腾 / 鲲鹏 / 龙芯都一样。**1.14.39 起包里不再附预编译二进制**——旧那个是 1.10 打的、内嵌页面停在 1.10，会盖住新界面（详见下方「Linux 包为什么不再带二进制」）。想要免 Python 就在本机跑一次 `build-linux.sh` |
-| **macOS**（Intel / Apple Silicon） | 解压 `MoYinReader-macOS-*.zip`，双击「墨吟阅读器.command」 | 免安装 Python |
+| **macOS**（Apple 芯片 / Intel 分两份） | 解压后双击 `MoYinReader.app`：M 系列下 `MoYinReader-macOS-arm64-*.zip`，Intel 下 `MoYinReader-macOS-x86_64-*.zip` | 不需要装 Python；**首次打开要在「系统设置 → 隐私与安全性」点「仍要打开」放行一次**（包未签名） |
 
 > **手机上装安卓版，下载卡住怎么办**
 >
@@ -92,7 +92,7 @@
 
 Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF，只依赖系统自带的 libc / libz / libpthread / libdl（glibc 2.28+），UOS 20、银河麒麟 V10、openEuler 20.03 及更新版本都能直接运行。窗口用系统浏览器内核的「应用模式」打开——没有地址栏和标签页，是个独立窗口，关掉即退出。
 
-其余架构（aarch64 / loongarch64）仍走 Python 或网页方式；包里附 `build-linux.sh`，可在本机打自己架构的二进制。macOS 同理附 `build-macos.sh`，打 `.app`。
+其余架构（aarch64 / loongarch64）仍走 Python 或网页方式；包里附 `build-linux.sh`，可在本机打自己架构的二进制。macOS 不用自己 build：仓库的 Actions 已经用 GitHub 的 macOS 机器打好了 `.app`（Apple 芯片与 Intel 各一份），附 `build-macos.sh` 只是给你想在本机重打时用。
 
 朗读：Windows 完整版与安卓版都自带神经语音（sherpa-onnx + fanchen-C，187 个中文声线，完全离线）；网页版 / Linux / macOS 走系统语音，也可以把同一份 `VoicePack` 放在旁边连本机引擎（`127.0.0.1:8177`）。
 
@@ -143,7 +143,9 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 | `MoYinReader.html` | 约 2.1 MB | 单文件网页版，双击即用，任何系统都能跑（1.14.25 起内置 PDF.js，体积从 0.5 MB 涨到 2 MB，换来 PDF 能读） |
 | `moyin-reader_*_amd64.deb` | 约 0.7 MB | 统信 / 麒麟 / openEuler，**双击安装即进应用菜单**，卸载走系统正常流程。1.14.39 起不再捆旧二进制，体积从 9.8 MB 降到 0.7 MB，装得更快也更好修 |
 | `MoYinReader-Linux-*.tar.gz` | 约 0.7 MB | 免安装版：解压双击「墨吟阅读器.sh」，U 盘带走也能用 |
-| `MoYinReader-macOS-*.zip` | 约 0.7 MB | macOS 源码 + 打包脚本，在本机跑一次 `build-macos.sh` 出 `.app`（内含的页面就是当前版本，跟 Win 版同一个 md5） |
+| `MoYinReader-macOS-arm64-*.zip` | 约 14.6 MB | Apple 芯片（M1 及之后）直接能用的 `.app`，CI 打的，不用装 Python |
+| `MoYinReader-macOS-x86_64-*.zip` | 约 15.3 MB | Intel 芯片的 `.app`，同上。两份都**未签名、未公证**，首次打开要放行一次 |
+| `MoYinReader-macOS-*.zip` | 约 0.7 MB | 旧方式的源码 + 打包脚本，在本机跑一次 `build-macos.sh` 出 `.app`；不想用现成包时用 |
 
 ### 这 125 MB 里到底是什么
 
@@ -177,6 +179,7 @@ Linux 包里那个 `MoYinReader` 是在统信 UOS 20 专业版上编译的 ELF�
 - **异议入口从「见 README」改成具体地址**：`github.com/podcatcher962/moyin-reader/issues`。原来那句在 APK 里根本落不了地——手机用户手上没有 README。
 - **22 kHz 旧模型改名**：「墨吟 · 女声 / 男声」→「旧版 22k · 女声 / 男声」。老 `VoicePack` 目录里还留着它们照样能选，但名字里不再挂「墨吟」，免得被当成软件自带的声音。
 - **声线命名复核**：精选 50 条是「档位 + 序号」，其余 137 条显示为「音色 N」，全部无名无姓、不指向任何具体的人。
+- **macOS 换成真正的 `.app`（2026-11-20 补）**：以前那个 `MoYinReader-macOS-1.14.41.zip` 是源码包，得自己装 Python 或跑 `build-macos.sh`。现在由 GitHub 的 macOS 机器打出 Apple 芯片与 Intel 两份 `.app`，并在那台机器上跑过 64 项自检（两架构各一遍，全 PASS）。包未签名，首次打开要在「系统设置 → 隐私与安全性」点「仍要打开」。
 
 **1.14.40 · 把两份 22 kHz 主角模型拿掉，包小 25 MB**
 
@@ -496,7 +499,7 @@ Five releases in a row: the first four are about how it *sounds*, the last one a
 | **Android** | `MoYinReader.apk` — page embedded, speech via system TTS |
 | **Any system** | Double-click `MoYinReader.html` |
 | **Linux / domestic (UOS, Kylin, openEuler)** | `sudo dpkg -i moyin-reader_*.deb`, or unzip the tarball and run the launcher — a 10 MB standalone binary, **no Python needed** (verified on UOS Desktop 20 Professional, x86_64) |
-| **macOS** | Unzip, then run `build-macos.sh` on your Mac to produce a `.app` |
+| **macOS** | Unzip and double-click `MoYinReader.app` — separate builds for Apple Silicon (`arm64`) and Intel (`x86_64`), no Python needed. Both are unsigned: the first launch needs System Settings → Privacy & Security → "Open Anyway" |
 
 The Linux binary only needs `libc` / `libz` / `libpthread` / `libdl` (glibc 2.28+). On aarch64 (Phytium / Kunpeng) and loongarch64 (Loongson) it falls back to the Python or web route; `build-linux.sh` builds a native binary on such a machine.
 
@@ -510,7 +513,9 @@ The Linux binary only needs `libc` / `libz` / `libpthread` / `libdl` (glibc 2.28
 | `MoYinReader.apk` | ~101 MB | Android full build: page + neural TTS engine with all three model sets (two leads + 187-speaker library) |
 | `moyin-reader_*_amd64.deb` | ~9.7 MB | UOS / Kylin / openEuler, installs into the app menu |
 | `MoYinReader-Linux-*.tar.gz` | ~9.8 MB | Portable build, same x86_64 binary, unzip and run |
-| `MoYinReader-macOS-*.zip` | ~157 KB | Source + `build-macos.sh`; run it once on your Mac to get a `.app` |
+| `MoYinReader-macOS-arm64-*.zip` | ~14.6 MB | Prebuilt `.app` for Apple Silicon (M-series) |
+| `MoYinReader-macOS-x86_64-*.zip` | ~15.3 MB | Prebuilt `.app` for Intel Macs. Both are unsigned — first launch needs "Open Anyway" in System Settings |
+| `MoYinReader-macOS-*.zip` | ~700 KB | Legacy source + `build-macos.sh` |
 
 Prebuilt binaries: **[Releases](https://github.com/podcatcher962/moyin-reader/releases)** — or open the **[web version](https://podcatcher962.github.io/moyin-reader/)** and install nothing.
 
