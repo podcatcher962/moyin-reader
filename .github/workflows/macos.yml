@@ -24,6 +24,10 @@ on:
         description: '备注（随便写，只进日志）'
         required: false
         default: ''
+      upload_tag:
+        description: '手动跑时也想上架：填已有 Release 的 tag（如 v1.14.41），留空则只出 artifact'
+        required: false
+        default: ''
   push:
     tags:
       - 'v*'
@@ -137,14 +141,18 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           exit $RC
 
-      - name: 压成 zip
+      - name: 压成 zip（名字带版本，避免 latest 死链）
         if: always()
         run: |
+          # 版本号以 app.py 里的 VER 为准，不用 tag 推导：手动跑时没有 tag。
+          VER=$(python -c "import re;print(re.search(r\"VER = '([^']+)'\", open('_pkg_win/app.py',encoding='utf-8').read()).group(1))")
+          echo "VER=$VER" >> "$GITHUB_ENV"
+          ZIP="MoYinReader-macOS-${{ matrix.arch }}-$VER.zip"
+          echo "ZIP=$ZIP" >> "$GITHUB_ENV"
           if [ -d dist/MoYinReader.app ]; then
-            ditto -c -k --sequesterRsrc --keepParent dist/MoYinReader.app \
-              "MoYinReader-${{ matrix.arch }}.zip"
-            ls -lh MoYinReader-*.zip
-            shasum -a 256 MoYinReader-*.zip | tee SHA256SUMS-${{ matrix.arch }}.txt
+            ditto -c -k --sequesterRsrc --keepParent dist/MoYinReader.app "$ZIP"
+            ls -lh "$ZIP"
+            shasum -a 256 "$ZIP" | tee "SHA256SUMS-${{ matrix.arch }}.txt"
           fi
 
       - uses: actions/upload-artifact@v4
@@ -152,22 +160,24 @@ jobs:
         with:
           name: MoYinReader-${{ matrix.arch }}
           path: |
-            MoYinReader-${{ matrix.arch }}.zip
+            MoYinReader-macOS-*.zip
             SHA256SUMS-${{ matrix.arch }}.txt
             selftest-${{ matrix.arch }}.txt
           if-no-files-found: warn
           retention-days: 30
 
       - name: 挂到已有 Release
-        if: startsWith(github.ref, 'refs/tags/') && success()
+        if: success() && (startsWith(github.ref, 'refs/tags/') || inputs.upload_tag != '')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${{ github.ref_name }}"
+          # 手动跑（workflow_dispatch）时 github.ref_name 是分支名，不能用它；
+          # 所以允许用 upload_tag 显式指定一个已经建好的 Release。
+          TAG="${{ inputs.upload_tag }}"
+          [ -n "$TAG" ] || TAG="${{ github.ref_name }}"
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             echo "没有 $TAG 的 Release —— 先按发版流程建好 Release，再重跑本工作流。"
-            exit 0
+            exit 1
           fi
-          gh release upload "$TAG" "MoYinReader-${{ matrix.arch }}.zip" \
-            "SHA256SUMS-${{ matrix.arch }}.txt" --clobber
-          echo "已挂上 $TAG"
+          gh release upload "$TAG" "$ZIP" "SHA256SUMS-${{ matrix.arch }}.txt" --clobber
+          echo "已挂上 $TAG ← $ZIP"
