@@ -94,6 +94,8 @@ jobs:
           echo "--- dist ---"
           ls -la dist
           du -sh dist/MoYinReader.app
+          # 证明这份产物真的是这个架构（Intel 标签万一退化成 arm64，这里会露馅）
+          file dist/MoYinReader.app/Contents/MacOS/MoYinReader
 
       - name: 显示名 + ad-hoc 签名
         run: |
