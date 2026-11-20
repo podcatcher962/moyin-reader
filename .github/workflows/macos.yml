@@ -82,10 +82,12 @@ jobs:
                    --hidden-import AppKit \
                    --hidden-import WebKit"
           fi
+          # ⚠️ --specpath 会把 --add-data 的「相对源路径」按 spec 所在目录解析，
+          #    写成 "MoYinReader.html" 会报 Unable to find build/MoYinReader.html。必须给绝对路径。
           python -m PyInstaller --noconfirm --clean --windowed \
             --name MoYinReader \
             --osx-bundle-identifier cn.lanlan.moyin \
-            --add-data "MoYinReader.html:." \
+            --add-data "$PWD/MoYinReader.html:." \
             --distpath dist --workpath build/macos --specpath build \
             $EXTRA \
             _pkg_win/app.py
