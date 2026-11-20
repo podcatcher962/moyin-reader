@@ -1,0 +1,159 @@
+name: macOS .app
+
+# 为什么有这个东西
+# ────────────────
+# 开发者手上没有 Mac，而 PyInstaller 不能交叉编译 —— 所以 macOS 版一直没有真机验证过。
+# 公开仓库的 GitHub 托管 macOS runner 免费且不限时长，正好当「唯一的 Mac 真机」用：
+# 每次跑都在真的 macOS 上装一遍、打一遍、再跑一遍无头自检（--selftest），
+# 绿了才说明代码在 Mac 上真能跑，而不是「我猜能跑」。
+#
+# 产物是未签名、未公证的 .app。首次打开会被 Gatekeeper 拦，
+# 用户需要在「系统设置 → 隐私与安全性 → 仍要打开」放行一次（macOS 15 起右键打开已失效）。
+
+on:
+  workflow_dispatch:
+    inputs:
+      webview:
+        description: '把 pywebview 打进包（原生窗口）；no = 只开浏览器 --app 窗口'
+        type: choice
+        options:
+          - 'no'
+          - 'yes'
+        default: 'no'
+      note:
+        description: '备注（随便写，只进日志）'
+        required: false
+        default: ''
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-latest      # Apple Silicon（M 系列）
+            arch: arm64
+          - runner: macos-26-intel    # Intel 芯的老 Mac
+            arch: x86_64
+    env:
+      WV: ${{ inputs.webview || 'no' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 看一眼这台机器
+        run: |
+          sw_vers
+          uname -m
+          echo "webview=$WV  note=${{ inputs.note }}"
+          xcode-select -p || true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 装 PyInstaller
+        run: |
+          python -V
+          python -m pip install --upgrade pip
+          python -m pip install "pyinstaller>=6.6"
+          if [ "$WV" = "yes" ]; then
+            python -m pip install pywebview
+          fi
+          python -m pip list | grep -iE 'pyinstaller|pywebview|pyobjc|webview' || true
+
+      - name: 打包 .app
+        run: |
+          EXTRA=""
+          if [ "$WV" = "yes" ]; then
+            # pywebview 在 macOS 上靠 pyobjc 调 Cocoa/WebKit，都是函数内延迟 import，
+            # PyInstaller 的静态分析看不见 —— 必须显式点名，否则打出来双击就崩。
+            EXTRA="--collect-submodules webview \
+                   --hidden-import objc \
+                   --hidden-import Foundation \
+                   --hidden-import AppKit \
+                   --hidden-import WebKit"
+          fi
+          python -m PyInstaller --noconfirm --clean --windowed \
+            --name MoYinReader \
+            --osx-bundle-identifier cn.lanlan.moyin \
+            --add-data "MoYinReader.html:." \
+            --distpath dist --workpath build/macos --specpath build \
+            $EXTRA \
+            _pkg_win/app.py
+          echo "--- dist ---"
+          ls -la dist
+          du -sh dist/MoYinReader.app
+
+      - name: 显示名 + ad-hoc 签名
+        run: |
+          APP="dist/MoYinReader.app"
+          PLIST="$APP/Contents/Info.plist"
+          # 文件名保持 ASCII（zip / Release 资产名里塞中文很容易在别人机器上乱码），
+          # 但 Finder 里显示中文。
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 墨吟阅读器" "$PLIST" || \
+            /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string 墨吟阅读器" "$PLIST"
+          # Apple Silicon 强制要求至少 ad-hoc 签名，否则一启动就被内核杀掉（killed: 9）。
+          # 改过 Info.plist 之后必须重新签，顺序不能反。
+          codesign --force --deep --sign - "$APP"
+          codesign -dv --verbose=2 "$APP" 2>&1 | head -12
+
+      - name: 真机自检（无头，不开窗口）
+        run: |
+          APP="dist/MoYinReader.app"
+          BIN="$APP/Contents/MacOS/MoYinReader"
+          FILE="selftest-${{ matrix.arch }}.txt"
+          RC=0
+          "$BIN" --selftest="$FILE" || RC=$?
+          echo "=== selftest rc=$RC ==="
+          cat "$FILE" 2>/dev/null || echo "（没有产出文件）"
+          {
+            echo "### ${{ matrix.arch }} · 自检 rc=$RC"
+            echo '```'
+            cat "$FILE" 2>/dev/null || echo '（没有产出文件）'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $RC
+
+      - name: 压成 zip
+        if: always()
+        run: |
+          if [ -d dist/MoYinReader.app ]; then
+            ditto -c -k --sequesterRsrc --keepParent dist/MoYinReader.app \
+              "MoYinReader-${{ matrix.arch }}.zip"
+            ls -lh MoYinReader-*.zip
+            shasum -a 256 MoYinReader-*.zip | tee SHA256SUMS-${{ matrix.arch }}.txt
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: MoYinReader-${{ matrix.arch }}
+          path: |
+            MoYinReader-${{ matrix.arch }}.zip
+            SHA256SUMS-${{ matrix.arch }}.txt
+            selftest-${{ matrix.arch }}.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: 挂到已有 Release
+        if: startsWith(github.ref, 'refs/tags/') && success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "没有 $TAG 的 Release —— 先按发版流程建好 Release，再重跑本工作流。"
+            exit 0
+          fi
+          gh release upload "$TAG" "MoYinReader-${{ matrix.arch }}.zip" \
+            "SHA256SUMS-${{ matrix.arch }}.txt" --clobber
+          echo "已挂上 $TAG"
